@@ -1,104 +1,112 @@
-import { motion } from "framer-motion";
-import { RiFlowerLine, RiGift2Line, RiSparkling2Line } from "react-icons/ri";
-import { TbHeartHandshake } from "react-icons/tb";
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import RamosImg from '../../assets/Servicios/Ramos.jpg';
+import CondolenciasImg from '../../assets/Servicios/Condolencias.jpg';
+import ArreglosImg from '../../assets/Servicios/Arreglos-especiales.jpg';
+import BodaImg from '../../assets/Servicios/Boda.jpg';
 
 const services = [
   {
-    icon: RiFlowerLine,
-    title: "Ramos y Bouquets",
-    description: "Creamos arreglos florales únicos y elegantes para expresar tus sentimientos más profundos.",
-    color: "#E91E63",
-    accentColors: ["#FF6B9D", "#FFB3D1", "#FFD1E6"],
+    title: 'Ramos y Bouquets',
+    description:
+      'Creamos arreglos florales únicos y elegantes para expresar tus sentimientos más profundos.',
+    color: '#E91E63',
+    image: RamosImg,
+    angle: 4,
   },
   {
-    icon: TbHeartHandshake,
-    title: "Coronas y Condolencias",
-    description: "Arreglos delicados y respetuosos para mostrar tus condolencias en momentos difíciles.",
-    color: "#00A87F",
-    accentColors: ["#2DB896", "#5AC8AD", "#7DD3C1"],
+    title: 'Coronas y Condolencias',
+    description:
+      'Arreglos delicados y respetuosos para mostrar tus condolencias en momentos difíciles.',
+    color: '#00A87F',
+    image: CondolenciasImg,
+    angle: -8,
   },
   {
-    icon: RiGift2Line,
-    title: "Arreglos Especiales",
-    description: "Diseños personalizados para ocasiones especiales que reflejan tu estilo y personalidad.",
-    color: "#E91E63",
-    accentColors: ["#FF6B9D", "#FFB3D1", "#FFD1E6"],
+    title: 'Arreglos Especiales',
+    description:
+      'Diseños personalizados para ocasiones especiales que reflejan tu estilo y personalidad.',
+    color: '#E91E63',
+    image: ArreglosImg,
+    angle: -7,
   },
   {
-    icon: RiSparkling2Line,
-    title: "Eventos y Bodas",
-    description: "Embellecemos tus eventos más importantes con arreglos florales excepcionales y únicos.",
-    color: "#FFC107",
-    accentColors: ["#FFD54F", "#FFE082", "#FFF59D"],
+    title: 'Eventos y Bodas',
+    description:
+      'Embellecemos tus eventos más importantes con arreglos florales excepcionales y únicos.',
+    color: '#FFC107',
+    image: BodaImg,
+    angle: 11,
   },
 ];
 
 export const Services = () => {
-  const sectionVariants = {
-    hidden: { opacity: 0, y: 80 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8, ease: "easeOut" },
-    },
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const goToNext = () => {
+    setActiveIndex((prev) => (prev + 1) % services.length);
   };
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 80, scale: 0.92 },
-    visible: (index: number) => ({
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        duration: 0.7,
-        ease: "easeOut",
-        delay: index * 0.12,
-      },
-    }),
+  const goToPrevious = () => {
+    setActiveIndex((prev) => (prev - 1 + services.length) % services.length);
+  };
+
+  // Auto-play opcional
+  useEffect(() => {
+    const interval = setInterval(() => {
+      goToNext();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calcular z-index para cada tarjeta
+  const getZIndex = (index: number) => {
+    if (index === activeIndex) return 10;
+    const diff = (index - activeIndex + services.length) % services.length;
+    if (diff === 1) return 9;
+    if (diff === 2) return 8;
+    if (diff === 3) return 7;
+    if (diff === 4) return 6;
+    if (diff === 5) return 5;
+    return -1;
   };
 
   return (
-    <motion.section
+    <section
       id="servicios"
-      className="relative bg-gradient-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden"
-      variants={sectionVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.25 }}
+      className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden"
     >
       {/* Efectos de fondo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute top-1/4 left-1/4 w-96 sm:w-[500px] md:w-[600px] h-96 sm:h-[500px] md:h-[600px] rounded-full blur-3xl"
+        <motion.div
+          className="absolute top-1/4 left-1/4 w-96 sm:w-[500px] md:w-[600px] h-96 sm:h-[500px] md:h-[600px] rounded-full blur-xl"
           style={{
-            background: `radial-gradient(circle, ${services[0].color}08, ${services[0].accentColors[0]}05, transparent 60%)`,
-            clipPath: 'polygon(0% 0%, 100% 0%, 90% 30%, 70% 50%, 50% 70%, 30% 85%, 10% 95%, 0% 100%)',
+            background: `radial-gradient(circle, ${services[0].color}06, ${services[0].color}04, transparent 60%)`,
           }}
           animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-        <motion.div 
-          className="absolute bottom-1/4 right-1/4 w-80 sm:w-[450px] md:w-[550px] h-80 sm:h-[450px] md:h-[550px] rounded-full blur-3xl"
-          style={{
-            background: `radial-gradient(circle, ${services[1].color}07, ${services[1].accentColors[0]}04, transparent 65%)`,
-            clipPath: 'polygon(20% 0%, 100% 10%, 95% 40%, 80% 60%, 60% 75%, 40% 85%, 20% 90%, 0% 100%, 0% 0%)',
-          }}
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.25, 0.45, 0.25],
+            scale: [1, 1.08, 1],
+            opacity: [0.2, 0.35, 0.2],
           }}
           transition={{
             duration: 10,
             repeat: Infinity,
-            delay: 2,
-            ease: 'easeInOut',
+            ease: [0.4, 0, 0.2, 1] as const,
+          }}
+        />
+        <motion.div
+          className="absolute bottom-1/4 right-1/4 w-80 sm:w-[450px] md:w-[550px] h-80 sm:h-[450px] md:h-[550px] rounded-full blur-xl"
+          style={{
+            background: `radial-gradient(circle, ${services[1].color}05, ${services[1].color}03, transparent 65%)`,
+          }}
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.18, 0.32, 0.18],
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            delay: 2.5,
+            ease: [0.4, 0, 0.2, 1] as const,
           }}
         />
       </div>
@@ -106,93 +114,103 @@ export const Services = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Título */}
         <motion.div
-          className="text-center mb-12 sm:mb-16"
-          variants={sectionVariants}
+          className="text-center mb-4 sm:mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.6 }}
         >
-          <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#00A87F] mb-4">
+          <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#00A87F] mb-1 sm:mb-2">
             SERVICIOS
           </p>
-          <h2 className="font-sans text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#171517] mb-4 sm:mb-6 tracking-tight leading-[1.08]">
-            NUESTRA <span className="bg-gradient-to-r from-[#D95379] via-[#F7B600] to-[#00A87F] bg-clip-text text-transparent">ALQUIMIA FLORAL</span>
+          <h2 className="font-sans text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[#171517] mb-1 sm:mb-2 tracking-tight leading-[1.08]">
+            SERVICIOS
           </h2>
           <p className="text-[#665b68] text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed px-4 sm:px-0 font-medium">
-            Diseños vibrantes que combinan romanticismo, color y sentimiento para cada momento especial.
+            Diseños vibrantes que combinan romanticismo, color y sentimiento
+            para cada momento especial.
           </p>
         </motion.div>
 
-        {/* Grid de servicios */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-6xl mx-auto">
-          {services.map((service, index) => {
-            const accentShadow = `0 18px 45px ${service.color}22`;
+        {/* Carrusel de tarjetas apiladas */}
+        <div className="flex justify-center items-center w-full">
+          <div className="services-cards">
+            {services.map((service, index) => {
+              const isActive = index === activeIndex;
+              const zIndex = getZIndex(index);
 
-            return (
-              <motion.div
-                key={service.title}
-                className="relative rounded-[36px] border border-white/60 bg-white/80 backdrop-blur-xl p-8 sm:p-10 md:p-12 shadow-[0_20px_60px_rgba(17,18,26,0.08)] overflow-hidden group/card transition-transform"
-                variants={cardVariants}
-                custom={index}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.3 }}
-                whileHover={{ y: -12, scale: 1.02 }}
-              >
-                {/* halos */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: `radial-gradient(circle at 10% 10%, ${service.color}10, transparent 55%), radial-gradient(circle at 85% 85%, ${service.accentColors[0]}15, transparent 60%)`,
-                  }}
-                />
-
-                <div className="relative z-10 flex flex-col items-center text-center gap-5">
-                  <motion.div
-                    className="relative w-24 h-24 md:w-28 md:h-28 rounded-3xl flex items-center justify-center border border-white/50 bg-white/70 backdrop-blur-lg"
-                    style={{
-                      boxShadow: accentShadow,
-                    }}
-                    whileHover={{ rotate: 4, scale: 1.08 }}
+              return (
+                <article
+                  key={service.title}
+                  className={`service-card ${
+                    isActive ? 'service-card-active' : ''
+                  }`}
+                  style={
+                    {
+                      '--angle': `${service.angle}deg`,
+                      zIndex: zIndex,
+                    } as React.CSSProperties
+                  }
+                >
+                  <div
+                    className={`service-card-img-wrapper ${
+                      isActive ? 'service-card-img-active' : ''
+                    }`}
                   >
-                    <service.icon
-                      className="w-14 h-14 md:w-16 md:h-16"
+                    <img
+                      className="service-card-img"
+                      src={service.image}
+                      alt={service.title}
+                    />
+                  </div>
+                  <div
+                    className={`service-card-data ${
+                      isActive ? 'service-card-data-active' : ''
+                    }`}
+                  >
+                    <span
+                      className="service-card-num"
                       style={{ color: service.color }}
-                    />
-                    <div
-                      className="absolute -inset-1 rounded-[inherit] opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"
+                    >
+                      {index + 1}/{services.length}
+                    </span>
+                    <h2
+                      className="font-sans font-black text-xl sm:text-2xl md:text-3xl leading-tight"
                       style={{
-                        background: `radial-gradient(circle, ${service.color}20, transparent 70%)`,
-                      }}
-                    />
-                  </motion.div>
-
-                  <div className="space-y-3">
-                    <h3
-                      className="font-sans text-2xl sm:text-3xl md:text-4xl font-black tracking-tight"
-                      style={{
-                        background: `linear-gradient(120deg, ${service.color}, ${service.accentColors[0]}, ${service.accentColors[1]})`,
-                        WebkitBackgroundClip: "text",
-                        color: "transparent",
+                        background: `linear-gradient(135deg, ${service.color}, ${service.color}dd)`,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
                       }}
                     >
                       {service.title}
-                    </h3>
-                    <p className="text-[#5e5562] text-base sm:text-lg md:text-xl leading-relaxed font-medium">
+                    </h2>
+                    <p className="text-[#4a5568] text-sm sm:text-base md:text-lg leading-relaxed font-medium">
                       {service.description}
                     </p>
+                    <footer className="service-card-footer">
+                      <button
+                        onClick={goToPrevious}
+                        aria-label="Previous"
+                        className="service-card-nav-btn"
+                      >
+                        &#10094;
+                      </button>
+                      <button
+                        onClick={goToNext}
+                        aria-label="Next"
+                        className="service-card-nav-btn"
+                      >
+                        &#10095;
+                      </button>
+                    </footer>
                   </div>
-
-                  <motion.div
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#F7B600]/30 bg-[#F9F2D6]/40 text-[#c17817] font-semibold text-sm tracking-wide"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    Amor, color &amp; diseño
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#F7B600]" />
-                  </motion.div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </motion.section>
+    </section>
   );
 };

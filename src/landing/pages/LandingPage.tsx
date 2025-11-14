@@ -7,7 +7,7 @@ import {
   HiMail,
   HiArrowRight,
 } from 'react-icons/hi';
-import { PiFlowerFill } from 'react-icons/pi';
+import { GiRose } from 'react-icons/gi';
 
 // Lazy loading para mejor rendimiento y code splitting
 const Hero = lazy(() =>
@@ -51,38 +51,28 @@ export default function LandingPage() {
           <Services />
         </Suspense>
         <Suspense fallback={null}>
-          <Gallery />
+          <About />
         </Suspense>
         <Suspense fallback={null}>
-          <About />
+          <Gallery />
         </Suspense>
         <Suspense fallback={null}>
           <Contact />
         </Suspense>
       </main>
-      <footer className="bg-gradient-to-b from-[#0D0D0D] via-[#0a0a0a] to-[#0D0D0D] border-t border-white/5 relative overflow-hidden">
-        {/* Efectos de fondo premium */}
+      <footer className="bg-linear-to-b from-[#0D0D0D] via-[#0a0a0a] to-[#0D0D0D] border-t border-white/5 relative overflow-hidden">
+        {/* Efectos de fondo premium - sin animaciones para evitar re-renders */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/1 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-white/1 rounded-full blur-3xl" />
 
-          {/* Línea decorativa animada */}
-          <motion.div
-            className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/5 to-transparent"
-            animate={{
-              opacity: [0.05, 0.15, 0.05],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
+          {/* Línea decorativa estática - sin animación para mejor rendimiento */}
+          <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-white/5 to-transparent opacity-10" />
         </div>
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="py-16 sm:py-20 lg:py-24">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-12">
+          <div className="py-8 sm:py-10 md:py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 mb-8">
               {/* Logo y descripción */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -91,16 +81,16 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="lg:col-span-2"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center shadow-lg">
-                    <PiFlowerFill className="w-6 h-6 text-white/80" />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center shadow-lg">
+                    <GiRose className="w-5 h-5 text-white/80" />
                   </div>
-                  <h3 className="font-sans text-2xl sm:text-3xl font-black text-white">
+                  <h3 className="font-sans text-xl sm:text-2xl font-black text-white">
                     Floristería{' '}
                     <span className="text-white/90">Sacuanjoche</span>
                   </h3>
                 </div>
-                <p className="text-gray-400 text-base leading-relaxed mb-6 max-w-md">
+                <p className="text-gray-400 text-sm leading-relaxed mb-4 max-w-md">
                   Creando los ramos florales más bellos, delicados y de calidad
                   del mercado desde 1983.
                 </p>
@@ -117,10 +107,10 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
-                <h4 className="font-sans text-lg font-black text-white mb-6 uppercase tracking-wider">
+                <h4 className="font-sans text-base font-black text-white mb-4 uppercase tracking-wider">
                   Enlaces
                 </h4>
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {[
                     { href: '#inicio', label: 'Inicio' },
                     { href: '#servicios', label: 'Servicios' },
@@ -149,10 +139,10 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <h4 className="font-sans text-lg font-black text-white mb-6 uppercase tracking-wider">
+                <h4 className="font-sans text-base font-black text-white mb-4 uppercase tracking-wider">
                   Contacto
                 </h4>
-                <ul className="space-y-4">
+                <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <HiLocationMarker className="w-5 h-5 text-white/40 mt-0.5 shrink-0" />
                     <div>
@@ -196,9 +186,9 @@ export default function LandingPage() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="pt-8 border-t border-white/5"
+              className="pt-6 border-t border-white/5"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <p className="text-gray-500 text-sm">
                   © {new Date().getFullYear()} Floristería Sacuanjoche. Todos
                   los derechos reservados.

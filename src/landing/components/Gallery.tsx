@@ -94,6 +94,20 @@ export const Gallery = () => {
   const [backgroundOpacity, setBackgroundOpacity] = useState(0.65);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Memoizar partículas para evitar recálculos
+  const particles = useMemo(() => {
+    if (typeof window === 'undefined') return [];
+    return Array.from({ length: 3 }).map((_, i) => ({
+      key: `gallery-particle-${i}`,
+      size: 2 + (i % 2),
+      delay: i * 1.2,
+      duration: 14 + i * 2,
+      x: (i * 350) % (window.innerWidth || 1920),
+      y: (i * 400) % (window.innerHeight || 1080),
+      opacity: 0.15 + (i % 2) * 0.08,
+    }));
+  }, []);
+
   // Optimizado: memoizar checkMobile
   useEffect(() => {
     const checkMobile = () => {
@@ -105,17 +119,39 @@ export const Gallery = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Loop infinito automático - optimizado con pausa en hover
+  // Loop infinito automático - SOLO cuando la galería está visible - más rápido
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    const startInterval = () => {
-      interval = setInterval(() => {
-        setActiveIndex((prev) => (prev + 1) % galleryImages.length);
-      }, 5000);
-    };
-    startInterval();
+    let observer: IntersectionObserver | null = null;
+    const gallerySection = document.getElementById('galeria');
+
+    if (!gallerySection) return;
+
+    // Intersection Observer para detectar cuando está visible
+    observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Solo iniciar intervalo cuando está visible - reducido a 3 segundos
+            interval = setInterval(() => {
+              setActiveIndex((prev) => (prev + 1) % galleryImages.length);
+            }, 3000);
+          } else {
+            // Limpiar intervalo cuando no está visible
+            if (interval) {
+              clearInterval(interval);
+            }
+          }
+        });
+      },
+      { threshold: 0.3 } // Se activa cuando 30% está visible
+    );
+
+    observer.observe(gallerySection);
+
     return () => {
       if (interval) clearInterval(interval);
+      if (observer) observer.disconnect();
     };
   }, []);
 
@@ -222,7 +258,7 @@ export const Gallery = () => {
   return (
     <section
       id="galeria"
-      className="py-20 sm:py-24 lg:py-32 relative overflow-hidden min-h-screen flex items-center bg-gradient-to-b from-[#0f0b0a] via-[#141010] to-[#0f0b0a]"
+      className="py-20 sm:py-24 lg:py-32 relative overflow-hidden min-h-screen flex items-center bg-linear-to-b from-[#0f0b0a] via-[#141010] to-[#0f0b0a]"
     >
       {/* Textura sutil de fondo premium */}
       <div
@@ -233,44 +269,46 @@ export const Gallery = () => {
         }}
       />
 
-      {/* Partículas flotantes sutiles */}
-      {typeof window !== 'undefined' &&
-        Array.from({ length: 5 }).map((_, i) => {
-          const size = 2 + (i % 2);
-          const delay = i * 0.8;
-          const duration = 12 + i * 2;
-          const x = (i * 250) % (window.innerWidth || 1920);
-          const y = (i * 300) % (window.innerHeight || 1080);
-
-          return (
-            <motion.div
-              key={`gallery-particle-${i}`}
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: `${size}px`,
-                height: `${size}px`,
-                background: `rgba(80, 200, 120, ${0.2 + (i % 2) * 0.1})`,
-                boxShadow: `0 0 ${size * 4}px rgba(80, 200, 120, 0.3)`,
-              }}
-              initial={{
-                x: x,
-                y: y,
-                opacity: 0,
-              }}
-              animate={{
-                x: [x, (x + 200) % (window.innerWidth || 1920), x],
-                y: [y, (y - 300) % (window.innerHeight || 1080), y],
-                opacity: [0, 0.4, 0.6, 0.4, 0],
-              }}
-              transition={{
-                duration: duration,
-                repeat: Infinity,
-                delay: delay,
-                ease: 'easeInOut',
-              }}
-            />
-          );
-        })}
+      {/* Partículas flotantes optimizadas - reducidas de 5 a 3 */}
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.key}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            background: `rgba(80, 200, 120, ${particle.opacity})`,
+            boxShadow: `0 0 ${particle.size * 3}px rgba(80, 200, 120, 0.25)`,
+            willChange: 'transform, opacity',
+          }}
+          initial={{
+            x: particle.x,
+            y: particle.y,
+            opacity: 0,
+          }}
+          animate={{
+            x: [
+              particle.x,
+              (particle.x + 180) %
+                (typeof window !== 'undefined' ? window.innerWidth : 1920),
+              particle.x,
+            ],
+            y: [
+              particle.y,
+              (particle.y - 280) %
+                (typeof window !== 'undefined' ? window.innerHeight : 1080),
+              particle.y,
+            ],
+            opacity: [0, 0.3, 0.5, 0.3, 0],
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            delay: particle.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
 
       {/* Dynamic Background con opacidad variable */}
       <AnimatePresence mode="wait">
@@ -287,9 +325,9 @@ export const Gallery = () => {
             className="absolute inset-0 bg-cover bg-center"
             style={{
               backgroundImage: `url(${backgroundImage})`,
-              filter: 'blur(100px) brightness(0.2) saturate(1.3)',
-              transform: 'scale(1.6)',
-              willChange: 'transform',
+              filter: 'blur(40px) brightness(0.25) saturate(1.2)',
+              transform: 'scale(1.4)',
+              willChange: 'opacity',
             }}
           />
           <motion.div
@@ -301,8 +339,8 @@ export const Gallery = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Resplandor verde difuso */}
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-[#50C878]/20 blur-[200px] rounded-full pointer-events-none" />
+      {/* Resplandor verde difuso - reducido blur */}
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-[#50C878]/15 blur-[80px] rounded-full pointer-events-none" />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full max-w-7xl">
         {/* Layout: Mobile centrado, Desktop dividido */}
@@ -409,7 +447,7 @@ export const Gallery = () => {
                             }
                             decoding="async"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover/card:from-black/70 transition-all duration-500" />
+                          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent group-hover/card:from-black/70 transition-all duration-500" />
                           {/* Resplandor verde al hover */}
                           <div
                             className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none"
@@ -436,12 +474,12 @@ export const Gallery = () => {
                   })}
                 </div>
 
-                {/* Navigation Arrows - Minimalistas, aparecen solo al hover del contenedor */}
+                {/* Navigation Arrows - Visibles siempre, especialmente en mobile */}
                 <motion.button
                   onClick={goToPrev}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-all duration-300 opacity-0 group-hover/carousel:opacity-100"
+                  className="absolute left-2 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-all duration-300 opacity-100 md:opacity-70 md:group-hover/carousel:opacity-100"
                   aria-label="Previous image"
                 >
                   <HiChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -451,7 +489,7 @@ export const Gallery = () => {
                   onClick={goToNext}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:bg-black/60 transition-all duration-300 opacity-0 group-hover/carousel:opacity-100"
+                  className="absolute right-2 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-all duration-300 opacity-100 md:opacity-70 md:group-hover/carousel:opacity-100"
                   aria-label="Next image"
                 >
                   <HiChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
