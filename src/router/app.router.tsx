@@ -1,8 +1,11 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
+import { Layout } from '@/shared/layout/Layout';
 
-// Lazy loading de la página principal para code splitting
+// Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
+const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
+const FacturasPage = lazy(() => import('../facturas/pages/FacturasPage'));
 
 // Componente de carga para el router
 const RouterLoadingFallback = () => (
@@ -10,6 +13,17 @@ const RouterLoadingFallback = () => (
     <div className="w-16 h-16 border-4 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
   </div>
 );
+
+// Layout wrapper para rutas de admin
+const AdminLayout = () => {
+  return (
+    <Layout>
+      <Suspense fallback={<RouterLoadingFallback />}>
+        <Outlet />
+      </Suspense>
+    </Layout>
+  );
+};
 
 export const router = createBrowserRouter([
   {
@@ -19,5 +33,19 @@ export const router = createBrowserRouter([
         <LandingPage />
       </Suspense>
     ),
+  },
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <DashboardPage />,
+      },
+      {
+        path: 'factura',
+        element: <FacturasPage />,
+      },
+    ],
   },
 ]);

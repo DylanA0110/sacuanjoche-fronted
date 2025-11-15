@@ -1,15 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import img1 from '../../assets/1.jpg';
-import img2 from '../../assets/2.jpg';
-import img4 from '../../assets/4.jpg';
-import img5 from '../../assets/5.jpg';
-import img6 from '../../assets/6.jpg';
-import img8 from '../../assets/8.jpg';
-import img9 from '../../assets/9.jpg';
-import img10 from '../../assets/10.jpg';
-import img11 from '../../assets/11.jpg';
+import img1 from '../../assets/Galeria/1.jpg';
+import img2 from '../../assets/Galeria/2.jpg';
+import img4 from '../../assets/Galeria/4.jpg';
+import img5 from '../../assets/Galeria/5.jpg';
+import img6 from '../../assets/Galeria/6.jpg';
+import img8 from '../../assets/Galeria/8.jpg';
+import img9 from '../../assets/Galeria/9.jpg';
+import img10 from '../../assets/Galeria/10.jpg';
+import img11 from '../../assets/Galeria/11.jpg';
 
 interface GalleryImage {
   id: number;
