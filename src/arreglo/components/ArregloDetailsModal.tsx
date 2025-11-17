@@ -9,8 +9,9 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { MdChevronLeft, MdChevronRight, MdImage, MdInfo } from 'react-icons/md';
-import { getArregloMedia } from '../actions';
+import { getArregloMedia, getArregloFlores, getArregloAccesorios } from '../actions';
 import type { Arreglo, Media } from '../types/arreglo.interface';
+import type { ArregloFlor, AccesorioArreglo } from '../types/arreglo-asociaciones.interface';
 
 interface ArregloDetailsModalProps {
   open: boolean;
@@ -26,11 +27,17 @@ export function ArregloDetailsModal({
   const [images, setImages] = useState<Media[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loadingImages, setLoadingImages] = useState(false);
+  const [loadingAssoc, setLoadingAssoc] = useState(false);
+  const [flores, setFlores] = useState<ArregloFlor[]>([]);
+  const [accesorios, setAccesorios] = useState<AccesorioArreglo[]>([]);
 
   useEffect(() => {
     if (open && arreglo?.idArreglo) {
       setLoadingImages(true);
-      getArregloMedia(arreglo.idArreglo)
+      setLoadingAssoc(true);
+      const id = arreglo.idArreglo;
+
+      getArregloMedia(id)
         .then((media: Media[]) => {
           setImages(media);
           setCurrentImageIndex(0);
@@ -39,11 +46,23 @@ export function ArregloDetailsModal({
           console.error('Error al cargar imágenes:', error);
           setImages(arreglo.media || []);
         })
-        .finally(() => {
-          setLoadingImages(false);
-        });
+        .finally(() => setLoadingImages(false));
+
+      Promise.all([getArregloFlores(id), getArregloAccesorios(id)])
+        .then(([f, a]) => {
+          setFlores(f);
+          setAccesorios(a);
+        })
+        .catch((error: any) => {
+          console.error('Error al cargar asociaciones:', error);
+          setFlores([]);
+          setAccesorios([]);
+        })
+        .finally(() => setLoadingAssoc(false));
     } else {
       setImages([]);
+      setFlores([]);
+      setAccesorios([]);
       setCurrentImageIndex(0);
     }
   }, [open, arreglo]);
@@ -68,6 +87,19 @@ export function ArregloDetailsModal({
       : arreglo.precioUnitario;
 
   const currentImage = images[currentImageIndex];
+  const totalFlores = flores.reduce((sum, f) => sum + f.cantidad, 0);
+  const totalAccesorios = accesorios.reduce((sum, a) => sum + a.cantidad, 0);
+  const costoFlores = flores.reduce((sum, f) => {
+    const p = f.flor?.precioUnitario;
+    const priceNum = typeof p === 'string' ? parseFloat(p) : p || 0;
+    return sum + priceNum * f.cantidad;
+  }, 0);
+  const costoAccesorios = accesorios.reduce((sum, a) => {
+    const p = a.accesorio?.precioUnitario;
+    const priceNum = typeof p === 'string' ? parseFloat(p) : p || 0;
+    return sum + priceNum * a.cantidad;
+  }, 0);
+  const costoEstimado = costoFlores + costoAccesorios;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -213,22 +245,14 @@ export function ArregloDetailsModal({
                 </p>
               </div>
 
-              {/* Precio y Cantidad */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Precio */}
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <span className="text-sm font-semibold text-gray-700 block mb-2">
                     Precio Unitario
                   </span>
                   <p className="text-xl font-bold text-[#50C878]">
                     C${precio.toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-semibold text-gray-700 block mb-2">
-                    Cantidad de Flores
-                  </span>
-                  <p className="text-xl font-bold text-gray-900">
-                    {arreglo.cantidadFlores}
                   </p>
                 </div>
               </div>
@@ -269,15 +293,67 @@ export function ArregloDetailsModal({
                 </div>
               )}
 
-              {/* Estadísticas de Imágenes */}
+              {/* Imágenes */}
               <div className="pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 block mb-2">
-                  Galería de Imágenes
-                </span>
+                <span className="text-sm font-semibold text-gray-700 block mb-2">Galería de Imágenes</span>
                 <p className="text-gray-600">
-                  {images.length} {images.length === 1 ? 'imagen' : 'imágenes'}{' '}
-                  disponible{images.length === 1 ? '' : 's'}
+                  {images.length} {images.length === 1 ? 'imagen' : 'imágenes'} disponible{images.length === 1 ? '' : 's'}
                 </p>
+              </div>
+
+              {/* Flores asociadas */}
+              <div className="pt-4 border-t border-gray-200">
+                <span className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+                  Flores Asociadas
+                  {loadingAssoc && <span className="text-xs text-gray-400">Cargando...</span>}
+                </span>
+                {flores.length === 0 && !loadingAssoc ? (
+                  <p className="text-gray-500 text-sm">No hay flores asociadas</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {flores.map((f) => (
+                      <div key={f.idArregloFlor} className="px-3 py-1 rounded-full text-xs font-semibold bg-[#50C878]/10 text-[#0f5c36] border border-[#50C878]/30 flex items-center gap-1">
+                        <span>{f.flor?.nombre || 'Flor'}</span>
+                        <span className="text-[#16804a]">x{f.cantidad}</span>
+                        {f.flor?.color && <span className="text-gray-500">• {f.flor.color}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  Total flores: <span className="font-medium text-gray-700">{totalFlores}</span> • Costo estimado flores: <span className="font-medium text-[#50C878]">C${costoFlores.toFixed(2)}</span>
+                </p>
+              </div>
+
+              {/* Accesorios asociados */}
+              <div className="pt-4 border-t border-gray-200">
+                <span className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+                  Accesorios Asociados
+                  {loadingAssoc && <span className="text-xs text-gray-400">Cargando...</span>}
+                </span>
+                {accesorios.length === 0 && !loadingAssoc ? (
+                  <p className="text-gray-500 text-sm">No hay accesorios asociados</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {accesorios.map((a) => (
+                      <div key={a.idAccesorioArreglo} className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                        <span>{a.accesorio?.descripcion || 'Accesorio'}</span>
+                        <span className="text-amber-700">x{a.cantidad}</span>
+                        {a.accesorio?.categoria && <span className="text-amber-600">• {a.accesorio.categoria}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-gray-500">
+                  Total accesorios: <span className="font-medium text-gray-700">{totalAccesorios}</span> • Costo estimado accesorios: <span className="font-medium text-[#50C878]">C${costoAccesorios.toFixed(2)}</span>
+                </p>
+              </div>
+
+              {/* Costo Total Estimado */}
+              <div className="pt-4 border-t border-gray-200">
+                <span className="text-sm font-semibold text-gray-700 block mb-2">Costo Estimado de Insumos</span>
+                <p className="text-lg font-bold text-[#50C878]">C${costoEstimado.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">(Suma de flores y accesorios; referencial)</p>
               </div>
             </div>
           </div>

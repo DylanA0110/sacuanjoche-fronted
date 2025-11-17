@@ -61,8 +61,8 @@ const columns: Column[] = [
 const Pedidos = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchInput, setSearchInput] = useState('');
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const searchQuery = searchParams.get('q') || '';
   const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -108,11 +108,15 @@ const Pedidos = () => {
 
   const generateFacturaMutation = useMutation({
     mutationFn: (idPedido: number) => createFacturaDesdePedido(idPedido),
-    onSuccess: () => {
+    onSuccess: (factura) => {
       toast.success('Factura creada exitosamente desde el pedido');
       queryClient.invalidateQueries({ queryKey: ['facturas'] });
       queryClient.invalidateQueries({ queryKey: ['pedidos'] });
       refetch();
+      // Navegar a la página de nueva factura con el idFactura para poder descargar PDF
+      if (factura && factura.idFactura && factura.idPedido) {
+        navigate(`/admin/pedidos/${factura.idPedido}/nueva-factura?idFactura=${factura.idFactura}`);
+      }
     },
     onError: (error: any) => {
       const errorMessage =
@@ -220,7 +224,9 @@ const Pedidos = () => {
                       setSearchParams(newParams, { replace: true });
                     }}
             customActions={(item: Pedido) => (
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <div
+                className="flex items-center justify-center gap-2 sm:gap-2 px-1 sm:px-2 min-w-[130px]"
+              >
                 <Button
                   size="sm"
                   variant="ghost"
@@ -241,19 +247,14 @@ const Pedidos = () => {
                 </Button>
                 <Button
                   size="sm"
+                  variant="ghost"
                   onClick={() => handleGenerateFactura(item)}
                   disabled={generateFacturaMutation.isPending}
-                  className="gap-1.5 bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-lg shadow-[#50C878]/30 h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 hover:scale-105 hover:shadow-[#50C878]/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  title={generateFacturaMutation.isPending ? 'Generando factura...' : 'Generar factura'}
+                  aria-label={generateFacturaMutation.isPending ? 'Generando factura' : 'Generar factura'}
                 >
                   <MdReceipt className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {generateFacturaMutation.isPending
-                      ? 'Generando...'
-                      : 'Generar Factura'}
-                  </span>
-                  <span className="sm:hidden">
-                    {generateFacturaMutation.isPending ? '...' : 'Factura'}
-                  </span>
                 </Button>
               </div>
             )}

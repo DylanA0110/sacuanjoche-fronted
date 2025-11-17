@@ -5,6 +5,7 @@ export const updateArreglo = async (
   id: number,
   arregloData: UpdateArregloDto
 ): Promise<Arreglo> => {
+  // cantidadFlores removida del DTO
   const response = await arregloApi.patch<any>(`/${id}`, arregloData);
   return {
     ...response.data,

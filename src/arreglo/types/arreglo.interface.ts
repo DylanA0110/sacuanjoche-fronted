@@ -26,7 +26,6 @@ export interface Arreglo {
   descripcion: string;
   url?: string;
   precioUnitario: string | number;
-  cantidadFlores: number;
   estado: 'activo' | 'inactivo';
   fechaCreacion?: Date | string;
   formaArreglo?: FormaArreglo;
@@ -39,7 +38,6 @@ export interface CreateArregloDto {
   descripcion: string;
   url?: string;
   precioUnitario: number;
-  cantidadFlores: number;
   estado?: 'activo' | 'inactivo';
 }
 
@@ -49,7 +47,6 @@ export interface UpdateArregloDto {
   descripcion?: string;
   url?: string;
   precioUnitario?: number;
-  cantidadFlores?: number;
   estado?: 'activo' | 'inactivo';
 }
 

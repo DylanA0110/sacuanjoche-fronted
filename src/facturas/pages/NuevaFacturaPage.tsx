@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
@@ -21,10 +21,27 @@ import {
 import { getPedidoById } from '@/pedido/actions/getPedidoById';
 import { createFactura } from '../actions/createFactura';
 import type { CreateFacturaDto } from '../types/factura.interface';
-import { MdArrowBack, MdSave } from 'react-icons/md';
+import { MdArrowBack, MdSave, MdReceipt } from 'react-icons/md';
+import { getFacturaPdf } from '../actions/getFacturaPdf';
 
 const NuevaFacturaPage = () => {
   const { idPedido } = useParams<{ idPedido: string }>();
+  const [searchParams] = useSearchParams();
+  const idFacturaParam = searchParams.get('idFactura');
+  const idFactura = idFacturaParam ? Number(idFacturaParam) : null;
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const handleDownloadPdf = async () => {
+    if (!idFactura) return;
+    try {
+      setDownloadingPdf(true);
+      await getFacturaPdf(idFactura);
+      toast.success('PDF de factura descargado');
+    } catch (e: any) {
+      toast.error(e?.message || 'Error al descargar PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -151,6 +168,18 @@ const NuevaFacturaPage = () => {
           <MdArrowBack className="h-5 w-5 mr-2" />
           Volver
         </Button>
+        {idFactura && (
+          <Button
+            variant="ghost"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-colors"
+            title={downloadingPdf ? 'Descargando PDF...' : 'Descargar PDF de factura'}
+            aria-label={downloadingPdf ? 'Descargando PDF' : 'Descargar PDF de factura'}
+          >
+            <MdReceipt className="h-5 w-5" />
+          </Button>
+        )}
         <div>
           <h1 className="text-4xl sm:text-5xl font-bold mb-2 text-gray-900">
             Nueva Factura
@@ -278,6 +307,19 @@ const NuevaFacturaPage = () => {
                 <MdSave className="h-4 w-4" />
                 {createFacturaMutation.isPending ? 'Guardando...' : 'Crear Factura'}
               </Button>
+              {idFactura && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-colors"
+                  title={downloadingPdf ? 'Descargando PDF...' : 'Descargar PDF de factura'}
+                  aria-label={downloadingPdf ? 'Descargando PDF' : 'Descargar PDF de factura'}
+                >
+                  <MdReceipt className="h-5 w-5" />
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

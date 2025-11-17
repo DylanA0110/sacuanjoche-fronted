@@ -26,6 +26,8 @@ import type {
 } from '../types/arreglo.interface';
 import { createArreglo, updateArreglo, getArregloMedia } from '../actions';
 import { ArregloForm } from '../components/ArregloForm';
+import type { ArregloAssociationsPayload } from '../types/arreglo-insumos.interface';
+import { saveArregloInsumos } from '../actions';
 import { ArregloDetailsModal } from '../components/ArregloDetailsModal';
 import { MdAdd, MdImage, MdVisibility } from 'react-icons/md';
 
@@ -39,10 +41,7 @@ const columns: Column[] = [
     label: 'Forma',
     render: (_value, row: Arreglo) => row.formaArreglo?.descripcion || 'N/A',
   },
-  {
-    key: 'cantidadFlores',
-    label: 'Cantidad Flores',
-  },
+  // cantidadFlores removido del modelo; si se desea mostrar, podría calcularse desde asociaciones
   {
     key: 'precioUnitario',
     label: 'Precio',
@@ -221,14 +220,41 @@ const ArreglosPage = () => {
     }
   };
 
-  const handleSubmit = (data: CreateArregloDto | UpdateArregloDto) => {
-    if (editingArreglo) {
-      updateArregloMutation.mutate({
-        id: editingArreglo.idArreglo,
-        data: data as UpdateArregloDto,
-      });
-    } else {
-      createArregloMutation.mutate(data as CreateArregloDto);
+  const handleSubmit = async (
+    data: CreateArregloDto | UpdateArregloDto,
+    associations: ArregloAssociationsPayload
+  ) => {
+    try {
+      if (editingArreglo) {
+        // Update básico del arreglo
+        const updated = await updateArregloMutation.mutateAsync({
+          id: editingArreglo.idArreglo,
+          data: data as UpdateArregloDto,
+        });
+
+        // Guardar asociaciones en un solo payload
+        await saveArregloInsumos(editingArreglo.idArreglo, associations);
+
+        // Refrescar
+        queryClient.invalidateQueries({ queryKey: ['arreglos'] });
+        refetch();
+        setIsFormOpen(false);
+        setEditingArreglo(null);
+        toast.success('Asociaciones guardadas');
+      } else {
+        // Crear arreglo y luego asociaciones
+        const created = await createArregloMutation.mutateAsync(
+          data as CreateArregloDto
+        );
+        await saveArregloInsumos(created.idArreglo, associations);
+
+        // Mantener formulario abierto con el creado para subir imágenes
+        setEditingArreglo(created);
+        toast.success('Flores y accesorios asociados');
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Error al guardar';
+      toast.error(msg);
     }
   };
 

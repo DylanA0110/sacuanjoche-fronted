@@ -11,12 +11,17 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { SearchableSelect } from '@/shared/Custom/SearchableSelect';
+import { useFlor } from '@/catalogo/hooks/useFlor';
+import { useAccesorio } from '@/catalogo/hooks/useAccesorio';
+import type { ArregloAssociationsPayload } from '../types/arreglo-insumos.interface';
 import { useFormaArreglo } from '@/catalogo/hooks/useFormaArreglo';
 import {
   getUploadUrl,
   createMedia,
   getArregloMedia,
   deleteMedia,
+  getArregloFlores,
+  getArregloAccesorios,
 } from '../actions';
 import type {
   Arreglo,
@@ -32,7 +37,10 @@ interface ArregloFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   arreglo?: Arreglo | null;
-  onSubmit: (data: CreateArregloDto | UpdateArregloDto) => void;
+  onSubmit: (
+    data: CreateArregloDto | UpdateArregloDto,
+    associations: ArregloAssociationsPayload
+  ) => void;
   isLoading?: boolean;
 }
 
@@ -49,7 +57,6 @@ export function ArregloForm({
     descripcion: '',
     url: '',
     precioUnitario: 0,
-    cantidadFlores: 0,
   });
   const [precioInput, setPrecioInput] = useState('');
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -61,11 +68,56 @@ export function ArregloForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { formasArreglo } = useFormaArreglo({ activo: true });
+  const { flores } = useFlor({ estado: 'activo' });
+  const { accesorios } = useAccesorio({ estado: 'activo' });
+
+  // Estados para asociaciones
+  const [selectedFlorId, setSelectedFlorId] = useState<string | undefined>();
+  const [florCantidad, setFlorCantidad] = useState<number>(1);
+  const [florList, setFlorList] = useState<Array<{ idFlor: number; nombre: string; cantidad: number }>>([]);
+
+  const [selectedAccesorioId, setSelectedAccesorioId] = useState<string | undefined>();
+  const [accesorioCantidad, setAccesorioCantidad] = useState<number>(1);
+  const [accesorioList, setAccesorioList] = useState<Array<{ idAccesorio: number; nombre: string; cantidad: number }>>([]);
+  // (cantidadFlores eliminada) Si se requiere total de flores, se puede calcular localmente:
+  const totalFlores = florList.reduce((sum, f) => sum + f.cantidad, 0);
 
   const formaArregloOptions = formasArreglo.map((forma) => ({
     value: String(forma.idFormaArreglo),
     label: forma.descripcion,
   }));
+
+  const florOptions = flores.map((flor) => {
+    const isSelected = florList.some((f) => f.idFlor === flor.idFlor);
+    const selectedItem = florList.find((f) => f.idFlor === flor.idFlor);
+    return {
+      value: String(flor.idFlor),
+      label: flor.nombre,
+      subtitle: flor.color ? `Color: ${flor.color}` : undefined,
+      isSelected,
+      disabled: isSelected, // Deshabilitar si ya está seleccionado
+      metadata: {
+        color: flor.color,
+        cantidad: selectedItem?.cantidad,
+      },
+    };
+  });
+
+  const accesorioOptions = accesorios.map((acc) => {
+    const isSelected = accesorioList.some((a) => a.idAccesorio === acc.idAccesorio);
+    const selectedItem = accesorioList.find((a) => a.idAccesorio === acc.idAccesorio);
+    return {
+      value: String(acc.idAccesorio),
+      label: acc.descripcion,
+      subtitle: acc.categoria ? `Categoria: ${acc.categoria}` : undefined,
+      isSelected,
+      disabled: isSelected, // Deshabilitar si ya está seleccionado
+      metadata: {
+        categoria: acc.categoria,
+        cantidad: selectedItem?.cantidad,
+      },
+    };
+  });
 
   useEffect(() => {
     if (arreglo) {
@@ -79,7 +131,6 @@ export function ArregloForm({
         descripcion: arreglo.descripcion,
         url: arreglo.url || '',
         precioUnitario: precio,
-        cantidadFlores: arreglo.cantidadFlores,
       });
       setPrecioInput(precio.toString());
 
@@ -93,6 +144,28 @@ export function ArregloForm({
             console.error('Error al cargar imágenes:', error);
             setUploadedImages(arreglo.media || []);
           });
+
+        // Cargar asociaciones existentes (flores y accesorios)
+        Promise.all([
+          getArregloFlores(arreglo.idArreglo).catch(() => []),
+          getArregloAccesorios(arreglo.idArreglo).catch(() => []),
+        ]).then(([floresData, accesoriosData]) => {
+          // Cargar flores
+          const floresList = floresData.map((item) => ({
+            idFlor: item.idFlor,
+            nombre: item.flor?.nombre || `Flor ${item.idFlor}`,
+            cantidad: item.cantidad,
+          }));
+          setFlorList(floresList);
+
+          // Cargar accesorios
+          const accesoriosList = accesoriosData.map((item) => ({
+            idAccesorio: item.idAccesorio,
+            nombre: item.accesorio?.descripcion || `Accesorio ${item.idAccesorio}`,
+            cantidad: item.cantidad,
+          }));
+          setAccesorioList(accesoriosList);
+        });
       } else {
         setUploadedImages(arreglo.media || []);
       }
@@ -103,10 +176,11 @@ export function ArregloForm({
         descripcion: '',
         url: '',
         precioUnitario: 0,
-        cantidadFlores: 0,
       });
       setPrecioInput('');
       setUploadedImages([]);
+      setFlorList([]);
+      setAccesorioList([]);
     }
   }, [arreglo, open]);
 
@@ -123,13 +197,23 @@ export function ArregloForm({
       return;
     }
 
+    if (florList.length === 0) {
+      toast.error('Agrega al menos una flor al arreglo');
+      return;
+    }
+
     const dataToSubmit: CreateArregloDto | UpdateArregloDto = arreglo
       ? formData
       : { ...formData, estado: 'activo' as 'activo' };
 
-    // Si hay imágenes pendientes de subir y es un arreglo nuevo, esperamos a que se cree primero
-    // Las imágenes se subirán después de que el arreglo se cree exitosamente
-    onSubmit(dataToSubmit);
+    // Preparar asociaciones
+    const associations: ArregloAssociationsPayload = {
+      accesorios: accesorioList.map(({ idAccesorio, cantidad }) => ({ idAccesorio, cantidad })),
+      flores: florList.map(({ idFlor, cantidad }) => ({ idFlor, cantidad })),
+    };
+
+    // Enviar datos
+    onSubmit(dataToSubmit, associations);
   };
 
   const handleChange = (
@@ -351,6 +435,59 @@ export function ArregloForm({
     }
   };
 
+  const handleAddFlor = () => {
+    if (!selectedFlorId) return;
+    const idFlor = parseInt(selectedFlorId, 10);
+    if (!idFlor || florCantidad <= 0) return;
+    const flor = flores.find((f) => f.idFlor === idFlor);
+    if (!flor) return;
+
+    setFlorList((prev) => {
+      const existing = prev.find((i) => i.idFlor === idFlor);
+      if (existing) {
+        return prev.map((i) =>
+          i.idFlor === idFlor ? { ...i, cantidad: i.cantidad + florCantidad } : i
+        );
+      }
+      return [...prev, { idFlor, nombre: flor.nombre, cantidad: florCantidad }];
+    });
+    setSelectedFlorId(undefined);
+    setFlorCantidad(1);
+  };
+
+  const handleRemoveFlor = (idFlor: number) => {
+    setFlorList((prev) => prev.filter((i) => i.idFlor !== idFlor));
+  };
+
+  const handleAddAccesorio = () => {
+    if (!selectedAccesorioId) return;
+    const idAccesorio = parseInt(selectedAccesorioId, 10);
+    if (!idAccesorio || accesorioCantidad <= 0) return;
+  const acc = accesorios.find((a) => a.idAccesorio === idAccesorio);
+    if (!acc) return;
+
+    setAccesorioList((prev) => {
+      const existing = prev.find((i) => i.idAccesorio === idAccesorio);
+      if (existing) {
+        return prev.map((i) =>
+          i.idAccesorio === idAccesorio
+            ? { ...i, cantidad: i.cantidad + accesorioCantidad }
+            : i
+        );
+      }
+      return [
+        ...prev,
+        { idAccesorio, nombre: acc.descripcion, cantidad: accesorioCantidad },
+      ];
+    });
+    setSelectedAccesorioId(undefined);
+    setAccesorioCantidad(1);
+  };
+
+  const handleRemoveAccesorio = (idAccesorio: number) => {
+    setAccesorioList((prev) => prev.filter((i) => i.idAccesorio !== idAccesorio));
+  };
+
   const handleRemoveImage = async (mediaId?: number) => {
     if (!mediaId || !arreglo?.idArreglo) {
       // Si no tiene ID, es una imagen nueva que aún no se guardó
@@ -441,7 +578,7 @@ export function ArregloForm({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label
                 htmlFor="precioUnitario"
@@ -472,31 +609,18 @@ export function ArregloForm({
               />
               <p className="text-xs text-gray-500">Precio en córdobas (C$)</p>
             </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="cantidadFlores"
-                className="text-sm font-semibold text-gray-700"
-              >
-                Cantidad de Flores *
-              </Label>
-              <Input
-                id="cantidadFlores"
-                type="number"
-                min="0"
-                value={formData.cantidadFlores}
-                onChange={(e) =>
-                  handleChange(
-                    'cantidadFlores',
-                    parseInt(e.target.value, 10) || 0
-                  )
-                }
-                placeholder="12"
-                className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
-                required
-              />
-            </div>
           </div>
+          {/* Indicador visual del total de flores (no se envía al backend) */}
+          {florList.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-sm font-semibold text-gray-700">
+                Total de Flores seleccionadas
+              </Label>
+              <div className="px-3 py-2 rounded-lg border-2 border-[#50C878]/30 bg-[#50C878]/5 text-sm font-semibold text-[#16804a]">
+                {totalFlores} flor{totalFlores === 1 ? '' : 'es'}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label
@@ -512,6 +636,184 @@ export function ArregloForm({
               placeholder="https://example.com/images/arreglo.jpg"
               className="bg-white border-gray-300 text-gray-900"
             />
+          </div>
+
+          {/* Flores del Arreglo */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-700">
+              Flores del Arreglo
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div className="sm:col-span-8">
+                <SearchableSelect
+                  options={florOptions.map(({ isSelected, disabled, metadata, ...opt }) => ({
+                    ...opt,
+                    disabled,
+                  }))}
+                  value={selectedFlorId}
+                  onChange={setSelectedFlorId}
+                  placeholder="Selecciona una flor"
+                  searchPlaceholder="Buscar flor..."
+                  emptyText="No se encontraron flores"
+                  className={
+                    selectedFlorId && florList.some((f) => String(f.idFlor) === selectedFlorId)
+                      ? 'border-[#50C878] bg-[#50C878]/10 ring-2 ring-[#50C878]/20'
+                      : selectedFlorId
+                      ? 'border-[#50C878] bg-[#50C878]/5'
+                      : ''
+                  }
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Input
+                  type="number"
+                  min={1}
+                  value={florCantidad}
+                  onChange={(e) => setFlorCantidad(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  placeholder="Cant."
+                  className="bg-white border-gray-300 text-gray-900"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="button" onClick={handleAddFlor} className="w-full">
+                  Agregar
+                </Button>
+              </div>
+            </div>
+            {florList.length > 0 && (
+              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
+                {florList.map((f) => {
+                  const florInfo = flores.find((fl) => fl.idFlor === f.idFlor);
+                  const isSelected = selectedFlorId === String(f.idFlor);
+                  return (
+                    <div 
+                      key={f.idFlor} 
+                      className={`flex items-center justify-between px-4 py-3 transition-all ${
+                        isSelected 
+                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]' 
+                          : 'hover:bg-[#50C878]/15'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        {florInfo?.color ? (
+                          <div
+                            className="w-6 h-6 rounded-full border-2 border-white shadow-md ring-2 ring-[#50C878]/30"
+                            style={{ backgroundColor: florInfo.color }}
+                            title={florInfo.color}
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-gray-200 shadow-sm" />
+                        )}
+                        <div className="flex flex-col flex-1">
+                          <span className="font-semibold text-gray-900">{f.nombre}</span>
+                          <span className="text-xs text-gray-600">
+                            Cantidad: <span className="font-semibold text-[#50C878]">{f.cantidad}</span>
+                            {florInfo?.color && (
+                              <span className="ml-2 px-2 py-0.5 rounded-full bg-white/60 text-gray-700 text-[10px]">
+                                {florInfo.color}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={() => handleRemoveFlor(f.idFlor)} 
+                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all shrink-0"
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Accesorios del Arreglo */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-700">
+              Accesorios del Arreglo
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div className="sm:col-span-8">
+                <SearchableSelect
+                  options={accesorioOptions.map(({ isSelected, disabled, metadata, ...opt }) => ({
+                    ...opt,
+                    disabled,
+                  }))}
+                  value={selectedAccesorioId}
+                  onChange={setSelectedAccesorioId}
+                  placeholder="Selecciona un accesorio"
+                  searchPlaceholder="Buscar accesorio..."
+                  emptyText="No se encontraron accesorios"
+                  className={
+                    selectedAccesorioId && accesorioList.some((a) => String(a.idAccesorio) === selectedAccesorioId)
+                      ? 'border-[#50C878] bg-[#50C878]/10 ring-2 ring-[#50C878]/20'
+                      : selectedAccesorioId
+                      ? 'border-[#50C878] bg-[#50C878]/5'
+                      : ''
+                  }
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Input
+                  type="number"
+                  min={1}
+                  value={accesorioCantidad}
+                  onChange={(e) => setAccesorioCantidad(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  placeholder="Cant."
+                  className="bg-white border-gray-300 text-gray-900"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="button" onClick={handleAddAccesorio} className="w-full">
+                  Agregar
+                </Button>
+              </div>
+            </div>
+            {accesorioList.length > 0 && (
+              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
+                {accesorioList.map((a) => {
+                  const accInfo = accesorios.find((acc) => acc.idAccesorio === a.idAccesorio);
+                  const isSelected = selectedAccesorioId === String(a.idAccesorio);
+                  return (
+                    <div 
+                      key={a.idAccesorio} 
+                      className={`flex items-center justify-between px-4 py-3 transition-all ${
+                        isSelected 
+                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]' 
+                          : 'hover:bg-[#50C878]/15'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-6 h-6 rounded-full bg-[#50C878] border-2 border-white shadow-md ring-2 ring-[#50C878]/30" />
+                        <div className="flex flex-col flex-1">
+                          <span className="font-semibold text-gray-900">{a.nombre}</span>
+                          <span className="text-xs text-gray-600">
+                            Cantidad: <span className="font-semibold text-[#50C878]">{a.cantidad}</span>
+                            {accInfo?.categoria && (
+                              <span className="ml-2 px-2 py-0.5 rounded-full bg-white/60 text-gray-700 text-[10px]">
+                                {accInfo.categoria}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={() => handleRemoveAccesorio(a.idAccesorio)} 
+                        className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all shrink-0"
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Galería de Imágenes */}
