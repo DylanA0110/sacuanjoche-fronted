@@ -5,7 +5,7 @@ import useEmblaCarousel, {
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 
 import { cn } from '@/landing/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/components/ui/button';
 
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;

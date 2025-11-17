@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Command,
   CommandEmpty,
@@ -6,15 +6,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from '@/shared/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { MdCheck, MdExpandMore } from "react-icons/md";
-import { cn } from "@/lib/utils";
+} from '@/shared/components/ui/popover';
+import { Button } from '@/shared/components/ui/button';
+import { MdCheck, MdExpandMore } from 'react-icons/md';
+import { cn } from '@/shared/hooks/lib/utils';
 
 export interface Option {
   value: string;
@@ -36,9 +36,9 @@ export function SearchableSelect({
   options,
   value,
   onChange,
-  placeholder = "Seleccionar...",
-  searchPlaceholder = "Buscar...",
-  emptyText = "No se encontraron resultados",
+  placeholder = 'Seleccionar...',
+  searchPlaceholder = 'Buscar...',
+  emptyText = 'No se encontraron resultados',
   className,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
@@ -53,11 +53,16 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between bg-input border-border/50 hover:border-primary/50",
+            'w-full justify-between bg-input border-border/50 hover:border-primary/50',
             className
           )}
         >
-          <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
+          <span
+            className={cn(
+              'truncate',
+              !selectedOption && 'text-muted-foreground'
+            )}
+          >
             {selectedOption ? (
               <div className="flex flex-col items-start">
                 <span>{selectedOption.label}</span>
@@ -92,8 +97,10 @@ export function SearchableSelect({
                 >
                   <MdCheck
                     className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100 text-primary" : "opacity-0"
+                      'mr-2 h-4 w-4',
+                      value === option.value
+                        ? 'opacity-100 text-primary'
+                        : 'opacity-0'
                     )}
                   />
                   <div className="flex flex-col">

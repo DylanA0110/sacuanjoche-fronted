@@ -1,0 +1,1 @@
+export { usePedido } from './usePedido';
