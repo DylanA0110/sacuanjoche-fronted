@@ -9,6 +9,7 @@ const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const NuevaFacturaPage = lazy(() => import('../facturas/pages/NuevaFacturaPage'));
 const ClientesPage = lazy(() => import('../cliente/pages/ClientesPage'));
 const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
+const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 
 // Componente de carga para el router (Landing Page)
 const RouterLoadingFallback = () => (
@@ -70,6 +71,10 @@ export const router = createBrowserRouter([
       {
         path: 'catalogo',
         element: <CatalogoPage />,
+      },
+      {
+        path: 'arreglos',
+        element: <ArreglosPage />,
       },
     ],
   },

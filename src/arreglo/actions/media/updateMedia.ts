@@ -12,4 +12,3 @@ export const updateMedia = async (
   );
   return response.data;
 };
-
