@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useSidebar } from '@/shared/components/ui/sidebar';
 
 interface NavLinkProps {

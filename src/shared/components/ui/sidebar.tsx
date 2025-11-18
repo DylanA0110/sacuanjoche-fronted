@@ -4,7 +4,7 @@ import { type VariantProps } from 'class-variance-authority';
 import { cva } from 'class-variance-authority';
 import { PanelLeft } from 'lucide-react';
 
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Separator } from '@/shared/components/ui/separator';
@@ -22,7 +22,7 @@ const SIDEBAR_COOKIE_NAME = 'sidebar:state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
-const SIDEBAR_WIDTH_ICON = '3rem';
+const SIDEBAR_WIDTH_ICON = '4rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
 type SidebarContext = {
@@ -252,7 +252,7 @@ Sidebar.displayName = 'Sidebar';
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+>(({ className, onClick, children, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -261,14 +261,17 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn('h-9 w-9 sm:h-10 sm:w-10 shrink-0', className)}
+      className={cn(
+        'h-8 w-8 shrink-0 flex items-center justify-center',
+        className
+      )}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      <PanelLeft className="h-5 w-5 shrink-0" />
+      {children || <PanelLeft className="h-5 w-5 shrink-0" />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
@@ -700,7 +703,7 @@ const SidebarMenuSubButton = React.forwardRef<
         size === 'sm' && 'text-xs',
         size === 'md' && 'text-sm',
         size === 'lg' && 'text-base',
-        'group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2',
+        'group-data-[collapsibl e=icon]:size-8! group-data-[collapsible=icon]:p-2!',
         className
       )}
       {...props}

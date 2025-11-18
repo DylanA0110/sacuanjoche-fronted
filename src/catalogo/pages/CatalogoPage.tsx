@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { DataTable } from '@/shared/Custom/DataTable';
-import type { Column } from '@/shared/Custom/DataTable';
+import { DataTable } from '@/shared/components/Custom/DataTable';
+import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -16,25 +16,42 @@ import { useFlor } from '../hooks/useFlor';
 import { useAccesorio } from '../hooks/useAccesorio';
 import { useFormaArreglo } from '../hooks/useFormaArreglo';
 import { useMetodoPago } from '../hooks/useMetodoPago';
-import type { Flor, CreateFlorDto, UpdateFlorDto } from '../types/flor.interface';
-import type { Accesorio, CreateAccesorioDto, UpdateAccesorioDto } from '../types/accesorio.interface';
-import type { FormaArreglo, CreateFormaArregloDto, UpdateFormaArregloDto } from '../types/forma-arreglo.interface';
-import type { MetodoPago, CreateMetodoPagoDto, UpdateMetodoPagoDto } from '../types/metodo-pago.interface';
+import type { CreateFlorDto, UpdateFlorDto } from '../types/flor.interface';
+import type {
+  CreateAccesorioDto,
+  UpdateAccesorioDto,
+} from '../types/accesorio.interface';
+import type {
+  CreateFormaArregloDto,
+  UpdateFormaArregloDto,
+} from '../types/forma-arreglo.interface';
+import type {
+  CreateMetodoPagoDto,
+  UpdateMetodoPagoDto,
+} from '../types/metodo-pago.interface';
 import { createFlor, updateFlor } from '../actions/flor/index';
 import { createAccesorio, updateAccesorio } from '../actions/accesorio/index';
-import { createFormaArreglo, updateFormaArreglo } from '../actions/formaArreglo/index';
-import { createMetodoPago, updateMetodoPago } from '../actions/metodoPago/index';
+import {
+  createFormaArreglo,
+  updateFormaArreglo,
+} from '../actions/formaArreglo/index';
+import {
+  createMetodoPago,
+  updateMetodoPago,
+} from '../actions/metodoPago/index';
 import { FlorForm } from '../components/FlorForm';
 import { AccesorioForm } from '../components/AccesorioForm';
 import { FormaArregloForm } from '../components/FormaArregloForm';
 import { MetodoPagoForm } from '../components/MetodoPagoForm';
-import { MdAdd, MdEdit, MdVisibility, MdDelete } from 'react-icons/md';
+import { MdAdd } from 'react-icons/md';
 
 type TabType = 'flores' | 'accesorios' | 'formas' | 'metodos';
 
 const CatalogoPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>((searchParams.get('tab') as TabType) || 'flores');
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (searchParams.get('tab') as TabType) || 'flores'
+  );
   const [searchInput, setSearchInput] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -73,7 +90,13 @@ const CatalogoPage = () => {
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hooks para cada sección
-  const { flores, totalItems: totalFlores, isLoading: isLoadingFlores, isError: isErrorFlores, refetch: refetchFlores } = useFlor({
+  const {
+    flores,
+    totalItems: totalFlores,
+    isLoading: isLoadingFlores,
+    isError: isErrorFlores,
+    refetch: refetchFlores,
+  } = useFlor({
     usePagination: true,
     limit,
     offset,
@@ -81,7 +104,13 @@ const CatalogoPage = () => {
     estado: 'activo',
   });
 
-  const { accesorios, totalItems: totalAccesorios, isLoading: isLoadingAccesorios, isError: isErrorAccesorios, refetch: refetchAccesorios } = useAccesorio({
+  const {
+    accesorios,
+    totalItems: totalAccesorios,
+    isLoading: isLoadingAccesorios,
+    isError: isErrorAccesorios,
+    refetch: refetchAccesorios,
+  } = useAccesorio({
     usePagination: true,
     limit,
     offset,
@@ -89,7 +118,13 @@ const CatalogoPage = () => {
     estado: 'activo',
   });
 
-  const { formasArreglo, totalItems: totalFormas, isLoading: isLoadingFormas, isError: isErrorFormas, refetch: refetchFormas } = useFormaArreglo({
+  const {
+    formasArreglo,
+    totalItems: totalFormas,
+    isLoading: isLoadingFormas,
+    isError: isErrorFormas,
+    refetch: refetchFormas,
+  } = useFormaArreglo({
     usePagination: true,
     limit,
     offset,
@@ -97,7 +132,13 @@ const CatalogoPage = () => {
     activo: true,
   });
 
-  const { metodosPago, totalItems: totalMetodos, isLoading: isLoadingMetodos, isError: isErrorMetodos, refetch: refetchMetodos } = useMetodoPago({
+  const {
+    metodosPago,
+    totalItems: totalMetodos,
+    isLoading: isLoadingMetodos,
+    isError: isErrorMetodos,
+    refetch: refetchMetodos,
+  } = useMetodoPago({
     usePagination: true,
     limit,
     offset,
@@ -115,12 +156,17 @@ const CatalogoPage = () => {
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al crear la flor');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al crear la flor'
+      );
     },
   });
 
   const updateFlorMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateFlorDto }) => updateFlor(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateFlorDto }) =>
+      updateFlor(id, data),
     onSuccess: () => {
       toast.success('Flor actualizada exitosamente');
       queryClient.invalidateQueries({ queryKey: ['flores'] });
@@ -129,7 +175,11 @@ const CatalogoPage = () => {
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al actualizar la flor');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al actualizar la flor'
+      );
     },
   });
 
@@ -142,12 +192,17 @@ const CatalogoPage = () => {
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al crear el accesorio');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al crear el accesorio'
+      );
     },
   });
 
   const updateAccesorioMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateAccesorioDto }) => updateAccesorio(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateAccesorioDto }) =>
+      updateAccesorio(id, data),
     onSuccess: () => {
       toast.success('Accesorio actualizado exitosamente');
       queryClient.invalidateQueries({ queryKey: ['accesorios'] });
@@ -156,7 +211,11 @@ const CatalogoPage = () => {
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al actualizar el accesorio');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al actualizar el accesorio'
+      );
     },
   });
 
@@ -169,12 +228,17 @@ const CatalogoPage = () => {
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al crear la forma de arreglo');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al crear la forma de arreglo'
+      );
     },
   });
 
   const updateFormaArregloMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateFormaArregloDto }) => updateFormaArreglo(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateFormaArregloDto }) =>
+      updateFormaArreglo(id, data),
     onSuccess: () => {
       toast.success('Forma de arreglo actualizada exitosamente');
       queryClient.invalidateQueries({ queryKey: ['formasArreglo'] });
@@ -183,7 +247,11 @@ const CatalogoPage = () => {
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al actualizar la forma de arreglo');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al actualizar la forma de arreglo'
+      );
     },
   });
 
@@ -196,12 +264,17 @@ const CatalogoPage = () => {
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al crear el método de pago');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al crear el método de pago'
+      );
     },
   });
 
   const updateMetodoPagoMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateMetodoPagoDto }) => updateMetodoPago(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateMetodoPagoDto }) =>
+      updateMetodoPago(id, data),
     onSuccess: () => {
       toast.success('Método de pago actualizado exitosamente');
       queryClient.invalidateQueries({ queryKey: ['metodosPago'] });
@@ -210,7 +283,11 @@ const CatalogoPage = () => {
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || error?.message || 'Error al actualizar el método de pago');
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          'Error al actualizar el método de pago'
+      );
     },
   });
 
@@ -229,47 +306,74 @@ const CatalogoPage = () => {
   };
 
   const handleDelete = (item: any) => {
-    const itemName = activeTab === 'flores' ? item.nombre :
-                     activeTab === 'accesorios' ? item.descripcion :
-                     activeTab === 'formas' ? item.descripcion :
-                     item.descripcion;
-    
+    const itemName =
+      activeTab === 'flores'
+        ? item.nombre
+        : activeTab === 'accesorios'
+        ? item.descripcion
+        : activeTab === 'formas'
+        ? item.descripcion
+        : item.descripcion;
+
     if (window.confirm(`¿Estás seguro de que deseas desactivar ${itemName}?`)) {
       if (activeTab === 'flores') {
-        updateFlorMutation.mutate({ id: item.idFlor, data: { estado: 'inactivo' } });
+        updateFlorMutation.mutate({
+          id: item.idFlor,
+          data: { estado: 'inactivo' },
+        });
       } else if (activeTab === 'accesorios') {
-        updateAccesorioMutation.mutate({ id: item.idAccesorio, data: { estado: 'inactivo' } });
+        updateAccesorioMutation.mutate({
+          id: item.idAccesorio,
+          data: { estado: 'inactivo' },
+        });
       } else if (activeTab === 'formas') {
-        updateFormaArregloMutation.mutate({ id: item.idFormaArreglo, data: { activo: false } });
+        updateFormaArregloMutation.mutate({
+          id: item.idFormaArreglo,
+          data: { activo: false },
+        });
       } else {
-        updateMetodoPagoMutation.mutate({ id: item.idMetodoPago, data: { estado: 'inactivo' } });
+        updateMetodoPagoMutation.mutate({
+          id: item.idMetodoPago,
+          data: { estado: 'inactivo' },
+        });
       }
     }
   };
 
-
   const handleSubmit = (data: any) => {
     if (activeTab === 'flores') {
       if (editingItem) {
-        updateFlorMutation.mutate({ id: editingItem.idFlor, data: data as UpdateFlorDto });
+        updateFlorMutation.mutate({
+          id: editingItem.idFlor,
+          data: data as UpdateFlorDto,
+        });
       } else {
         createFlorMutation.mutate(data as CreateFlorDto);
       }
     } else if (activeTab === 'accesorios') {
       if (editingItem) {
-        updateAccesorioMutation.mutate({ id: editingItem.idAccesorio, data: data as UpdateAccesorioDto });
+        updateAccesorioMutation.mutate({
+          id: editingItem.idAccesorio,
+          data: data as UpdateAccesorioDto,
+        });
       } else {
         createAccesorioMutation.mutate(data as CreateAccesorioDto);
       }
     } else if (activeTab === 'formas') {
       if (editingItem) {
-        updateFormaArregloMutation.mutate({ id: editingItem.idFormaArreglo, data: data as UpdateFormaArregloDto });
+        updateFormaArregloMutation.mutate({
+          id: editingItem.idFormaArreglo,
+          data: data as UpdateFormaArregloDto,
+        });
       } else {
         createFormaArregloMutation.mutate(data as CreateFormaArregloDto);
       }
     } else {
       if (editingItem) {
-        updateMetodoPagoMutation.mutate({ id: editingItem.idMetodoPago, data: data as UpdateMetodoPagoDto });
+        updateMetodoPagoMutation.mutate({
+          id: editingItem.idMetodoPago,
+          data: data as UpdateMetodoPagoDto,
+        });
       } else {
         createMetodoPagoMutation.mutate(data as CreateMetodoPagoDto);
       }
@@ -484,11 +588,11 @@ const CatalogoPage = () => {
 
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 w-full max-w-full mx-auto px-2 sm:px-0">
+      <div className="space-y-6 sm:space-y-8 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 font-hero tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 tracking-tight">
               Catálogo
             </h1>
             <p className="text-sm sm:text-base text-gray-500 font-medium">
@@ -594,7 +698,9 @@ const CatalogoPage = () => {
           onOpenChange={setIsFormOpen}
           flor={editingItem}
           onSubmit={handleSubmit}
-          isLoading={createFlorMutation.isPending || updateFlorMutation.isPending}
+          isLoading={
+            createFlorMutation.isPending || updateFlorMutation.isPending
+          }
         />
       )}
       {activeTab === 'accesorios' && (
@@ -603,7 +709,10 @@ const CatalogoPage = () => {
           onOpenChange={setIsFormOpen}
           accesorio={editingItem}
           onSubmit={handleSubmit}
-          isLoading={createAccesorioMutation.isPending || updateAccesorioMutation.isPending}
+          isLoading={
+            createAccesorioMutation.isPending ||
+            updateAccesorioMutation.isPending
+          }
         />
       )}
       {activeTab === 'formas' && (
@@ -612,7 +721,10 @@ const CatalogoPage = () => {
           onOpenChange={setIsFormOpen}
           formaArreglo={editingItem}
           onSubmit={handleSubmit}
-          isLoading={createFormaArregloMutation.isPending || updateFormaArregloMutation.isPending}
+          isLoading={
+            createFormaArregloMutation.isPending ||
+            updateFormaArregloMutation.isPending
+          }
         />
       )}
       {activeTab === 'metodos' && (
@@ -621,7 +733,10 @@ const CatalogoPage = () => {
           onOpenChange={setIsFormOpen}
           metodoPago={editingItem}
           onSubmit={handleSubmit}
-          isLoading={createMetodoPagoMutation.isPending || updateMetodoPagoMutation.isPending}
+          isLoading={
+            createMetodoPagoMutation.isPending ||
+            updateMetodoPagoMutation.isPending
+          }
         />
       )}
     </>
@@ -629,4 +744,3 @@ const CatalogoPage = () => {
 };
 
 export default CatalogoPage;
-

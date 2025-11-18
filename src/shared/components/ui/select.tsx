@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 const Select = SelectPrimitive.Root;
 
@@ -103,7 +103,10 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn('py-1.5 pl-8 pr-2 text-sm font-semibold dark:text-white/70 light:text-gray-700', className)}
+    className={cn(
+      'py-1.5 pl-8 pr-2 text-sm font-semibold dark:text-white/70 light:text-gray-700',
+      className
+    )}
     {...props}
   />
 ));
@@ -116,7 +119,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-lg py-2 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground transition-colors dark:text-white dark:focus:bg-white/10 light:text-gray-900 light:focus:bg-gray-100',
+      'relative flex w-full cursor-default select-none items-center rounded-lg py-2 pl-8 pr-2 text-sm outline-none data-disabled:pointer-events-none data-disabled:opacity-50 focus:bg-accent focus:text-accent-foreground transition-colors dark:text-white dark:focus:bg-white/10 light:text-gray-900 light:focus:bg-gray-100',
       className
     )}
     {...props}
@@ -138,7 +141,10 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-muted dark:bg-white/10 light:bg-gray-200', className)}
+    className={cn(
+      '-mx-1 my-1 h-px bg-muted dark:bg-white/10 light:bg-gray-200',
+      className
+    )}
     {...props}
   />
 ));

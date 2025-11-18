@@ -14,7 +14,7 @@ import {
 } from '@/shared/components/ui/popover';
 import { Button } from '@/shared/components/ui/button';
 import { MdCheck, MdExpandMore } from 'react-icons/md';
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 export interface Option {
   value: string;
@@ -79,14 +79,19 @@ export function SearchableSelect({
           <MdExpandMore className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-white border-gray-200 shadow-xl" align="start">
+      <PopoverContent
+        className="w-full p-0 bg-white border-gray-200 shadow-xl"
+        align="start"
+      >
         <Command className="bg-white">
-          <CommandInput 
-            placeholder={searchPlaceholder} 
-            className="border-0 bg-white text-gray-900 placeholder:text-gray-500 focus:ring-0" 
+          <CommandInput
+            placeholder={searchPlaceholder}
+            className="border-0 bg-white text-gray-900 placeholder:text-gray-500 focus:ring-0"
           />
           <CommandList className="bg-white">
-            <CommandEmpty className="text-gray-500 py-4">{emptyText}</CommandEmpty>
+            <CommandEmpty className="text-gray-500 py-4">
+              {emptyText}
+            </CommandEmpty>
             <CommandGroup className="bg-white">
               {options.map((option) => (
                 <CommandItem
@@ -96,7 +101,7 @@ export function SearchableSelect({
                     onChange(option.value);
                     setOpen(false);
                   }}
-                  className="cursor-pointer hover:bg-[#50C878]/10 text-gray-900 data-[selected]:bg-[#50C878]/20 data-[selected]:text-[#50C878]"
+                  className="cursor-pointer hover:bg-[#50C878]/10 text-gray-900 data-selected:bg-[#50C878]/20 data-selected:text-[#50C878]"
                 >
                   <MdCheck
                     className={cn(

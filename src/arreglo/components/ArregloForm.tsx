@@ -10,7 +10,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { SearchableSelect } from '@/shared/Custom/SearchableSelect';
+import { SearchableSelect } from '@/shared/components/Custom/SearchableSelect';
 import { useFlor } from '@/catalogo/hooks/useFlor';
 import { useAccesorio } from '@/catalogo/hooks/useAccesorio';
 import type { ArregloAssociationsPayload } from '../types/arreglo-insumos.interface';
@@ -74,11 +74,17 @@ export function ArregloForm({
   // Estados para asociaciones
   const [selectedFlorId, setSelectedFlorId] = useState<string | undefined>();
   const [florCantidad, setFlorCantidad] = useState<number>(1);
-  const [florList, setFlorList] = useState<Array<{ idFlor: number; nombre: string; cantidad: number }>>([]);
+  const [florList, setFlorList] = useState<
+    Array<{ idFlor: number; nombre: string; cantidad: number }>
+  >([]);
 
-  const [selectedAccesorioId, setSelectedAccesorioId] = useState<string | undefined>();
+  const [selectedAccesorioId, setSelectedAccesorioId] = useState<
+    string | undefined
+  >();
   const [accesorioCantidad, setAccesorioCantidad] = useState<number>(1);
-  const [accesorioList, setAccesorioList] = useState<Array<{ idAccesorio: number; nombre: string; cantidad: number }>>([]);
+  const [accesorioList, setAccesorioList] = useState<
+    Array<{ idAccesorio: number; nombre: string; cantidad: number }>
+  >([]);
   // (cantidadFlores eliminada) Si se requiere total de flores, se puede calcular localmente:
   const totalFlores = florList.reduce((sum, f) => sum + f.cantidad, 0);
 
@@ -104,8 +110,12 @@ export function ArregloForm({
   });
 
   const accesorioOptions = accesorios.map((acc) => {
-    const isSelected = accesorioList.some((a) => a.idAccesorio === acc.idAccesorio);
-    const selectedItem = accesorioList.find((a) => a.idAccesorio === acc.idAccesorio);
+    const isSelected = accesorioList.some(
+      (a) => a.idAccesorio === acc.idAccesorio
+    );
+    const selectedItem = accesorioList.find(
+      (a) => a.idAccesorio === acc.idAccesorio
+    );
     return {
       value: String(acc.idAccesorio),
       label: acc.descripcion,
@@ -161,8 +171,9 @@ export function ArregloForm({
           // Cargar accesorios
           const accesoriosList = accesoriosData.map((item) => ({
             idAccesorio: item.idAccesorio,
-            nombre: item.accesorio?.descripcion || `Accesorio ${item.idAccesorio}`,
-            cantidad: item.cantidad,
+            nombre:
+              item.accesorio?.descripcion || `Accesorio ${item.idAccesorio}`,
+            cantidad: item.cantidad && item.cantidad > 0 ? item.cantidad : 1,
           }));
           setAccesorioList(accesoriosList);
         });
@@ -208,8 +219,14 @@ export function ArregloForm({
 
     // Preparar asociaciones
     const associations: ArregloAssociationsPayload = {
-      accesorios: accesorioList.map(({ idAccesorio, cantidad }) => ({ idAccesorio, cantidad })),
-      flores: florList.map(({ idFlor, cantidad }) => ({ idFlor, cantidad })),
+      accesorios: accesorioList.map(({ idAccesorio, cantidad }) => ({
+        idAccesorio,
+        cantidad: cantidad && cantidad > 0 ? cantidad : 1,
+      })),
+      flores: florList.map(({ idFlor, cantidad }) => ({
+        idFlor,
+        cantidad: cantidad && cantidad > 0 ? cantidad : 1,
+      })),
     };
 
     // Enviar datos
@@ -288,11 +305,17 @@ export function ArregloForm({
         try {
           setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }));
 
-          // 1. Obtener URL de subida
+          // Valores que se usarán tanto para generar la URL como para el PUT
+          const contentType = 'image/jpeg'; // Siempre JPEG después de compresión
+          const contentLength = compressed.file.size; // Tamaño del archivo comprimido
+          const fileName =
+            compressed.file.name.replace(/\.[^/.]+$/, '') + '.jpg'; // Cambiar extensión a .jpg
+
+          // 1. Obtener URL de subida con los valores exactos que se usarán en el PUT
           const uploadUrlData = await getUploadUrl({
-            contentType: 'image/jpeg', // Siempre JPEG después de compresión
-            contentLength: compressed.file.size,
-            fileName: compressed.file.name.replace(/\.[^/.]+$/, '') + '.jpg', // Cambiar extensión a .jpg
+            contentType,
+            contentLength,
+            fileName,
             arregloId: arreglo.idArreglo,
           });
 
@@ -312,64 +335,156 @@ export function ArregloForm({
 
           setUploadProgress((prev) => ({ ...prev, [fileId]: 30 }));
 
-          // 2. Subir archivo a DigitalOcean Spaces
+          // 2. Corregir URL de upload si tiene dominio duplicado (bug del backend)
+          let correctedUploadUrl = uploadUrlData.uploadUrl;
+          // Detectar y corregir dominio duplicado: images-prueba.images-prueba.sfo3 -> images-prueba.sfo3
+          // Ejemplo: https://images-prueba.images-prueba.sfo3.digitaloceanspaces.com -> https://images-prueba.sfo3.digitaloceanspaces.com
+          if (correctedUploadUrl.includes('.images-prueba.images-prueba.')) {
+            correctedUploadUrl = correctedUploadUrl.replace(
+              /\.images-prueba\.images-prueba\./g,
+              '.images-prueba.'
+            );
+            console.warn(
+              '⚠️ URL de upload corregida (dominio duplicado detectado):',
+              correctedUploadUrl
+            );
+          } else if (correctedUploadUrl.match(/([^.]+)\.\1\./)) {
+            // Patrón genérico para cualquier bucket duplicado
+            correctedUploadUrl = correctedUploadUrl.replace(
+              /(https:\/\/)([^.]+)\.\2\.([^/]+)/,
+              '$1$2.$3'
+            );
+            console.warn(
+              '⚠️ URL de upload corregida (dominio duplicado genérico detectado):',
+              correctedUploadUrl
+            );
+          }
+
+          // 3. Subir archivo a DigitalOcean Spaces
+          // IMPORTANTE SOBRE CORS Y PREFLIGHT:
+          // - La URL firmada solo incluye 'content-length' y 'host' en los signed headers
+          // - NO enviamos headers manualmente para evitar preflight requests
+          // - Convertimos File a Blob sin tipo MIME para evitar que el navegador agregue Content-Type
+          // - Si el error de CORS persiste, se requiere:
+          //   1. Configurar CORS en DigitalOcean Spaces (Settings → CORS Configurations)
+          //   2. El BACKEND debe usar unsignPayload: true al generar la URL firmada
+          //
+          // SOLUCIÓN EN EL BACKEND (spaces.service.ts):
+          // const uploadUrl = await getSignedUrl(this.client!, command, {
+          //   expiresIn,
+          //   unsignPayload: true, // Permite variaciones en headers, evita problemas de CORS
+          // });
           try {
-            const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+            // Convertir File a Blob sin tipo MIME para evitar que el navegador agregue Content-Type
+            // Esto puede ayudar a evitar el preflight request, pero CORS aún debe estar configurado
+            const blob = new Blob([compressed.file], { type: '' }); // Blob sin tipo MIME
+
+            const uploadResponse = await fetch(correctedUploadUrl, {
               method: 'PUT',
-              body: compressed.file,
-              headers: {
-                'Content-Type': 'image/jpeg',
-              },
+              // NO incluir headers - el navegador maneja Content-Length automáticamente
+              // Usamos Blob sin tipo para evitar que el navegador agregue Content-Type
+              body: blob, // Blob sin tipo MIME en lugar de File
             });
 
             if (!uploadResponse.ok) {
               throw new Error(`Error al subir: ${uploadResponse.statusText}`);
             }
           } catch (fetchError: any) {
-            // Manejar errores de certificado SSL u otros errores de red
+            // Manejar errores de CORS, SSL u otros errores de red
+            console.error('Error al subir imagen:', fetchError);
+
+            // El error de CORS generalmente aparece como "Failed to fetch" en el catch,
+            // pero el mensaje real está en la consola del navegador
+            // Detectar error de CORS de múltiples formas
+            const errorMessage = fetchError?.message || '';
+            const errorString = String(fetchError || '');
+
+            const isCORSError =
+              errorMessage.includes('CORS') ||
+              errorMessage.includes('Access-Control-Allow-Origin') ||
+              errorMessage.includes('blocked') ||
+              errorString.includes('CORS') ||
+              errorString.includes('Access-Control-Allow-Origin') ||
+              errorString.includes('blocked') ||
+              (fetchError instanceof TypeError &&
+                errorMessage.includes('Failed to fetch') &&
+                // Si es un error de red sin más detalles, probablemente es CORS
+                !errorMessage.includes('ERR_CERT') &&
+                !errorMessage.includes('certificate'));
+
             if (
-              fetchError instanceof TypeError &&
-              fetchError.message.includes('Failed to fetch')
+              isCORSError ||
+              (fetchError instanceof TypeError &&
+                errorMessage.includes('Failed to fetch'))
             ) {
-              // El error de certificado SSL es un problema del servidor
-              console.error(
-                'Error de conexión SSL al subir imagen:',
-                fetchError
-              );
-
-              // Verificar si es específicamente un error de certificado
-              const isSSLError =
-                fetchError.message.includes('ERR_CERT') ||
-                fetchError.message.includes('certificate') ||
-                uploadUrlData.uploadUrl.includes('https://');
-
-              if (isSSLError) {
-                throw new Error(
-                  `Error de certificado SSL: El servidor de almacenamiento (DigitalOcean Spaces) tiene un problema con su certificado SSL. La imagen se comprimió correctamente (${formatFileSize(
-                    compressed.compressedSize
-                  )}), pero no se pudo subir. Por favor, contacta al administrador del sistema para verificar la configuración del certificado SSL en DigitalOcean Spaces.`
-                );
-              }
-
+              // Priorizar mensaje de CORS si está claro, sino asumir que es CORS
+              // (ya que es el error más común con pre-signed URLs)
+              const spaceName = correctedUploadUrl.split('/')[2].split('.')[0];
               throw new Error(
-                `Error de conexión: No se pudo conectar con el servidor de almacenamiento. La imagen se comprimió correctamente (${formatFileSize(
+                `Error de CORS: El preflight (OPTIONS) está fallando. La imagen se comprimió correctamente (${formatFileSize(
                   compressed.compressedSize
-                )}). Verifica tu conexión a internet o contacta al administrador.`
+                )}), pero no se pudo subir.\n\n` +
+                  `⚠️ SOLUCIÓN REQUERIDA EN EL BACKEND:\n` +
+                  `El backend debe usar \`unsignPayload: true\` al generar la URL firmada.\n\n` +
+                  `En spaces.service.ts (o donde generes las URLs):\n` +
+                  `\`\`\`typescript\n` +
+                  `const uploadUrl = await getSignedUrl(this.client!, command, {\n` +
+                  `  expiresIn,\n` +
+                  `  unsignPayload: true, // ← AGREGAR ESTO\n` +
+                  `});\n` +
+                  `\`\`\`\n\n` +
+                  `✅ VERIFICAR CORS EN DIGITALOCEAN SPACES:\n` +
+                  `1. Space: ${spaceName}\n` +
+                  `2. Settings → CORS Configurations\n` +
+                  `3. Debe incluir:\n` +
+                  `   - Origin: ${window.location.origin} (o * para desarrollo)\n` +
+                  `   - Allowed Methods: GET, PUT, OPTIONS (OPTIONS es crucial)\n` +
+                  `   - Allowed Headers: *\n` +
+                  `   - Max Age: 3000\n\n` +
+                  `📄 Ver archivo CORS_FIX_BACKEND.md para más detalles.`
               );
             }
-            throw fetchError;
+
+            // Verificar si es específicamente un error de certificado SSL
+            const isSSLError =
+              errorMessage.includes('ERR_CERT') ||
+              errorMessage.includes('ERR_CERT_COMMON_NAME_INVALID') ||
+              errorMessage.includes('certificate') ||
+              errorString.includes('ERR_CERT') ||
+              errorString.includes('certificate');
+
+            if (isSSLError) {
+              throw new Error(
+                `Error de certificado SSL: El servidor de almacenamiento (DigitalOcean Spaces) tiene un problema con su certificado SSL. La imagen se comprimió correctamente (${formatFileSize(
+                  compressed.compressedSize
+                )}), pero no se pudo subir. Por favor, contacta al administrador del sistema para verificar la configuración del certificado SSL en DigitalOcean Spaces.`
+              );
+            }
+
+            // Error genérico de conexión
+            throw new Error(
+              `Error de conexión: No se pudo conectar con el servidor de almacenamiento. La imagen se comprimió correctamente (${formatFileSize(
+                compressed.compressedSize
+              )}). Verifica tu conexión a internet o contacta al administrador.\n\n` +
+                `Detalles: ${errorMessage || String(fetchError)}`
+            );
           }
 
           setUploadProgress((prev) => ({ ...prev, [fileId]: 70 }));
 
-          // 3. Registrar la imagen en el backend
+          // 4. Registrar la imagen en el backend
           const mediaData = await createMedia(arreglo.idArreglo, {
             url: uploadUrlData.publicUrl || (uploadUrlData as any).url || '',
             objectKey: uploadUrlData.objectKey,
             provider: 'spaces',
             contentType: 'image/jpeg',
             altText: compressed.file.name.replace(/\.[^/.]+$/, ''), // Nombre sin extensión
+            orden: uploadedImages.length + i, // Orden basado en el índice
             isPrimary: uploadedImages.length === 0 && i === 0, // Primera imagen es principal
+            metadata: {
+              width: compressed.width,
+              height: compressed.height,
+            },
           });
 
           setUploadProgress((prev) => ({ ...prev, [fileId]: 100 }));
@@ -446,7 +561,9 @@ export function ArregloForm({
       const existing = prev.find((i) => i.idFlor === idFlor);
       if (existing) {
         return prev.map((i) =>
-          i.idFlor === idFlor ? { ...i, cantidad: i.cantidad + florCantidad } : i
+          i.idFlor === idFlor
+            ? { ...i, cantidad: i.cantidad + florCantidad }
+            : i
         );
       }
       return [...prev, { idFlor, nombre: flor.nombre, cantidad: florCantidad }];
@@ -462,8 +579,9 @@ export function ArregloForm({
   const handleAddAccesorio = () => {
     if (!selectedAccesorioId) return;
     const idAccesorio = parseInt(selectedAccesorioId, 10);
-    if (!idAccesorio || accesorioCantidad <= 0) return;
-  const acc = accesorios.find((a) => a.idAccesorio === idAccesorio);
+    const cantidad = accesorioCantidad > 0 ? accesorioCantidad : 1;
+    if (!idAccesorio || cantidad <= 0) return;
+    const acc = accesorios.find((a) => a.idAccesorio === idAccesorio);
     if (!acc) return;
 
     setAccesorioList((prev) => {
@@ -471,21 +589,20 @@ export function ArregloForm({
       if (existing) {
         return prev.map((i) =>
           i.idAccesorio === idAccesorio
-            ? { ...i, cantidad: i.cantidad + accesorioCantidad }
+            ? { ...i, cantidad: (i.cantidad || 1) + cantidad }
             : i
         );
       }
-      return [
-        ...prev,
-        { idAccesorio, nombre: acc.descripcion, cantidad: accesorioCantidad },
-      ];
+      return [...prev, { idAccesorio, nombre: acc.descripcion, cantidad }];
     });
     setSelectedAccesorioId(undefined);
     setAccesorioCantidad(1);
   };
 
   const handleRemoveAccesorio = (idAccesorio: number) => {
-    setAccesorioList((prev) => prev.filter((i) => i.idAccesorio !== idAccesorio));
+    setAccesorioList((prev) =>
+      prev.filter((i) => i.idAccesorio !== idAccesorio)
+    );
   };
 
   const handleRemoveImage = async (mediaId?: number) => {
@@ -646,17 +763,20 @@ export function ArregloForm({
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
               <div className="sm:col-span-8">
                 <SearchableSelect
-                  options={florOptions.map(({ isSelected, disabled, metadata, ...opt }) => ({
-                    ...opt,
-                    disabled,
-                  }))}
+                  options={florOptions.map(
+                    ({ isSelected, disabled, metadata, ...opt }) => ({
+                      ...opt,
+                      disabled,
+                    })
+                  )}
                   value={selectedFlorId}
                   onChange={setSelectedFlorId}
                   placeholder="Selecciona una flor"
                   searchPlaceholder="Buscar flor..."
                   emptyText="No se encontraron flores"
                   className={
-                    selectedFlorId && florList.some((f) => String(f.idFlor) === selectedFlorId)
+                    selectedFlorId &&
+                    florList.some((f) => String(f.idFlor) === selectedFlorId)
                       ? 'border-[#50C878] bg-[#50C878]/10 ring-2 ring-[#50C878]/20'
                       : selectedFlorId
                       ? 'border-[#50C878] bg-[#50C878]/5'
@@ -669,28 +789,36 @@ export function ArregloForm({
                   type="number"
                   min={1}
                   value={florCantidad}
-                  onChange={(e) => setFlorCantidad(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  onChange={(e) =>
+                    setFlorCantidad(
+                      Math.max(1, parseInt(e.target.value || '1', 10))
+                    )
+                  }
                   placeholder="Cant."
                   className="bg-white border-gray-300 text-gray-900"
                 />
               </div>
               <div className="sm:col-span-2">
-                <Button type="button" onClick={handleAddFlor} className="w-full">
+                <Button
+                  type="button"
+                  onClick={handleAddFlor}
+                  className="w-full"
+                >
                   Agregar
                 </Button>
               </div>
             </div>
             {florList.length > 0 && (
-              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
+              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-linear-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
                 {florList.map((f) => {
                   const florInfo = flores.find((fl) => fl.idFlor === f.idFlor);
                   const isSelected = selectedFlorId === String(f.idFlor);
                   return (
-                    <div 
-                      key={f.idFlor} 
+                    <div
+                      key={f.idFlor}
                       className={`flex items-center justify-between px-4 py-3 transition-all ${
-                        isSelected 
-                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]' 
+                        isSelected
+                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]'
                           : 'hover:bg-[#50C878]/15'
                       }`}
                     >
@@ -705,9 +833,14 @@ export function ArregloForm({
                           <div className="w-6 h-6 rounded-full border-2 border-gray-300 bg-gray-200 shadow-sm" />
                         )}
                         <div className="flex flex-col flex-1">
-                          <span className="font-semibold text-gray-900">{f.nombre}</span>
+                          <span className="font-semibold text-gray-900">
+                            {f.nombre}
+                          </span>
                           <span className="text-xs text-gray-600">
-                            Cantidad: <span className="font-semibold text-[#50C878]">{f.cantidad}</span>
+                            Cantidad:{' '}
+                            <span className="font-semibold text-[#50C878]">
+                              {f.cantidad}
+                            </span>
                             {florInfo?.color && (
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-white/60 text-gray-700 text-[10px]">
                                 {florInfo.color}
@@ -716,10 +849,10 @@ export function ArregloForm({
                           </span>
                         </div>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        onClick={() => handleRemoveFlor(f.idFlor)} 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleRemoveFlor(f.idFlor)}
                         className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all shrink-0"
                       >
                         Quitar
@@ -739,17 +872,22 @@ export function ArregloForm({
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
               <div className="sm:col-span-8">
                 <SearchableSelect
-                  options={accesorioOptions.map(({ isSelected, disabled, metadata, ...opt }) => ({
-                    ...opt,
-                    disabled,
-                  }))}
+                  options={accesorioOptions.map(
+                    ({ isSelected, disabled, metadata, ...opt }) => ({
+                      ...opt,
+                      disabled,
+                    })
+                  )}
                   value={selectedAccesorioId}
                   onChange={setSelectedAccesorioId}
                   placeholder="Selecciona un accesorio"
                   searchPlaceholder="Buscar accesorio..."
                   emptyText="No se encontraron accesorios"
                   className={
-                    selectedAccesorioId && accesorioList.some((a) => String(a.idAccesorio) === selectedAccesorioId)
+                    selectedAccesorioId &&
+                    accesorioList.some(
+                      (a) => String(a.idAccesorio) === selectedAccesorioId
+                    )
                       ? 'border-[#50C878] bg-[#50C878]/10 ring-2 ring-[#50C878]/20'
                       : selectedAccesorioId
                       ? 'border-[#50C878] bg-[#50C878]/5'
@@ -762,37 +900,53 @@ export function ArregloForm({
                   type="number"
                   min={1}
                   value={accesorioCantidad}
-                  onChange={(e) => setAccesorioCantidad(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  onChange={(e) =>
+                    setAccesorioCantidad(
+                      Math.max(1, parseInt(e.target.value || '1', 10))
+                    )
+                  }
                   placeholder="Cant."
                   className="bg-white border-gray-300 text-gray-900"
                 />
               </div>
               <div className="sm:col-span-2">
-                <Button type="button" onClick={handleAddAccesorio} className="w-full">
+                <Button
+                  type="button"
+                  onClick={handleAddAccesorio}
+                  className="w-full"
+                >
                   Agregar
                 </Button>
               </div>
             </div>
             {accesorioList.length > 0 && (
-              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
+              <div className="mt-2 border-2 border-[#50C878]/30 rounded-lg divide-y divide-[#50C878]/10 bg-linear-to-br from-[#50C878]/10 to-[#50C878]/5 shadow-sm">
                 {accesorioList.map((a) => {
-                  const accInfo = accesorios.find((acc) => acc.idAccesorio === a.idAccesorio);
-                  const isSelected = selectedAccesorioId === String(a.idAccesorio);
+                  const accInfo = accesorios.find(
+                    (acc) => acc.idAccesorio === a.idAccesorio
+                  );
+                  const isSelected =
+                    selectedAccesorioId === String(a.idAccesorio);
                   return (
-                    <div 
-                      key={a.idAccesorio} 
+                    <div
+                      key={a.idAccesorio}
                       className={`flex items-center justify-between px-4 py-3 transition-all ${
-                        isSelected 
-                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]' 
+                        isSelected
+                          ? 'bg-[#50C878]/20 border-l-4 border-[#50C878]'
                           : 'hover:bg-[#50C878]/15'
                       }`}
                     >
                       <div className="flex items-center gap-3 flex-1">
                         <div className="w-6 h-6 rounded-full bg-[#50C878] border-2 border-white shadow-md ring-2 ring-[#50C878]/30" />
                         <div className="flex flex-col flex-1">
-                          <span className="font-semibold text-gray-900">{a.nombre}</span>
+                          <span className="font-semibold text-gray-900">
+                            {a.nombre}
+                          </span>
                           <span className="text-xs text-gray-600">
-                            Cantidad: <span className="font-semibold text-[#50C878]">{a.cantidad}</span>
+                            Cantidad:{' '}
+                            <span className="font-semibold text-[#50C878]">
+                              {a.cantidad}
+                            </span>
                             {accInfo?.categoria && (
                               <span className="ml-2 px-2 py-0.5 rounded-full bg-white/60 text-gray-700 text-[10px]">
                                 {accInfo.categoria}
@@ -801,10 +955,10 @@ export function ArregloForm({
                           </span>
                         </div>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        onClick={() => handleRemoveAccesorio(a.idAccesorio)} 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => handleRemoveAccesorio(a.idAccesorio)}
                         className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all shrink-0"
                       >
                         Quitar

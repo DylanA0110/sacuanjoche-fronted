@@ -12,6 +12,8 @@ export interface CompressedImageResult {
   originalSize: number;
   compressedSize: number;
   compressionRatio: number;
+  width: number;
+  height: number;
 }
 
 /**
@@ -185,6 +187,8 @@ export async function compressImage(
                         compressedSize: reducedBlob.size,
                         compressionRatio:
                           (1 - reducedBlob.size / file.size) * 100,
+                        width: Math.round(width),
+                        height: Math.round(height),
                       });
                     }
                   },
@@ -204,6 +208,8 @@ export async function compressImage(
                 originalSize: file.size,
                 compressedSize: blob.size,
                 compressionRatio: (1 - blob.size / file.size) * 100,
+                width: Math.round(width),
+                height: Math.round(height),
               });
             }
           },

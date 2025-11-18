@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { DataTable } from '@/shared/Custom/DataTable';
-import type { Column } from '@/shared/Custom/DataTable';
+import { DataTable } from '@/shared/components/Custom/DataTable';
+import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -253,7 +253,8 @@ const ArreglosPage = () => {
         toast.success('Flores y accesorios asociados');
       }
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Error al guardar';
+      const msg =
+        e?.response?.data?.message || e?.message || 'Error al guardar';
       toast.error(msg);
     }
   };
@@ -263,31 +264,31 @@ const ArreglosPage = () => {
     id: arreglo.idArreglo,
   }));
 
-  const newLocal = "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity";
+  const newLocal =
+    'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity';
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 w-full max-w-full mx-auto px-2 sm:px-0">
-        {/* Header Premium */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 font-hero tracking-tight">
+      <div className="space-y-4 sm:space-y-6 w-full">
+        {/* Header limpio y profesional */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
               Arreglos
             </h1>
-            <p className="text-sm sm:text-base text-gray-500 font-medium">
-              Administra los arreglos florales de tu catálogo
+            <p className="text-sm text-gray-600">
+              Gestiona el catálogo y existencias de tus arreglos
             </p>
           </div>
           <Button
             onClick={handleCreate}
-            className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-2xl shadow-[#50C878]/50 gap-2 h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 transition-all duration-200 hover:scale-105 hover:shadow-[#50C878]/60"
+            className="bg-[#50C878] hover:bg-[#50C878]/90 text-white gap-2 h-10 px-4 text-sm font-medium whitespace-nowrap shrink-0"
           >
-            <MdAdd className="h-5 w-5" />
-            <span className="hidden sm:inline">Agregar Arreglo</span>
-            <span className="sm:hidden">Agregar</span>
+            <MdAdd className="h-4 w-4" />
+            <span>Nuevo Arreglo</span>
           </Button>
         </div>
 
-        {/* Card con la tabla - Premium Glassmorphism */}
+        {/* Card con la tabla */}
         <Card className="bg-white/95 backdrop-blur-md border-0 shadow-2xl shadow-black/10 rounded-2xl sm:rounded-3xl overflow-hidden">
           <CardHeader className="pb-4 sm:pb-5 px-4 sm:px-6 md:px-8 pt-6 sm:pt-8 border-b border-gray-100">
             <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -323,7 +324,7 @@ const ArreglosPage = () => {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleViewDetails(item)}
-                    className="h-9 w-9 p-0 text-blue-600 hover:text-blue-700 bg-transparent hover:bg-blue-50 rounded-full transition-all duration-200 hover:scale-110 border-0"
+                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                     title="Ver detalles"
                   >
                     <MdVisibility className="h-4 w-4" />
@@ -332,7 +333,7 @@ const ArreglosPage = () => {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleViewGallery(item)}
-                    className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] bg-transparent hover:bg-[#50C878]/10 rounded-full transition-all duration-200 hover:scale-110 border-0"
+                    className="h-8 w-8 p-0 text-[#50C878] hover:text-[#50C878] hover:bg-[#50C878]/10"
                     title="Ver galería"
                   >
                     <MdImage className="h-4 w-4" />

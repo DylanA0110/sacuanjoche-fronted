@@ -3,7 +3,7 @@ import { type DialogProps } from '@radix-ui/react-dialog';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from 'lucide-react';
 
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -48,7 +48,10 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b-2 px-3 dark:border-white/20 light:border-gray-200" cmdk-input-wrapper="">
+  <div
+    className="flex items-center border-b-2 px-3 dark:border-white/20 light:border-gray-200"
+    cmdk-input-wrapper=""
+  >
     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 dark:text-white/50 light:text-gray-500" />
     <CommandPrimitive.Input
       ref={ref}
@@ -107,7 +110,10 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 h-px bg-border dark:bg-white/10 light:bg-gray-200', className)}
+    className={cn(
+      '-mx-1 h-px bg-border dark:bg-white/10 light:bg-gray-200',
+      className
+    )}
     {...props}
   />
 ));

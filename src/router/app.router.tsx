@@ -1,6 +1,6 @@
 import { createBrowserRouter, Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
-import { Layout } from '@/shared/layout/Layout';
+import { Layout } from '@/shared/components/layout/Layout';
 
 // Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { DataTable } from '@/shared/Custom/DataTable';
-import type { Column } from '@/shared/Custom/DataTable';
+import { DataTable } from '@/shared/components/Custom/DataTable';
+import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -115,7 +115,9 @@ const Pedidos = () => {
       refetch();
       // Navegar a la página de nueva factura con el idFactura para poder descargar PDF
       if (factura && factura.idFactura && factura.idPedido) {
-        navigate(`/admin/pedidos/${factura.idPedido}/nueva-factura?idFactura=${factura.idFactura}`);
+        navigate(
+          `/admin/pedidos/${factura.idPedido}/nueva-factura?idFactura=${factura.idFactura}`
+        );
       }
     },
     onError: (error: any) => {
@@ -135,10 +137,11 @@ const Pedidos = () => {
 
   const handleGenerateFactura = (pedido: Pedido) => {
     // Asegurar que idPedido sea un número
-    const idPedido = typeof pedido.idPedido === 'string' 
-      ? parseInt(pedido.idPedido, 10) 
-      : Number(pedido.idPedido);
-    
+    const idPedido =
+      typeof pedido.idPedido === 'string'
+        ? parseInt(pedido.idPedido, 10)
+        : Number(pedido.idPedido);
+
     if (isNaN(idPedido)) {
       toast.error('ID de pedido inválido');
       return;
@@ -173,11 +176,11 @@ const Pedidos = () => {
   }));
 
   return (
-    <div className="space-y-6 sm:space-y-8 w-full max-w-full mx-auto px-2 sm:px-0">
+    <div className="space-y-6 sm:space-y-8 w-full">
       {/* Header Premium */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
         <div className="flex-1 min-w-0">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 font-hero tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 tracking-tight">
             Pedidos
           </h1>
           <p className="text-sm sm:text-base text-gray-500 font-medium">
@@ -211,22 +214,20 @@ const Pedidos = () => {
             isError={isError}
             searchValue={searchInput}
             onSearchChange={handleSearch}
-                    totalItems={totalItems}
-                    currentPage={currentPage}
-                    itemsPerPage={limit}
-                    onPageChange={(page) => {
-                      const newParams = new URLSearchParams(searchParams);
-                      if (page === 1) {
-                        newParams.delete('page');
-                      } else {
-                        newParams.set('page', String(page));
-                      }
-                      setSearchParams(newParams, { replace: true });
-                    }}
+            totalItems={totalItems}
+            currentPage={currentPage}
+            itemsPerPage={limit}
+            onPageChange={(page) => {
+              const newParams = new URLSearchParams(searchParams);
+              if (page === 1) {
+                newParams.delete('page');
+              } else {
+                newParams.set('page', String(page));
+              }
+              setSearchParams(newParams, { replace: true });
+            }}
             customActions={(item: Pedido) => (
-              <div
-                className="flex items-center justify-center gap-2 sm:gap-2 px-1 sm:px-2 min-w-[130px]"
-              >
+              <div className="flex items-center justify-center gap-2 sm:gap-2 px-1 sm:px-2 min-w-[130px]">
                 <Button
                   size="sm"
                   variant="ghost"
@@ -251,8 +252,16 @@ const Pedidos = () => {
                   onClick={() => handleGenerateFactura(item)}
                   disabled={generateFacturaMutation.isPending}
                   className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  title={generateFacturaMutation.isPending ? 'Generando factura...' : 'Generar factura'}
-                  aria-label={generateFacturaMutation.isPending ? 'Generando factura' : 'Generar factura'}
+                  title={
+                    generateFacturaMutation.isPending
+                      ? 'Generando factura...'
+                      : 'Generar factura'
+                  }
+                  aria-label={
+                    generateFacturaMutation.isPending
+                      ? 'Generando factura'
+                      : 'Generar factura'
+                  }
                 >
                   <MdReceipt className="h-4 w-4" />
                 </Button>
@@ -266,4 +275,3 @@ const Pedidos = () => {
 };
 
 export default Pedidos;
-

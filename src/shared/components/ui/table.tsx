@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { cn } from '@/shared/hooks/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -62,7 +62,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b transition-colors hover:bg-accent/50 data-[state=selected]:bg-accent dark:border-white/5 dark:hover:bg-white/5 light:border-gray-100 light:hover:bg-gray-50',
+      'border-b border-gray-200/60 transition-all duration-200 hover:bg-gradient-to-r hover:from-gray-50/80 hover:to-white data-[state=selected]:bg-gray-100/50',
       className
     )}
     {...props}
@@ -77,7 +77,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'h-12 px-4 text-left align-middle font-semibold text-muted-foreground [&:has([role=checkbox])]:pr-0 dark:text-white/70 light:text-gray-700',
+      'h-12 px-4 sm:px-6 text-left align-middle font-bold text-xs sm:text-sm text-gray-700 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100/50 [&:has([role=checkbox])]:pr-0',
       className
     )}
     {...props}
@@ -91,7 +91,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+    className={cn('p-4 sm:p-5 align-middle text-sm text-gray-800 [&:has([role=checkbox])]:pr-0', className)}
     {...props}
   />
 ));

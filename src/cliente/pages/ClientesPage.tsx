@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { DataTable } from '@/shared/Custom/DataTable';
-import type { Column } from '@/shared/Custom/DataTable';
+import { DataTable } from '@/shared/components/Custom/DataTable';
+import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -13,16 +13,21 @@ import {
 } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { useCliente } from '../hook/useCliente';
-import type { Cliente, CreateClienteDto, UpdateClienteDto } from '../types/cliente.interface';
+import type {
+  Cliente,
+  CreateClienteDto,
+  UpdateClienteDto,
+} from '../types/cliente.interface';
 import { createCliente, updateCliente } from '../actions/index';
 import { ClienteForm } from '../components/ClienteForm';
-import { MdAdd, MdEdit, MdVisibility, MdDelete } from 'react-icons/md';
+import { MdAdd } from 'react-icons/md';
 
 const columns: Column[] = [
   {
     key: 'primerNombre',
     label: 'Nombre',
-    render: (_value, row: Cliente) => `${row.primerNombre} ${row.primerApellido}`,
+    render: (_value, row: Cliente) =>
+      `${row.primerNombre} ${row.primerApellido}`,
   },
   {
     key: 'telefono',
@@ -181,7 +186,6 @@ const ClientesPage = () => {
     }
   };
 
-
   const handleSubmit = (data: CreateClienteDto | UpdateClienteDto) => {
     if (editingCliente) {
       updateClienteMutation.mutate({
@@ -200,11 +204,11 @@ const ClientesPage = () => {
 
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 w-full max-w-full mx-auto px-2 sm:px-0">
+      <div className="space-y-6 sm:space-y-8 w-full">
         {/* Header Premium */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 font-hero tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 tracking-tight">
               Clientes
             </h1>
             <p className="text-sm sm:text-base text-gray-500 font-medium">
@@ -271,4 +275,3 @@ const ClientesPage = () => {
 };
 
 export default ClientesPage;
-
