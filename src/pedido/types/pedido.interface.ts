@@ -1,3 +1,5 @@
+import type { PedidoEstado, PedidoCanal, ArregloEstado } from '@/shared/types/estados.types';
+
 export interface Pedido {
   idPedido: number;
   idEmpleado: number;
@@ -11,22 +13,67 @@ export interface Pedido {
   direccionTxt: string;
   costoEnvio: string | number;
   totalPedido: string | number;
+  estado?: PedidoEstado;
+  idPago?: number | null;
+  canal?: PedidoCanal;
+  numeroPedido?: string | null;
+  idFolio?: number | null;
   empleado?: Empleado;
   cliente?: Cliente;
   direccion?: Direccion;
   contactoEntrega?: ContactoEntrega;
+  detalles?: DetallePedido[];
 }
 
+// DTO para crear un pedido (según documentación de la API)
 export interface CreatePedidoDto {
+  canal: PedidoCanal; // Siempre "interno"
+  idPago?: number;
   idEmpleado: number;
   idCliente: number;
   idDireccion: number;
   idContactoEntrega: number;
-  totalProductos: number;
-  fechaEntregaEstimada: string;
+  fechaEntregaEstimada: string; // ISO 8601 format
   direccionTxt: string;
   costoEnvio: number;
-  totalPedido: number;
+}
+
+// DTO para crear un detalle de pedido
+export interface CreateDetallePedidoDto {
+  idPedido: number;
+  idArreglo: number;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+// DTO para actualizar un detalle de pedido
+export interface UpdateDetallePedidoDto {
+  idPedido?: number;
+  idArreglo?: number;
+  cantidad?: number;
+  precioUnitario?: number;
+  subtotal?: number;
+}
+
+// Interfaz para detalle de pedido
+export interface DetallePedido {
+  idDetallePedido?: number;
+  idPedido: number;
+  idArreglo: number;
+  cantidad: number;
+  precioUnitario: number | string;
+  subtotal: number | string;
+  arreglo?: {
+    idArreglo: number;
+    idFormaArreglo?: number;
+    nombre: string;
+    descripcion?: string;
+    url?: string;
+    precioUnitario: number | string;
+    estado?: ArregloEstado;
+    fechaCreacion?: string | Date;
+  };
 }
 
 export interface UpdatePedidoDto {

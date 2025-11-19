@@ -20,9 +20,9 @@ import { useIsMobile } from '@/shared/hooks/use-mobile';
 
 const SIDEBAR_COOKIE_NAME = 'sidebar:state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = '16rem';
+const SIDEBAR_WIDTH = '16rem'; // 256px (w-64)
 const SIDEBAR_WIDTH_MOBILE = '18rem';
-const SIDEBAR_WIDTH_ICON = '4rem';
+const SIDEBAR_WIDTH_ICON = '4rem'; // 64px (w-16)
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
 type SidebarContext = {
@@ -213,25 +213,33 @@ const Sidebar = React.forwardRef<
         data-variant={variant}
         data-side={side}
       >
+        {/* Spacer div que ocupa espacio en el layout - se ajusta según el estado */}
         <div
           className={cn(
-            'relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear',
-            'group-data-[collapsible=offcanvas]:w-0',
+            'relative h-svh bg-transparent transition-[width] duration-200 ease-linear shrink-0',
             'group-data-[side=right]:rotate-180',
-            variant === 'floating' || variant === 'inset'
-              ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
-              : 'group-data-[collapsible=icon]:w-[--sidebar-width-icon]'
+            // Ancho dinámico según el estado y modo collapsible
+            collapsible === 'offcanvas' && state === 'collapsed'
+              ? 'w-0' // w-0 cuando está en modo offcanvas y colapsado
+              : collapsible === 'icon' && state === 'collapsed'
+              ? 'w-16' // w-16 cuando está en modo icon y colapsado
+              : 'w-64' // w-64 cuando está expandido
           )}
         />
+        {/* Sidebar fijo con position fixed */}
         <div
           className={cn(
-            'fixed inset-y-0 z-50 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex',
-            side === 'left'
-              ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
-              : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
-            variant === 'floating' || variant === 'inset'
-              ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
-              : 'group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l',
+            'fixed top-0 left-0 h-full z-40 hidden transition-[transform] duration-200 ease-linear md:flex',
+            'w-64', // Ancho fijo w-64
+            // Cuando está colapsado, mover fuera de vista
+            state === 'collapsed' && collapsible === 'icon'
+              ? '-translate-x-full'
+              : 'translate-x-0',
+            // Cuando está offcanvas, también mover fuera
+            state === 'collapsed' && collapsible === 'offcanvas'
+              ? '-translate-x-full'
+              : '',
+            variant === 'floating' || variant === 'inset' ? 'p-2' : 'border-r',
             className
           )}
           {...props}
@@ -311,12 +319,32 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'main'>
 >(({ className, ...props }, ref) => {
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = state === 'collapsed';
+
+  // Obtener el collapsible mode del sidebar peer
+  const sidebarPeer = React.useMemo(() => {
+    if (typeof document !== 'undefined') {
+      return document.querySelector('.peer[data-collapsible]') as HTMLElement;
+    }
+    return null;
+  }, [state]);
+
+  const collapsibleMode = sidebarPeer?.getAttribute('data-collapsible') || '';
+  const isOffcanvas = collapsibleMode === 'offcanvas';
+
   return (
     <main
       ref={ref}
       className={cn(
-        'relative flex min-h-svh flex-1 flex-col bg-transparent transition-all duration-300',
-        'peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow',
+        'relative flex min-h-svh flex-1 flex-col bg-transparent transition-[margin-left] duration-200 ease-linear min-w-0',
+        // Margin-left dinámico según el estado:
+        // - ml-64 cuando expandido
+        // - ml-16 cuando colapsado en modo icon
+        // - ml-0 cuando colapsado en modo offcanvas
+        !isMobile && !isCollapsed && 'md:ml-64',
+        !isMobile && isCollapsed && !isOffcanvas && 'md:ml-16',
+        !isMobile && isCollapsed && isOffcanvas && 'md:ml-0',
         className
       )}
       {...props}

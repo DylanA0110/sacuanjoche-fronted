@@ -4,15 +4,23 @@ export interface FormaArreglo {
   activo: boolean;
 }
 
+// Tipo Media compatible con ArregloMedia del backend
 export interface Media {
-  idMedia?: number;
+  idArregloMedia?: number;
+  idMedia?: number; // Compatibilidad con código existente
+  idArreglo?: number;
   url: string;
   objectKey?: string;
+  orden: number;
+  isPrimary: boolean;
+  tipo?: 'imagen' | 'video';
+  altText?: string;
+  activo?: boolean;
+  fechaCreacion?: string | Date;
+  fechaUltAct?: string | Date;
+  // Campos legacy (para compatibilidad)
   provider?: string;
   contentType?: string;
-  altText?: string;
-  orden?: number;
-  isPrimary?: boolean;
   metadata?: {
     width?: number;
     height?: number;
@@ -36,7 +44,6 @@ export interface CreateArregloDto {
   idFormaArreglo: number;
   nombre: string;
   descripcion: string;
-  url?: string;
   precioUnitario: number;
   estado?: 'activo' | 'inactivo';
 }
@@ -45,7 +52,6 @@ export interface UpdateArregloDto {
   idFormaArreglo?: number;
   nombre?: string;
   descripcion?: string;
-  url?: string;
   precioUnitario?: number;
   estado?: 'activo' | 'inactivo';
 }
@@ -57,45 +63,35 @@ export interface GetArreglosParams {
   estado?: 'activo' | 'inactivo' | boolean;
 }
 
-export interface UploadUrlRequest {
-  contentType: string;
-  contentLength: number;
-  fileName: string;
-  arregloId: number;
-}
-
-export interface UploadUrlResponse {
-  uploadUrl: string;
-  expiresAt: string;
-  objectKey: string;
-  publicUrl: string;
-}
-
-export interface CreateMediaDto {
+// Tipos para respuestas del backend (raw)
+export interface ArregloMediaResponse {
+  idArregloMedia: number;
+  idArreglo: number;
   url: string;
   objectKey?: string;
-  provider?: string;
-  contentType?: string;
+  orden: number;
+  isPrimary: boolean;
+  tipo: 'imagen' | 'video';
   altText?: string;
-  orden?: number;
-  isPrimary?: boolean;
-  metadata?: {
-    width?: number;
-    height?: number;
-  };
+  activo: boolean;
+  fechaCreacion: string | Date;
+  fechaUltAct?: string | Date;
 }
 
-export interface UpdateMediaDto {
+export interface ArregloResponse {
+  idArreglo: number;
+  idFormaArreglo: number;
+  nombre: string;
+  descripcion: string;
   url?: string;
-  objectKey?: string;
-  provider?: string;
-  contentType?: string;
-  altText?: string;
-  orden?: number;
-  isPrimary?: boolean;
-  metadata?: {
-    width?: number;
-    height?: number;
-  };
+  precioUnitario: string | number;
+  estado: 'activo' | 'inactivo';
+  fechaCreacion: string | Date;
+  formaArreglo?: FormaArreglo;
+  media?: ArregloMediaResponse[];
 }
 
+export interface ArreglosPaginatedResponse {
+  data: ArregloResponse[];
+  total: number;
+}

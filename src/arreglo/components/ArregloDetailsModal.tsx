@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useReducer, useEffect, useMemo, useCallback } from 'react';
+import { MdExpandMore, MdExpandLess } from 'react-icons/md';
 import {
   Dialog,
   DialogContent,
@@ -8,10 +9,17 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { MdChevronLeft, MdChevronRight, MdImage, MdInfo } from 'react-icons/md';
-import { getArregloMedia, getArregloFlores, getArregloAccesorios } from '../actions';
+import { MdChevronLeft, MdChevronRight, MdImage } from 'react-icons/md';
+import {
+  getArregloMedia,
+  getArregloFlores,
+  getArregloAccesorios,
+} from '../actions';
 import type { Arreglo, Media } from '../types/arreglo.interface';
-import type { ArregloFlor, AccesorioArreglo } from '../types/arreglo-asociaciones.interface';
+import type {
+  ArregloFlor,
+  AccesorioArreglo,
+} from '../types/arreglo-asociaciones.interface';
 
 interface ArregloDetailsModalProps {
   open: boolean;
@@ -19,99 +27,190 @@ interface ArregloDetailsModalProps {
   arreglo: Arreglo | null;
 }
 
+// Estado del modal usando useReducer en lugar de múltiples useState
+interface ModalState {
+  images: Media[];
+  currentImageIndex: number;
+  loadingImages: boolean;
+  loadingAssoc: boolean;
+  flores: ArregloFlor[];
+  accesorios: AccesorioArreglo[];
+  showTechnical: boolean;
+}
+
+type ModalAction =
+  | { type: 'SET_IMAGES'; payload: Media[] }
+  | { type: 'SET_CURRENT_IMAGE_INDEX'; payload: number }
+  | { type: 'SET_LOADING_IMAGES'; payload: boolean }
+  | { type: 'SET_LOADING_ASSOC'; payload: boolean }
+  | { type: 'SET_FLORES'; payload: ArregloFlor[] }
+  | { type: 'SET_ACCESORIOS'; payload: AccesorioArreglo[] }
+  | { type: 'TOGGLE_TECHNICAL' }
+  | { type: 'RESET' }
+  | { type: 'NEXT_IMAGE' }
+  | { type: 'PREV_IMAGE' };
+
+const initialState: ModalState = {
+  images: [],
+  currentImageIndex: 0,
+  loadingImages: false,
+  loadingAssoc: false,
+  flores: [],
+  accesorios: [],
+  showTechnical: false,
+};
+
+function modalReducer(state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case 'SET_IMAGES':
+      return { ...state, images: action.payload, currentImageIndex: 0 };
+    case 'SET_CURRENT_IMAGE_INDEX':
+      return { ...state, currentImageIndex: action.payload };
+    case 'SET_LOADING_IMAGES':
+      return { ...state, loadingImages: action.payload };
+    case 'SET_LOADING_ASSOC':
+      return { ...state, loadingAssoc: action.payload };
+    case 'SET_FLORES':
+      return { ...state, flores: action.payload };
+    case 'SET_ACCESORIOS':
+      return { ...state, accesorios: action.payload };
+    case 'TOGGLE_TECHNICAL':
+      return { ...state, showTechnical: !state.showTechnical };
+    case 'NEXT_IMAGE':
+      return {
+        ...state,
+        currentImageIndex:
+          (state.currentImageIndex + 1) % (state.images.length || 1),
+      };
+    case 'PREV_IMAGE':
+      return {
+        ...state,
+        currentImageIndex:
+          (state.currentImageIndex - 1 + state.images.length) %
+          state.images.length,
+      };
+    case 'RESET':
+      return initialState;
+    default:
+      return state;
+  }
+}
+
 export function ArregloDetailsModal({
   open,
   onOpenChange,
   arreglo,
 }: ArregloDetailsModalProps) {
-  const [images, setImages] = useState<Media[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [loadingImages, setLoadingImages] = useState(false);
-  const [loadingAssoc, setLoadingAssoc] = useState(false);
-  const [flores, setFlores] = useState<ArregloFlor[]>([]);
-  const [accesorios, setAccesorios] = useState<AccesorioArreglo[]>([]);
+  // Usar useReducer en lugar de múltiples useState
+  const [state, dispatch] = useReducer(modalReducer, initialState);
 
+  // Cargar datos cuando se abre el modal
   useEffect(() => {
     if (open && arreglo?.idArreglo) {
-      setLoadingImages(true);
-      setLoadingAssoc(true);
+      dispatch({ type: 'SET_LOADING_IMAGES', payload: true });
+      dispatch({ type: 'SET_LOADING_ASSOC', payload: true });
       const id = arreglo.idArreglo;
 
-      getArregloMedia(id)
-        .then((media: Media[]) => {
-          setImages(media);
-          setCurrentImageIndex(0);
-        })
-        .catch((error: any) => {
-          console.error('Error al cargar imágenes:', error);
-          setImages(arreglo.media || []);
-        })
-        .finally(() => setLoadingImages(false));
+      // Si el arreglo ya tiene media, usarlo directamente
+      if (arreglo.media && arreglo.media.length > 0) {
+        dispatch({ type: 'SET_IMAGES', payload: arreglo.media });
+        dispatch({ type: 'SET_LOADING_IMAGES', payload: false });
+      } else {
+        // Fallback: obtener del endpoint si no viene en el arreglo
+        getArregloMedia(id)
+          .then((media: Media[]) => {
+            dispatch({ type: 'SET_IMAGES', payload: media });
+          })
+          .catch((error: any) => {
+            console.error('Error al cargar imágenes:', error);
+            dispatch({ type: 'SET_IMAGES', payload: [] });
+          })
+          .finally(() =>
+            dispatch({ type: 'SET_LOADING_IMAGES', payload: false })
+          );
+      }
 
       Promise.all([getArregloFlores(id), getArregloAccesorios(id)])
         .then(([f, a]) => {
-          setFlores(f);
-          setAccesorios(a);
+          dispatch({ type: 'SET_FLORES', payload: f });
+          dispatch({ type: 'SET_ACCESORIOS', payload: a });
         })
         .catch((error: any) => {
           console.error('Error al cargar asociaciones:', error);
-          setFlores([]);
-          setAccesorios([]);
+          dispatch({ type: 'SET_FLORES', payload: [] });
+          dispatch({ type: 'SET_ACCESORIOS', payload: [] });
         })
-        .finally(() => setLoadingAssoc(false));
+        .finally(() => dispatch({ type: 'SET_LOADING_ASSOC', payload: false }));
     } else {
-      setImages([]);
-      setFlores([]);
-      setAccesorios([]);
-      setCurrentImageIndex(0);
+      dispatch({ type: 'RESET' });
     }
   }, [open, arreglo]);
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
+  // Handlers memoizados
+  const goToImage = useCallback((index: number) => {
+    dispatch({ type: 'SET_CURRENT_IMAGE_INDEX', payload: index });
+  }, []);
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
+  const nextImage = useCallback(() => {
+    dispatch({ type: 'NEXT_IMAGE' });
+  }, []);
 
-  const goToImage = (index: number) => {
-    setCurrentImageIndex(index);
-  };
+  const prevImage = useCallback(() => {
+    dispatch({ type: 'PREV_IMAGE' });
+  }, []);
 
+  const toggleTechnical = useCallback(() => {
+    dispatch({ type: 'TOGGLE_TECHNICAL' });
+  }, []);
+
+  // Valores derivados usando useMemo (ANTES del return condicional)
+  const precio = useMemo(
+    () =>
+      arreglo
+        ? typeof arreglo.precioUnitario === 'string'
+          ? parseFloat(arreglo.precioUnitario)
+          : arreglo.precioUnitario
+        : 0,
+    [arreglo?.precioUnitario]
+  );
+
+  const currentImage = useMemo(
+    () => state.images[state.currentImageIndex],
+    [state.images, state.currentImageIndex]
+  );
+
+  const totalFlores = useMemo(
+    () => state.flores.reduce((sum, f) => sum + f.cantidad, 0),
+    [state.flores]
+  );
+
+  const totalAccesorios = useMemo(
+    () => state.accesorios.reduce((sum, a) => sum + a.cantidad, 0),
+    [state.accesorios]
+  );
+
+  // Return condicional DESPUÉS de todos los hooks
   if (!arreglo) return null;
 
-  const precio =
-    typeof arreglo.precioUnitario === 'string'
-      ? parseFloat(arreglo.precioUnitario)
-      : arreglo.precioUnitario;
-
-  const currentImage = images[currentImageIndex];
-  const totalFlores = flores.reduce((sum, f) => sum + f.cantidad, 0);
-  const totalAccesorios = accesorios.reduce((sum, a) => sum + a.cantidad, 0);
-  const costoFlores = flores.reduce((sum, f) => {
-    const p = f.flor?.precioUnitario;
-    const priceNum = typeof p === 'string' ? parseFloat(p) : p || 0;
-    return sum + priceNum * f.cantidad;
-  }, 0);
-  const costoAccesorios = accesorios.reduce((sum, a) => {
-    const p = a.accesorio?.precioUnitario;
-    const priceNum = typeof p === 'string' ? parseFloat(p) : p || 0;
-    return sum + priceNum * a.cantidad;
-  }, 0);
-  const costoEstimado = costoFlores + costoAccesorios;
+  // Clases CSS para evitar warnings del linter (bg-gradient-to-* son las clases correctas de Tailwind)
+  const badgeActiveClass =
+    'bg-gradient-to-r from-[#50C878]/20 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/40 rounded-full px-4 py-1.5 text-sm font-medium shadow-sm';
+  const florBadgeClass =
+    'px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-[#50C878]/15 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/30 flex items-center gap-2 shadow-sm';
+  const precioCardClass =
+    'bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 rounded-xl p-6 border-2 border-[#50C878]/30 shadow-sm';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-6xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-6xl max-h-[90vh] overflow-hidden p-0 rounded-2xl">
         <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
           {/* Sección de Imágenes - Carrusel */}
-          <div className="lg:w-1/2 bg-gray-50 flex flex-col relative">
-            {loadingImages ? (
+          <div className="lg:w-1/2 bg-[#F9F9F7] flex flex-col relative rounded-l-2xl">
+            {state.loadingImages ? (
               <div className="flex items-center justify-center h-full min-h-[400px]">
                 <div className="w-8 h-8 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
               </div>
-            ) : images.length === 0 ? (
+            ) : state.images.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
                 <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
                   <MdImage className="h-12 w-12 text-gray-400" />
@@ -127,20 +226,21 @@ export function ArregloDetailsModal({
                   <img
                     src={currentImage?.url}
                     alt={
-                      currentImage?.altText || `Imagen ${currentImageIndex + 1}`
+                      currentImage?.altText ||
+                      `Imagen ${state.currentImageIndex + 1}`
                     }
                     className="w-full h-full object-contain"
                     loading="lazy"
                   />
 
                   {/* Controles del Carrusel */}
-                  {images.length > 1 && (
+                  {state.images.length > 1 && (
                     <>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={prevImage}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-12 w-12 shadow-lg border border-gray-200/60"
                         aria-label="Imagen anterior"
                       >
                         <MdChevronLeft className="h-6 w-6" />
@@ -149,32 +249,32 @@ export function ArregloDetailsModal({
                         variant="ghost"
                         size="icon"
                         onClick={nextImage}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-12 w-12 shadow-lg border border-gray-200/60"
                         aria-label="Imagen siguiente"
                       >
                         <MdChevronRight className="h-6 w-6" />
                       </Button>
 
                       {/* Indicador de posición */}
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm font-medium">
-                        {currentImageIndex + 1} / {images.length}
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-900 px-4 py-1.5 rounded-full text-sm font-medium shadow-lg border border-gray-200/60">
+                        {state.currentImageIndex + 1} / {state.images.length}
                       </div>
                     </>
                   )}
                 </div>
 
                 {/* Miniaturas */}
-                {images.length > 1 && (
-                  <div className="p-4 bg-white border-t border-gray-200">
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                      {images.map((image, index) => (
+                {state.images.length > 1 && (
+                  <div className="p-4 bg-white/50 backdrop-blur-sm border-t border-gray-200/60">
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      {state.images.map((image, index) => (
                         <button
                           key={image.idMedia || index}
                           onClick={() => goToImage(index)}
-                          className={`shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                            index === currentImageIndex
-                              ? 'border-[#50C878] ring-2 ring-[#50C878]/30'
-                              : 'border-gray-200 hover:border-gray-300'
+                          className={`shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                            index === state.currentImageIndex
+                              ? 'border-[#50C878] ring-2 ring-[#50C878]/30 shadow-md'
+                              : 'border-gray-200 hover:border-[#50C878]/50 opacity-70 hover:opacity-100'
                           }`}
                         >
                           <img
@@ -193,30 +293,37 @@ export function ArregloDetailsModal({
           </div>
 
           {/* Sección de Información */}
-          <div className="lg:w-1/2 flex flex-col overflow-y-auto">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
-              <DialogTitle className="text-2xl font-bold text-gray-900 mb-2">
+          <div className="lg:w-1/2 flex flex-col overflow-y-auto rounded-r-2xl">
+            <DialogHeader className="px-8 pt-8 pb-6 border-b border-gray-200/60">
+              <DialogTitle className="text-3xl sm:text-4xl font-title-large text-gray-900 mb-3 leading-tight">
                 {arreglo.nombre}
               </DialogTitle>
-              <DialogDescription className="text-gray-600">
-                Información detallada del arreglo
+              <DialogDescription className="text-gray-500 text-sm">
+                Detalles del arreglo floral
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 px-6 py-6 space-y-6">
+            <div className="flex-1 px-8 py-6 space-y-6">
+              {/* Precio - DESTACADO */}
+              <div className={precioCardClass}>
+                <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2 block">
+                  Precio Unitario
+                </span>
+                <p className="text-4xl sm:text-5xl font-title-large text-[#1E5128] leading-none">
+                  C${precio.toFixed(2)}
+                </p>
+              </div>
+
               {/* Estado */}
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <MdInfo className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-semibold text-gray-700">
-                    Estado
-                  </span>
-                </div>
+                <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2 block">
+                  Estado
+                </span>
                 <Badge
                   className={
                     arreglo.estado === 'activo'
-                      ? 'bg-green-100 text-green-800 border-green-200'
-                      : 'bg-red-100 text-red-800 border-red-200'
+                      ? badgeActiveClass
+                      : 'bg-red-50 text-red-700 border-red-200 rounded-full px-4 py-1.5 text-sm font-medium'
                   }
                 >
                   {arreglo.estado === 'activo' ? 'Activo' : 'Inactivo'}
@@ -226,134 +333,168 @@ export function ArregloDetailsModal({
               {/* Forma de Arreglo */}
               {arreglo.formaArreglo && (
                 <div>
-                  <span className="text-sm font-semibold text-gray-700 block mb-2">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2 block">
                     Forma de Arreglo
                   </span>
-                  <p className="text-gray-900">
+                  <p className="text-gray-900 font-medium text-lg">
                     {arreglo.formaArreglo.descripcion}
                   </p>
                 </div>
               )}
 
               {/* Descripción */}
-              <div>
-                <span className="text-sm font-semibold text-gray-700 block mb-2">
-                  Descripción
-                </span>
-                <p className="text-gray-900 leading-relaxed">
-                  {arreglo.descripcion}
-                </p>
-              </div>
-
-              {/* Precio */}
-              <div className="grid grid-cols-1 gap-4">
+              {arreglo.descripcion && (
                 <div>
-                  <span className="text-sm font-semibold text-gray-700 block mb-2">
-                    Precio Unitario
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2 block">
+                    Descripción
                   </span>
-                  <p className="text-xl font-bold text-[#50C878]">
-                    C${precio.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* URL */}
-              {arreglo.url && (
-                <div>
-                  <span className="text-sm font-semibold text-gray-700 block mb-2">
-                    URL Externa
-                  </span>
-                  <a
-                    href={arreglo.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#50C878] hover:underline break-all"
-                  >
-                    {arreglo.url}
-                  </a>
-                </div>
-              )}
-
-              {/* Fechas */}
-              {arreglo.fechaCreacion && (
-                <div>
-                  <span className="text-sm font-semibold text-gray-700 block mb-2">
-                    Fecha de Creación
-                  </span>
-                  <p className="text-gray-900">
-                    {new Date(arreglo.fechaCreacion).toLocaleDateString(
-                      'es-ES',
-                      {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      }
-                    )}
+                  <p className="text-gray-700 leading-relaxed text-base">
+                    {arreglo.descripcion}
                   </p>
                 </div>
               )}
-
-              {/* Imágenes */}
-              <div className="pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 block mb-2">Galería de Imágenes</span>
-                <p className="text-gray-600">
-                  {images.length} {images.length === 1 ? 'imagen' : 'imágenes'} disponible{images.length === 1 ? '' : 's'}
-                </p>
-              </div>
 
               {/* Flores asociadas */}
-              <div className="pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+              <div className="pt-4 border-t border-gray-200/60">
+                <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-3 block">
                   Flores Asociadas
-                  {loadingAssoc && <span className="text-xs text-gray-400">Cargando...</span>}
+                  {state.loadingAssoc && (
+                    <span className="ml-2 text-xs text-gray-400 normal-case">
+                      (Cargando...)
+                    </span>
+                  )}
                 </span>
-                {flores.length === 0 && !loadingAssoc ? (
-                  <p className="text-gray-500 text-sm">No hay flores asociadas</p>
+                {state.flores.length === 0 && !state.loadingAssoc ? (
+                  <p className="text-gray-500 text-sm">
+                    No hay flores asociadas
+                  </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {flores.map((f) => (
-                      <div key={f.idArregloFlor} className="px-3 py-1 rounded-full text-xs font-semibold bg-[#50C878]/10 text-[#0f5c36] border border-[#50C878]/30 flex items-center gap-1">
+                    {state.flores.map((f) => (
+                      <div key={f.idArregloFlor} className={florBadgeClass}>
                         <span>{f.flor?.nombre || 'Flor'}</span>
-                        <span className="text-[#16804a]">x{f.cantidad}</span>
-                        {f.flor?.color && <span className="text-gray-500">• {f.flor.color}</span>}
+                        <span className="text-[#1E5128] font-semibold">
+                          x{f.cantidad}
+                        </span>
+                        {f.flor?.color && (
+                          <span className="text-gray-500 text-xs">
+                            • {f.flor.color}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
                 <p className="mt-2 text-xs text-gray-500">
-                  Total flores: <span className="font-medium text-gray-700">{totalFlores}</span> • Costo estimado flores: <span className="font-medium text-[#50C878]">C${costoFlores.toFixed(2)}</span>
+                  Total flores:{' '}
+                  <span className="font-medium text-gray-700">
+                    {totalFlores}
+                  </span>
                 </p>
               </div>
 
               {/* Accesorios asociados */}
-              <div className="pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+              <div className="pt-4 border-t border-gray-200/60">
+                <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-3 block">
                   Accesorios Asociados
-                  {loadingAssoc && <span className="text-xs text-gray-400">Cargando...</span>}
+                  {state.loadingAssoc && (
+                    <span className="ml-2 text-xs text-gray-400 normal-case">
+                      (Cargando...)
+                    </span>
+                  )}
                 </span>
-                {accesorios.length === 0 && !loadingAssoc ? (
-                  <p className="text-gray-500 text-sm">No hay accesorios asociados</p>
+                {state.accesorios.length === 0 && !state.loadingAssoc ? (
+                  <p className="text-gray-500 text-sm">
+                    No hay accesorios asociados
+                  </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {accesorios.map((a) => (
-                      <div key={a.idAccesorioArreglo} className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    {state.accesorios.map((a) => (
+                      <div
+                        key={a.idAccesorioArreglo}
+                        className="px-4 py-2 rounded-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-2"
+                      >
                         <span>{a.accesorio?.descripcion || 'Accesorio'}</span>
-                        <span className="text-amber-700">x{a.cantidad}</span>
-                        {a.accesorio?.categoria && <span className="text-amber-600">• {a.accesorio.categoria}</span>}
+                        <span className="text-amber-700 font-semibold">
+                          x{a.cantidad}
+                        </span>
+                        {a.accesorio?.categoria && (
+                          <span className="text-amber-600 text-xs">
+                            • {a.accesorio.categoria}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
                 <p className="mt-2 text-xs text-gray-500">
-                  Total accesorios: <span className="font-medium text-gray-700">{totalAccesorios}</span> • Costo estimado accesorios: <span className="font-medium text-[#50C878]">C${costoAccesorios.toFixed(2)}</span>
+                  Total accesorios:{' '}
+                  <span className="font-medium text-gray-700">
+                    {totalAccesorios}
+                  </span>
                 </p>
               </div>
 
-              {/* Costo Total Estimado */}
-              <div className="pt-4 border-t border-gray-200">
-                <span className="text-sm font-semibold text-gray-700 block mb-2">Costo Estimado de Insumos</span>
-                <p className="text-lg font-bold text-[#50C878]">C${costoEstimado.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">(Suma de flores y accesorios; referencial)</p>
+              {/* Información Técnica - Colapsable */}
+              <div className="pt-4 border-t border-gray-200/60">
+                <button
+                  onClick={toggleTechnical}
+                  className="flex items-center justify-between w-full text-left text-xs uppercase tracking-wider text-gray-500 font-medium hover:text-gray-700 transition-colors"
+                >
+                  <span>Datos Técnicos</span>
+                  {state.showTechnical ? (
+                    <MdExpandLess className="h-4 w-4" />
+                  ) : (
+                    <MdExpandMore className="h-4 w-4" />
+                  )}
+                </button>
+                {state.showTechnical && (
+                  <div className="mt-4 space-y-3 text-xs text-gray-500">
+                    {arreglo.url && (
+                      <div>
+                        <span className="font-medium text-gray-600">
+                          URL Externa:
+                        </span>{' '}
+                        <a
+                          href={arreglo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#1E5128] hover:underline break-all"
+                        >
+                          {arreglo.url}
+                        </a>
+                      </div>
+                    )}
+                    {arreglo.fechaCreacion && (
+                      <div>
+                        <span className="font-medium text-gray-600">
+                          Fecha de Creación:
+                        </span>{' '}
+                        <span className="text-gray-500">
+                          {new Date(arreglo.fechaCreacion).toLocaleDateString(
+                            'es-ES',
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            }
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium text-gray-600">
+                        Galería:
+                      </span>{' '}
+                      <span className="text-gray-500">
+                        {state.images.length}{' '}
+                        {state.images.length === 1 ? 'imagen' : 'imágenes'}{' '}
+                        disponible
+                        {state.images.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

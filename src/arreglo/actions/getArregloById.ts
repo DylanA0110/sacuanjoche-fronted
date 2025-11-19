@@ -1,12 +1,34 @@
 import { arregloApi } from '../api/arregloApi';
-import type { Arreglo } from '../types/arreglo.interface';
+import type {
+  Arreglo,
+  Media,
+  ArregloResponse,
+  ArregloMediaResponse,
+} from '../types/arreglo.interface';
+
+const mapMediaResponse = (m: ArregloMediaResponse): Media => ({
+  idArregloMedia: m.idArregloMedia,
+  idMedia: m.idArregloMedia, // Compatibilidad
+  idArreglo: m.idArreglo,
+  url: m.url,
+  objectKey: m.objectKey,
+  orden: m.orden || 0,
+  isPrimary: m.isPrimary || false,
+  tipo: m.tipo || 'imagen',
+  altText: m.altText,
+  activo: m.activo !== undefined ? m.activo : true,
+  fechaCreacion: m.fechaCreacion,
+  fechaUltAct: m.fechaUltAct,
+});
+
+const mapArregloResponse = (response: ArregloResponse): Arreglo => ({
+  ...response,
+  estado: response.estado || 'activo',
+  media: (response.media || []).map(mapMediaResponse),
+});
 
 export const getArregloById = async (id: number): Promise<Arreglo> => {
-  const response = await arregloApi.get<any>(`/${id}`);
-  return {
-    ...response.data,
-    estado: response.data.estado || 'activo',
-    media: response.data.media || [],
-  };
+  const response = await arregloApi.get<ArregloResponse>(`/${id}`);
+  return mapArregloResponse(response.data);
 };
 

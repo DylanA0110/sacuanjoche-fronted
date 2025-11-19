@@ -1,10 +1,12 @@
+import type { FacturaEstado } from '@/shared/types/estados.types';
+
 export interface Factura {
   idFactura: number;
   idPedido: number;
   idEmpleado: number;
   numFactura: string;
   fechaEmision: Date;
-  estado: string;
+  estado: FacturaEstado;
   montoTotal: string;
   pedido?: Pedido;
   empleado?: Empleado;
@@ -14,7 +16,7 @@ export interface CreateFacturaDto {
   idPedido: number;
   idEmpleado: number;
   numFactura: string;
-  estado: string;
+  estado: FacturaEstado;
   montoTotal: number;
 }
 
@@ -22,7 +24,7 @@ export interface UpdateFacturaDto {
   idPedido?: number;
   idEmpleado?: number;
   numFactura?: string;
-  estado?: string;
+  estado?: FacturaEstado;
   montoTotal?: number;
 }
 

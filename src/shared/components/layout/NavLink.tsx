@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router';
 import { cn } from '@/shared/lib/utils';
-import { useSidebar } from '@/shared/components/ui/sidebar';
 
 interface NavLinkProps {
   to: string;
@@ -8,6 +7,7 @@ interface NavLinkProps {
   className?: string;
   activeClassName?: string;
   end?: boolean;
+  onClick?: () => void;
 }
 
 export function NavLink({
@@ -16,24 +16,17 @@ export function NavLink({
   className,
   activeClassName,
   end = false,
+  onClick,
 }: NavLinkProps) {
   const location = useLocation();
-  const { isMobile, setOpenMobile } = useSidebar();
   const isActive = end
     ? location.pathname === to
     : location.pathname.startsWith(to);
 
-  const handleClick = () => {
-    // Cerrar el sidebar en móviles cuando se hace clic en un enlace
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
-
   return (
     <Link
       to={to}
-      onClick={handleClick}
+      onClick={onClick}
       className={cn(className, isActive && activeClassName)}
     >
       {children}

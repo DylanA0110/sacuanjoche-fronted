@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { DataTable } from '@/shared/components/Custom/DataTable';
-import type { Column } from '@/shared/components/Custom/DataTable';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
+import { CardsView } from '@/shared/components/Custom/CardsView';
+import type { CardItem } from '@/shared/components/Custom/CardsView';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -11,13 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
-import { Badge } from '@/shared/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
 import { useArreglo } from '../hook/useArreglo';
 import type {
   Arreglo,
@@ -25,120 +19,91 @@ import type {
   UpdateArregloDto,
 } from '../types/arreglo.interface';
 import { createArreglo, updateArreglo, getArregloMedia } from '../actions';
+import { deleteArregloMedia } from '../actions/arregloMedia';
+import supabase from '@/shared/utils/supabase';
 import { ArregloForm } from '../components/ArregloForm';
 import type { ArregloAssociationsPayload } from '../types/arreglo-insumos.interface';
 import { saveArregloInsumos } from '../actions';
 import { ArregloDetailsModal } from '../components/ArregloDetailsModal';
-import { MdAdd, MdImage, MdVisibility } from 'react-icons/md';
-
-const columns: Column[] = [
-  {
-    key: 'nombre',
-    label: 'Nombre',
-  },
-  {
-    key: 'formaArreglo',
-    label: 'Forma',
-    render: (_value, row: Arreglo) => row.formaArreglo?.descripcion || 'N/A',
-  },
-  // cantidadFlores removido del modelo; si se desea mostrar, podría calcularse desde asociaciones
-  {
-    key: 'precioUnitario',
-    label: 'Precio',
-    render: (value: string | number) => {
-      const precio = typeof value === 'string' ? parseFloat(value) : value;
-      return `C$${precio.toFixed(2)}`;
-    },
-  },
-  {
-    key: 'estado',
-    label: 'Estado',
-    render: (value: 'activo' | 'inactivo') => {
-      const isActivo = value === 'activo';
-      return (
-        <Badge
-          className={
-            isActivo
-              ? 'bg-green-100 text-green-800 border-green-200'
-              : 'bg-red-100 text-red-800 border-red-200'
-          }
-        >
-          {isActivo ? 'Activo' : 'Inactivo'}
-        </Badge>
-      );
-    },
-  },
-];
+import { MdAdd, MdSearch } from 'react-icons/md';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 
 const ArreglosPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchInput, setSearchInput] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedArreglo, setSelectedArreglo] = useState<Arreglo | null>(null);
-  const [galleryImages, setGalleryImages] = useState<any[]>([]);
   const [editingArreglo, setEditingArreglo] = useState<Arreglo | null>(null);
   const queryClient = useQueryClient();
 
-  const searchQuery = searchParams.get('q') || '';
-  const limit = parseInt(searchParams.get('limit') || '10', 10);
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
-  const offset = (currentPage - 1) * limit;
+  // Derivar valores directamente de searchParams (mejor rendimiento)
+  const searchQuery = useMemo(
+    () => searchParams.get('q') || '',
+    [searchParams]
+  );
+  const limit = useMemo(
+    () => parseInt(searchParams.get('limit') || '10', 10),
+    [searchParams]
+  );
+  const currentPage = useMemo(
+    () => parseInt(searchParams.get('page') || '1', 10),
+    [searchParams]
+  );
+  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
 
+  // Usar directamente searchQuery - no necesitamos searchInput local
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const debouncedSearch = useDebounce(searchInput, 500);
+
+  // Actualizar URL cuando cambia el debounced search (único useEffect necesario)
   useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
+    if (debouncedSearch === searchQuery) return;
 
-  useEffect(() => {
-    if (searchInput === searchQuery) return;
-
-    const timer = setTimeout(() => {
-      const newParams = new URLSearchParams(searchParams);
-      if (searchInput) {
-        newParams.set('q', searchInput);
-      } else {
-        newParams.delete('q');
-      }
-      newParams.delete('page');
-      setSearchParams(newParams, { replace: true });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const { arreglos, totalItems, isLoading, isError, error, refetch } =
-    useArreglo({
-      usePagination: true,
-      limit,
-      offset,
-      q: searchQuery || undefined,
-      estado: 'activo',
-    });
-
-  useEffect(() => {
-    if (isError && error) {
-      console.error('Error en ArreglosPage:', error);
+    const newParams = new URLSearchParams(searchParams);
+    if (debouncedSearch) {
+      newParams.set('q', debouncedSearch);
+    } else {
+      newParams.delete('q');
     }
-  }, [isError, error]);
+    newParams.delete('page');
+    setSearchParams(newParams, { replace: true });
+  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
+
+  // Sincronizar searchInput cuando cambia la URL (solo si es diferente)
+  useEffect(() => {
+    if (searchQuery !== searchInput) {
+      setSearchInput(searchQuery);
+    }
+  }, [searchQuery, searchInput]);
+
+  const { arreglos, totalItems, isLoading, isError, refetch } = useArreglo({
+    usePagination: true,
+    limit,
+    offset,
+    q: searchQuery || undefined,
+    estado: 'activo',
+  });
 
   const createArregloMutation = useMutation({
     mutationFn: createArreglo,
     onSuccess: (newArreglo) => {
       toast.success(
-        'Arreglo creado exitosamente. Ahora puedes subir imágenes.'
+        'Arreglo creado exitosamente. Ahora puedes agregar imágenes.'
       );
-      queryClient.invalidateQueries({ queryKey: ['arreglos'] });
-      refetch();
       // Mantener el formulario abierto y actualizar el arreglo para que puedan subir imágenes
       setEditingArreglo(newArreglo);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al crear el arreglo'
-      );
+      toast.error('Error al crear el arreglo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['arreglos'],
+        refetchType: 'active',
+      });
     },
   });
 
@@ -147,78 +112,139 @@ const ArreglosPage = () => {
       updateArreglo(id, data),
     onSuccess: () => {
       toast.success('Arreglo actualizado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['arreglos'] });
-      refetch();
       setIsFormOpen(false);
       setEditingArreglo(null);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al actualizar el arreglo'
-      );
+      toast.error('Error al actualizar el arreglo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['arreglos'],
+        refetchType: 'active',
+      });
+      // También invalidar media relacionada
+      queryClient.invalidateQueries({
+        queryKey: ['arregloMedia'],
+        refetchType: 'active',
+      });
     },
   });
 
   const deleteArregloMutation = useMutation({
-    mutationFn: (id: number) => updateArreglo(id, { estado: 'inactivo' }),
+    mutationFn: async (id: number) => {
+      // 1. Obtener todas las imágenes del arreglo
+      let mediaList: any[] = [];
+      try {
+        mediaList = await getArregloMedia(id);
+      } catch (error) {
+        // Silently fail if media cannot be retrieved
+      }
+
+      // 2. Eliminar todas las imágenes del backend y de Supabase
+      const deletePromises: Promise<any>[] = [];
+
+      for (const media of mediaList) {
+        if (media.idArregloMedia) {
+          // Eliminar del backend
+          deletePromises.push(
+            deleteArregloMedia(id, media.idArregloMedia).catch(() => {
+              // Silently fail if deletion fails
+            })
+          );
+
+          // Eliminar de Supabase Storage
+          if (media.objectKey) {
+            deletePromises.push(
+              supabase.storage
+                .from('CatalogoFloristeria')
+                .remove([media.objectKey])
+                .then(() => {
+                  // Silently succeed
+                })
+            );
+          } else if (media.url) {
+            // Intentar extraer el path de la URL
+            const urlMatch = media.url.match(
+              /\/storage\/v1\/object\/public\/CatalogoFloristeria\/(.+)$/
+            );
+            if (urlMatch) {
+              const filePath = urlMatch[1];
+              deletePromises.push(
+                supabase.storage
+                  .from('CatalogoFloristeria')
+                  .remove([filePath])
+                  .then(() => {
+                    // Silently succeed
+                  })
+              );
+            }
+          }
+        }
+      }
+
+      // Esperar a que se eliminen todas las imágenes
+      await Promise.all(deletePromises);
+
+      // 3. Desactivar el arreglo
+      return updateArreglo(id, { estado: 'inactivo' });
+    },
     onSuccess: () => {
-      toast.success('Arreglo desactivado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['arreglos'] });
-      refetch();
+      toast.success(
+        'Arreglo desactivado y todas sus imágenes eliminadas exitosamente'
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['arreglos'],
+        refetchType: 'active',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['arregloMedia'],
+        refetchType: 'active',
+      });
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al desactivar el arreglo'
-      );
+      toast.error('Error al desactivar el arreglo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
     },
   });
 
-  const handleSearch = (value: string) => {
-    setSearchInput(value);
-  };
-
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     setEditingArreglo(null);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (arreglo: Arreglo) => {
+  const handleEdit = useCallback((item: CardItem) => {
+    const arreglo = item as unknown as Arreglo;
     setEditingArreglo(arreglo);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (arreglo: Arreglo) => {
-    if (
-      window.confirm(
-        `¿Estás seguro de que deseas desactivar el arreglo "${arreglo.nombre}"?`
-      )
-    ) {
-      deleteArregloMutation.mutate(arreglo.idArreglo);
-    }
-  };
+  const handleDelete = useCallback(
+    (item: CardItem) => {
+      const arreglo = item as unknown as Arreglo;
+      if (
+        window.confirm(
+          `¿Estás seguro de que deseas desactivar el arreglo "${arreglo.nombre}"?`
+        )
+      ) {
+        deleteArregloMutation.mutate(arreglo.idArreglo);
+      }
+    },
+    [deleteArregloMutation]
+  );
 
-  const handleViewDetails = (arreglo: Arreglo) => {
+  const handleViewDetails = useCallback((item: CardItem) => {
+    const arreglo = item as unknown as Arreglo;
     setSelectedArreglo(arreglo);
     setIsDetailsOpen(true);
-  };
-
-  const handleViewGallery = async (arreglo: Arreglo) => {
-    setSelectedArreglo(arreglo);
-    try {
-      const media = await getArregloMedia(arreglo.idArreglo);
-      setGalleryImages(media);
-      setIsGalleryOpen(true);
-    } catch (error: any) {
-      console.error('Error al cargar imágenes:', error);
-      toast.error('Error al cargar las imágenes del arreglo');
-      setGalleryImages(arreglo.media || []);
-      setIsGalleryOpen(true);
-    }
-  };
+  }, []);
 
   const handleSubmit = async (
     data: CreateArregloDto | UpdateArregloDto,
@@ -227,7 +253,7 @@ const ArreglosPage = () => {
     try {
       if (editingArreglo) {
         // Update básico del arreglo
-        const updated = await updateArregloMutation.mutateAsync({
+        await updateArregloMutation.mutateAsync({
           id: editingArreglo.idArreglo,
           data: data as UpdateArregloDto,
         });
@@ -259,32 +285,47 @@ const ArreglosPage = () => {
     }
   };
 
-  const tableData = arreglos.map((arreglo) => ({
-    ...arreglo,
-    id: arreglo.idArreglo,
-  }));
+  // Memoizar cardData para evitar recálculos innecesarios
+  const cardData: CardItem[] = useMemo(
+    () =>
+      arreglos.map((arreglo) => {
+        // Obtener imagen principal o primera imagen
+        const primaryImage =
+          arreglo.media?.find((m) => m.isPrimary) || arreglo.media?.[0];
 
-  const newLocal =
-    'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity';
+        return {
+          id: arreglo.idArreglo,
+          imageUrl: primaryImage?.url,
+          title: arreglo.nombre,
+          subtitle: arreglo.formaArreglo?.descripcion,
+          price: arreglo.precioUnitario,
+          status: arreglo.estado,
+          ...arreglo,
+        };
+      }),
+    [arreglos]
+  );
+
   return (
     <>
       <div className="space-y-4 sm:space-y-6 w-full">
         {/* Header limpio y profesional */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-title-large mb-2 sm:mb-3 text-gray-900 tracking-tight">
               Arreglos
             </h1>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm sm:text-base text-gray-500 font-light">
               Gestiona el catálogo y existencias de tus arreglos
             </p>
           </div>
           <Button
             onClick={handleCreate}
-            className="bg-[#50C878] hover:bg-[#50C878]/90 text-white gap-2 h-10 px-4 text-sm font-medium whitespace-nowrap shrink-0"
+            className="gap-2 h-11 sm:h-12 px-4 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 bg-[#50C878] hover:bg-[#63d68b] text-white shadow-md shadow-[#50C878]/30 transition-colors duration-150 font-sans rounded-lg"
           >
-            <MdAdd className="h-4 w-4" />
-            <span>Nuevo Arreglo</span>
+            <MdAdd className="h-5 w-5" />
+            <span className="hidden sm:inline">Nuevo Arreglo</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
 
@@ -296,51 +337,80 @@ const ArreglosPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 sm:px-6 md:px-8 pb-6 sm:pb-8 pt-6">
-            <DataTable
-              columns={columns}
-              data={tableData}
-              searchPlaceholder="Buscar por nombre, descripción o forma..."
+            {/* Barra de búsqueda */}
+            <div className="mb-6">
+              <div className="relative">
+                <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, descripción o forma..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20 text-sm transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <CardsView
+              items={cardData}
+              onView={handleViewDetails}
               onEdit={handleEdit}
               onDelete={handleDelete}
               isLoading={isLoading}
               isError={isError}
-              searchValue={searchInput}
-              onSearchChange={handleSearch}
-              totalItems={totalItems}
-              currentPage={currentPage}
-              itemsPerPage={limit}
-              onPageChange={(page) => {
-                const newParams = new URLSearchParams(searchParams);
-                if (page === 1) {
-                  newParams.delete('page');
-                } else {
-                  newParams.set('page', String(page));
-                }
-                setSearchParams(newParams, { replace: true });
-              }}
-              customActions={(item: Arreglo) => (
-                <div className="flex items-center gap-2">
+            />
+
+            {/* Paginación */}
+            {totalItems && totalItems > 0 && (
+              <div className="mt-6 px-4 sm:px-6 md:px-8 py-4 border-t border-gray-200 bg-white rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-gray-600 text-center sm:text-left font-medium">
+                  Mostrando{' '}
+                  <span className="font-semibold text-gray-900">
+                    {Math.min(currentPage * limit - limit + 1, totalItems)}
+                  </span>{' '}
+                  -{' '}
+                  <span className="font-semibold text-gray-900">
+                    {Math.min(currentPage * limit, totalItems)}
+                  </span>{' '}
+                  de{' '}
+                  <span className="font-semibold text-gray-900">
+                    {totalItems}
+                  </span>
+                </p>
+                <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
                   <Button
+                    variant="outline"
                     size="sm"
-                    variant="ghost"
-                    onClick={() => handleViewDetails(item)}
-                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    title="Ver detalles"
+                    onClick={() => {
+                      const newParams = new URLSearchParams(searchParams);
+                      if (currentPage > 1) {
+                        newParams.set('page', String(currentPage - 1));
+                      } else {
+                        newParams.delete('page');
+                      }
+                      setSearchParams(newParams, { replace: true });
+                    }}
+                    disabled={currentPage === 1}
+                    className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/40 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                   >
-                    <MdVisibility className="h-4 w-4" />
+                    Anterior
                   </Button>
                   <Button
+                    variant="outline"
                     size="sm"
-                    variant="ghost"
-                    onClick={() => handleViewGallery(item)}
-                    className="h-8 w-8 p-0 text-[#50C878] hover:text-[#50C878] hover:bg-[#50C878]/10"
-                    title="Ver galería"
+                    onClick={() => {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('page', String(currentPage + 1));
+                      setSearchParams(newParams, { replace: true });
+                    }}
+                    disabled={currentPage * limit >= totalItems}
+                    className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/40 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                   >
-                    <MdImage className="h-4 w-4" />
+                    Siguiente
                   </Button>
                 </div>
-              )}
-            />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -362,63 +432,6 @@ const ArreglosPage = () => {
         onOpenChange={setIsDetailsOpen}
         arreglo={selectedArreglo}
       />
-
-      {/* Galería de Imágenes */}
-      <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-        <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900">
-              Galería de Imágenes
-            </DialogTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              {selectedArreglo?.nombre} • {galleryImages.length}{' '}
-              {galleryImages.length === 1 ? 'imagen' : 'imágenes'}
-            </p>
-          </DialogHeader>
-          <div className="mt-6">
-            {galleryImages.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                  <MdImage className="h-10 w-10 text-gray-400" />
-                </div>
-                <p className="text-gray-500 font-medium">
-                  No hay imágenes para este arreglo
-                </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Sube imágenes desde el formulario de edición
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {galleryImages.map((image, index) => (
-                  <div key={image.idMedia || index} className="relative group">
-                    <div className="aspect-square w-full overflow-hidden rounded-xl border-2 border-gray-200 hover:border-[#50C878] transition-all duration-200 bg-gray-50">
-                      <img
-                        src={image.url}
-                        alt={image.altText || `Imagen ${index + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        loading="lazy"
-                      />
-                    </div>
-                    {image.isPrimary && (
-                      <span className="absolute top-2 left-2 bg-[#50C878] text-white text-xs px-2.5 py-1 rounded-full font-semibold shadow-md">
-                        Principal
-                      </span>
-                    )}
-                    {image.altText && (
-                      <div className={newLocal}>
-                        <p className="text-white text-xs truncate">
-                          {image.altText}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

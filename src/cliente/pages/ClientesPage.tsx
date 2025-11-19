@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { DataTable } from '@/shared/components/Custom/DataTable';
 import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
@@ -18,24 +19,29 @@ import type {
   CreateClienteDto,
   UpdateClienteDto,
 } from '../types/cliente.interface';
-import { createCliente, updateCliente } from '../actions/index';
+import { createCliente, updateCliente, createDireccion, createClienteDireccion } from '../actions/index';
+import type { CreateDireccionDto, CreateClienteDireccionDto } from '../types/direccion.interface';
 import { ClienteForm } from '../components/ClienteForm';
 import { MdAdd } from 'react-icons/md';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 
 const columns: Column[] = [
   {
     key: 'primerNombre',
     label: 'Nombre',
+    priority: 'high', // Siempre visible en móvil
     render: (_value, row: Cliente) =>
       `${row.primerNombre} ${row.primerApellido}`,
   },
   {
     key: 'telefono',
     label: 'Teléfono',
+    priority: 'high', // Siempre visible en móvil
   },
   {
     key: 'estado',
     label: 'Estado',
+    priority: 'medium', // Visible en tablet y desktop
     render: (value: 'activo' | 'inactivo') => {
       const isActivo = value === 'activo';
       return (
@@ -54,6 +60,7 @@ const columns: Column[] = [
   {
     key: 'fechaCreacion',
     label: 'Fecha Creación',
+    priority: 'low', // Solo visible en pantallas grandes
     render: (value) => {
       const date = new Date(value);
       return date.toLocaleDateString('es-ES');
@@ -63,37 +70,46 @@ const columns: Column[] = [
 
 const ClientesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchInput, setSearchInput] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const queryClient = useQueryClient();
 
-  const searchQuery = searchParams.get('q') || '';
-  const limit = parseInt(searchParams.get('limit') || '10', 10);
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
-  const offset = (currentPage - 1) * limit;
+  // Derivar valores de searchParams
+  const searchQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
+  const limit = useMemo(
+    () => parseInt(searchParams.get('limit') || '10', 10),
+    [searchParams]
+  );
+  const currentPage = useMemo(
+    () => parseInt(searchParams.get('page') || '1', 10),
+    [searchParams]
+  );
+  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
 
+  // Usar directamente searchQuery - solo necesitamos un input local para el debounce
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const debouncedSearch = useDebounce(searchInput, 500);
+
+  // Actualizar URL cuando cambia el debounced search (único useEffect necesario)
   useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
+    if (debouncedSearch === searchQuery) return;
 
-  useEffect(() => {
-    if (searchInput === searchQuery) return;
-
-    const timer = setTimeout(() => {
       const newParams = new URLSearchParams(searchParams);
-      if (searchInput) {
-        newParams.set('q', searchInput);
+    if (debouncedSearch) {
+      newParams.set('q', debouncedSearch);
       } else {
         newParams.delete('q');
       }
-      // Resetear a página 1 cuando se busca
       newParams.delete('page');
       setSearchParams(newParams, { replace: true });
-    }, 500);
+  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
 
-    return () => clearTimeout(timer);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sincronizar searchInput cuando cambia la URL (solo si es diferente)
+  useEffect(() => {
+    if (searchQuery !== searchInput) {
+      setSearchInput(searchQuery);
+    }
+  }, [searchQuery, searchInput]);
 
   const { clientes, totalItems, isLoading, isError, error, refetch } =
     useCliente({
@@ -104,36 +120,212 @@ const ClientesPage = () => {
       activo: 'activo', // Solo clientes activos
     });
 
-  useEffect(() => {
-    if (isError && error) {
-      console.error('Error en ClientesPage:', error);
-    }
-  }, [isError, error]);
+  // Error handling se hace vía toast notifications - no necesitamos useEffect
 
   const createClienteMutation = useMutation({
-    mutationFn: createCliente,
-    onSuccess: () => {
-      toast.success('Cliente creado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      refetch();
+    mutationFn: async (data: { cliente: CreateClienteDto; direccion?: any }) => {
+      // 1. Primero crear el cliente
+      const nuevoCliente = await createCliente(data.cliente);
+      
+      // 2. Si hay datos de dirección, crear la dirección y la relación
+      if (data.direccion && nuevoCliente.idCliente) {
+        try {
+          // Crear la dirección - validar y convertir datos según la API
+          const lat = parseFloat(data.direccion.lat);
+          const lng = parseFloat(data.direccion.lng);
+          
+          if (isNaN(lat) || isNaN(lng)) {
+            throw new Error('Las coordenadas (lat, lng) deben ser números válidos');
+          }
+          
+          const direccionDto: CreateDireccionDto = {
+            formattedAddress: data.direccion.formattedAddress || '',
+            country: data.direccion.country || 'NIC',
+            stateProv: data.direccion.adminArea || null, // adminArea se mapea a stateProv
+            city: data.direccion.city || '',
+            neighborhood: data.direccion.neighborhood || '',
+            street: data.direccion.street || '',
+            houseNumber: data.direccion.houseNumber || '',
+            postalCode: data.direccion.postalCode || '',
+            referencia: data.direccion.referencia || '',
+            lat: lat, // Número, no string
+            lng: lng, // Número, no string
+            provider: data.direccion.provider || 'MAP BOX',
+            placeId: data.direccion.placeId || '',
+            accuracy: data.direccion.accuracy || 'ROOFTOP',
+            geolocation: data.direccion.geolocation || JSON.stringify({
+              accuracy: 10,
+              timestamp: Date.now(),
+              coordinates: [lng, lat]
+            }),
+            activo: true,
+          };
+          
+          // Validar campos requeridos antes de enviar
+          if (!direccionDto.formattedAddress) {
+            throw new Error('El campo formattedAddress es requerido');
+          }
+          
+          const direccionCreada = await createDireccion(direccionDto);
+          
+          // Verificar que la dirección tenga idDireccion
+          if (!direccionCreada.idDireccion) {
+            throw new Error('La dirección creada no tiene idDireccion');
+          }
+          
+          // 3. Crear la relación cliente-dirección usando la response body
+          const clienteDireccionDto: CreateClienteDireccionDto = {
+            idCliente: nuevoCliente.idCliente,
+            idDireccion: direccionCreada.idDireccion, // Usar el idDireccion de la response
+            etiqueta: data.direccion.etiqueta || 'Casa',
+            esPredeterminada: data.direccion.esPredeterminada ?? true,
+            activo: true,
+          };
+          
+          await createClienteDireccion(clienteDireccionDto);
+          
+          // Éxito: dirección y relación creadas correctamente
+          toast.success('Dirección guardada correctamente', {
+            description: `La dirección ha sido asociada al cliente ${nuevoCliente.primerNombre} ${nuevoCliente.primerApellido}`,
+            duration: 3000,
+          });
+        } catch (direccionError: any) {
+          // Mostrar mensaje de error más detallado
+          const errorMessage = direccionError?.response?.data?.message 
+            || direccionError?.response?.data?.error
+            || direccionError?.message
+            || 'Error desconocido';
+          
+          // No fallar la creación del cliente si falla la dirección
+          toast.warning('Cliente creado exitosamente', {
+            description: `Pero hubo un problema al guardar la dirección: ${errorMessage}`,
+            duration: 5000,
+          });
+        }
+      }
+      
+      return nuevoCliente;
+    },
+    onSuccess: (nuevoCliente) => {
+      // Verificar si se creó también la dirección
+      const tieneDireccion = nuevoCliente && 'direccion' in nuevoCliente;
+      
+      if (tieneDireccion) {
+        toast.success('Cliente y dirección creados exitosamente', {
+          description: `${nuevoCliente.primerNombre} ${nuevoCliente.primerApellido} ha sido registrado con su dirección`,
+          duration: 4000,
+        });
+      } else {
+        toast.success('Cliente creado exitosamente', {
+          description: `${nuevoCliente.primerNombre} ${nuevoCliente.primerApellido} ha sido registrado correctamente`,
+          duration: 3000,
+        });
+      }
+      
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Error al crear el cliente';
-      toast.error(errorMessage);
+      toast.error('Error al crear el cliente', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['clientes'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['cliente-direcciones'],
+        refetchType: 'active'
+      });
     },
   });
 
   const updateClienteMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateClienteDto }) =>
-      updateCliente(id, data),
-    onSuccess: () => {
-      toast.success('Cliente actualizado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      refetch();
+    mutationFn: async ({ id, data, direccion }: { id: number; data: UpdateClienteDto; direccion?: any }) => {
+      // 1. Actualizar el cliente
+      const clienteActualizado = await updateCliente(id, data);
+      
+      // 2. Si hay datos de dirección, crear/actualizar la dirección
+      if (direccion && clienteActualizado.idCliente) {
+        try {
+          // Convertir coordenadas a números
+          const lat = parseFloat(direccion.lat);
+          const lng = parseFloat(direccion.lng);
+          
+          if (isNaN(lat) || isNaN(lng)) {
+            throw new Error('Las coordenadas (lat, lng) deben ser números válidos');
+          }
+          
+          const direccionDto: CreateDireccionDto = {
+            formattedAddress: direccion.formattedAddress || '',
+            country: direccion.country || 'NIC',
+            stateProv: direccion.adminArea || null,
+            city: direccion.city || '',
+            neighborhood: direccion.neighborhood || '',
+            street: direccion.street || '',
+            houseNumber: direccion.houseNumber || '',
+            postalCode: direccion.postalCode || '',
+            referencia: direccion.referencia || '',
+            lat: lat,
+            lng: lng,
+            provider: direccion.provider || 'MAP BOX',
+            placeId: direccion.placeId || '',
+            accuracy: direccion.accuracy || 'ROOFTOP',
+            geolocation: direccion.geolocation || JSON.stringify({
+              accuracy: 10,
+              timestamp: Date.now(),
+              coordinates: [lng, lat]
+            }),
+            activo: true,
+          };
+          
+          if (!direccionDto.formattedAddress) {
+            throw new Error('El campo formattedAddress es requerido');
+          }
+          
+          const direccionCreada = await createDireccion(direccionDto);
+          
+          if (!direccionCreada.idDireccion) {
+            throw new Error('La dirección creada no tiene idDireccion');
+          }
+          
+          // 3. Crear o actualizar la relación cliente-dirección
+          const clienteDireccionDto: CreateClienteDireccionDto = {
+            idCliente: clienteActualizado.idCliente,
+            idDireccion: direccionCreada.idDireccion,
+            etiqueta: direccion.etiqueta || 'Casa',
+            esPredeterminada: direccion.esPredeterminada ?? true,
+            activo: true,
+          };
+          
+          await createClienteDireccion(clienteDireccionDto);
+          
+          toast.success('Dirección actualizada correctamente', {
+            description: `La dirección ha sido asociada al cliente ${clienteActualizado.primerNombre} ${clienteActualizado.primerApellido}`,
+            duration: 3000,
+          });
+        } catch (direccionError: any) {
+          const errorMessage = direccionError?.response?.data?.message 
+            || direccionError?.response?.data?.error
+            || direccionError?.message
+            || 'Error desconocido';
+          
+          toast.warning('Cliente actualizado exitosamente', {
+            description: `Pero hubo un problema al guardar la dirección: ${errorMessage}`,
+            duration: 5000,
+          });
+        }
+      }
+      
+      return clienteActualizado;
+    },
+    onSuccess: (clienteActualizado) => {
+      toast.success('Cliente actualizado exitosamente', {
+        description: `Los datos de ${clienteActualizado.primerNombre} ${clienteActualizado.primerApellido} han sido actualizados`,
+        duration: 3000,
+      });
       setIsFormOpen(false);
       setEditingCliente(null);
     },
@@ -142,41 +334,64 @@ const ClientesPage = () => {
         error?.response?.data?.message ||
         error?.message ||
         'Error al actualizar el cliente';
-      toast.error(errorMessage);
+      toast.error('Error al actualizar el cliente', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['clientes'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['cliente-direcciones'],
+        refetchType: 'active'
+      });
     },
   });
 
   const deleteClienteMutation = useMutation({
     mutationFn: (id: number) => updateCliente(id, { estado: 'inactivo' }),
     onSuccess: () => {
-      toast.success('Cliente desactivado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      refetch();
+      toast.success('Cliente desactivado', {
+        description: 'El cliente ha sido marcado como inactivo correctamente',
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
         'Error al desactivar el cliente';
-      toast.error(errorMessage);
+      toast.error('Error al desactivar el cliente', {
+        description: errorMessage,
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['clientes'],
+        refetchType: 'active'
+      });
     },
   });
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setSearchInput(value);
-  };
+  }, []);
 
-  const handleCreate = () => {
+  const handleCreate = useCallback(() => {
     setEditingCliente(null);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (cliente: Cliente) => {
+  const handleEdit = useCallback((cliente: Cliente) => {
     setEditingCliente(cliente);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (cliente: Cliente) => {
+  const handleDelete = useCallback((cliente: Cliente) => {
     if (
       window.confirm(
         `¿Estás seguro de que deseas desactivar al cliente ${cliente.primerNombre} ${cliente.primerApellido}?`
@@ -184,45 +399,54 @@ const ClientesPage = () => {
     ) {
       deleteClienteMutation.mutate(cliente.idCliente);
     }
-  };
+  }, [deleteClienteMutation]);
 
-  const handleSubmit = (data: CreateClienteDto | UpdateClienteDto) => {
+  const handleSubmit = useCallback((
+    data: CreateClienteDto | UpdateClienteDto,
+    direccionData?: any
+  ) => {
     if (editingCliente) {
       updateClienteMutation.mutate({
         id: editingCliente.idCliente,
         data: data as UpdateClienteDto,
+        direccion: direccionData,
       });
     } else {
-      createClienteMutation.mutate(data as CreateClienteDto);
+      createClienteMutation.mutate({
+        cliente: data as CreateClienteDto,
+        direccion: direccionData,
+      });
     }
-  };
+  }, [editingCliente, updateClienteMutation, createClienteMutation]);
 
-  const tableData = clientes.map((cliente) => ({
+  const tableData = useMemo(() => clientes.map((cliente) => ({
     ...cliente,
     id: cliente.idCliente,
-  }));
+  })), [clientes]);
 
   return (
     <>
       <div className="space-y-6 sm:space-y-8 w-full">
-        {/* Header Premium */}
+        {/* Header Premium - Sticky para mantener visible */}
+        <div className="sticky top-0 z-30 bg-[#F9F9F7] pb-4 -mt-6 pt-6 border-b border-gray-200/50 backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-title-large mb-2 sm:mb-3 text-gray-900 tracking-tight">
               Clientes
             </h1>
-            <p className="text-sm sm:text-base text-gray-500 font-medium">
+            <p className="text-sm sm:text-base text-gray-500 font-light">
               Administra los clientes de tu floristería
             </p>
           </div>
           <Button
             onClick={handleCreate}
-            className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-2xl shadow-[#50C878]/50 gap-2 h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 transition-all duration-200 hover:scale-105 hover:shadow-[#50C878]/60"
+              className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/30 gap-2 h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 transition-colors duration-150 font-sans rounded-lg w-full sm:w-auto"
           >
             <MdAdd className="h-5 w-5" />
             <span className="hidden sm:inline">Agregar Cliente</span>
             <span className="sm:hidden">Agregar</span>
           </Button>
+          </div>
         </div>
 
         {/* Card con la tabla - Premium Glassmorphism */}

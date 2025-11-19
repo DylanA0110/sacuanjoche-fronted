@@ -23,7 +23,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4 w-full">
         <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-gray-600 tracking-wider">
               Total Clientes
             </CardTitle>
           </CardHeader>
@@ -35,7 +35,7 @@ export default function DashboardPage() {
 
         <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-gray-600 tracking-wider">
               Pedidos
             </CardTitle>
           </CardHeader>
@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
         <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-gray-600 tracking-wider">
               Productos
             </CardTitle>
           </CardHeader>
@@ -59,7 +59,7 @@ export default function DashboardPage() {
 
         <Card className="bg-white border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-gray-600 tracking-wider">
               Arreglos
             </CardTitle>
           </CardHeader>

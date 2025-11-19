@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,10 @@ interface FormaArregloFormProps {
   isLoading?: boolean;
 }
 
+interface FormValues {
+  descripcion: string;
+}
+
 export function FormaArregloForm({
   open,
   onOpenChange,
@@ -28,36 +33,31 @@ export function FormaArregloForm({
   onSubmit,
   isLoading = false,
 }: FormaArregloFormProps) {
-  const [formData, setFormData] = useState<CreateFormaArregloDto>({
-    descripcion: '',
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      descripcion: '',
+    },
   });
 
   useEffect(() => {
     if (formaArreglo) {
-      setFormData({
+      reset({
         descripcion: formaArreglo.descripcion,
       });
     } else {
-      setFormData({
+      reset({
         descripcion: '',
       });
     }
-  }, [formaArreglo, open]);
+  }, [formaArreglo, open, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.descripcion.trim()) {
-      return;
-    }
-
-    onSubmit(formData);
-  };
-
-  const handleChange = (value: string) => {
-    setFormData({
-      descripcion: value,
-    });
+  const onSubmitForm = (data: FormValues) => {
+    onSubmit({ descripcion: data.descripcion });
   };
 
   return (
@@ -73,19 +73,22 @@ export function FormaArregloForm({
               : 'Completa los datos para crear una nueva forma de arreglo'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="descripcion" className="text-sm font-semibold text-gray-700">
               Descripción *
             </Label>
             <Input
               id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => handleChange(e.target.value)}
+              {...register('descripcion', {
+                required: 'La descripción es requerida',
+              })}
               placeholder="Ramo"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.descripcion && (
+              <p className="text-sm text-red-500 mt-1">{errors.descripcion.message}</p>
+            )}
           </div>
 
           <DialogFooter className="gap-3 pt-4">

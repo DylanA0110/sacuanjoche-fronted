@@ -11,6 +11,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['react-map-gl', 'mapbox-gl'],
+    exclude: [],
+  },
   build: {
     // Optimizaciones de build
     rollupOptions: {

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { DataTable } from '@/shared/components/Custom/DataTable';
 import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
@@ -12,20 +13,24 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import { useFlor } from '../hooks/useFlor';
 import { useAccesorio } from '../hooks/useAccesorio';
 import { useFormaArreglo } from '../hooks/useFormaArreglo';
 import { useMetodoPago } from '../hooks/useMetodoPago';
-import type { CreateFlorDto, UpdateFlorDto } from '../types/flor.interface';
+import type { Flor, CreateFlorDto, UpdateFlorDto } from '../types/flor.interface';
 import type {
+  Accesorio,
   CreateAccesorioDto,
   UpdateAccesorioDto,
 } from '../types/accesorio.interface';
 import type {
+  FormaArreglo,
   CreateFormaArregloDto,
   UpdateFormaArregloDto,
 } from '../types/forma-arreglo.interface';
 import type {
+  MetodoPago,
   CreateMetodoPagoDto,
   UpdateMetodoPagoDto,
 } from '../types/metodo-pago.interface';
@@ -47,47 +52,61 @@ import { MdAdd } from 'react-icons/md';
 
 type TabType = 'flores' | 'accesorios' | 'formas' | 'metodos';
 
+type EditingItem = Flor | Accesorio | FormaArreglo | MetodoPago | null;
+
 const CatalogoPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>(
-    (searchParams.get('tab') as TabType) || 'flores'
-  );
-  const [searchInput, setSearchInput] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<EditingItem>(null);
   const queryClient = useQueryClient();
 
-  const searchQuery = searchParams.get('q') || '';
-  const limit = parseInt(searchParams.get('limit') || '10', 10);
-  const currentPage = parseInt(searchParams.get('page') || '1', 10);
-  const offset = (currentPage - 1) * limit;
+  // Derivar valores de searchParams (eliminamos useState para activeTab y searchInput)
+  const activeTab = useMemo(
+    () => (searchParams.get('tab') as TabType) || 'flores',
+    [searchParams]
+  );
+  const searchQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
+  const limit = useMemo(
+    () => parseInt(searchParams.get('limit') || '10', 10),
+    [searchParams]
+  );
+  const currentPage = useMemo(
+    () => parseInt(searchParams.get('page') || '1', 10),
+    [searchParams]
+  );
+  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
 
+  // Usar directamente searchQuery - solo necesitamos un input local para el debounce
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const debouncedSearch = useDebounce(searchInput, 500);
+
+  // Actualizar URL cuando cambia el debounced search (único useEffect para búsqueda)
   useEffect(() => {
-    setSearchInput(searchQuery);
-  }, [searchQuery]);
+    if (debouncedSearch === searchQuery) return;
 
-  useEffect(() => {
-    if (searchInput === searchQuery) return;
-
-    const timer = setTimeout(() => {
-      const newParams = new URLSearchParams(searchParams);
-      if (searchInput) {
-        newParams.set('q', searchInput);
-      } else {
-        newParams.delete('q');
-      }
-      newParams.delete('page');
-      setSearchParams(newParams, { replace: true });
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
-    newParams.set('tab', activeTab);
+    if (debouncedSearch) {
+      newParams.set('q', debouncedSearch);
+    } else {
+      newParams.delete('q');
+    }
+    newParams.delete('page');
     setSearchParams(newParams, { replace: true });
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
+
+  // Sincronizar searchInput cuando cambia la URL
+  useEffect(() => {
+    if (searchQuery !== searchInput) {
+      setSearchInput(searchQuery);
+    }
+  }, [searchQuery, searchInput]);
+
+  // Handler para cambiar tab (actualiza URL directamente)
+  const handleTabChange = useCallback((tab: TabType) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', tab);
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Hooks para cada sección
   const {
@@ -151,16 +170,19 @@ const CatalogoPage = () => {
     mutationFn: createFlor,
     onSuccess: () => {
       toast.success('Flor creada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['flores'] });
-      refetchFlores();
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al crear la flor'
-      );
+      toast.error('Error al crear la flor', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['flores'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -169,17 +191,20 @@ const CatalogoPage = () => {
       updateFlor(id, data),
     onSuccess: () => {
       toast.success('Flor actualizada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['flores'] });
-      refetchFlores();
       setIsFormOpen(false);
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al actualizar la flor'
-      );
+      toast.error('Error al actualizar la flor', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['flores'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -187,16 +212,19 @@ const CatalogoPage = () => {
     mutationFn: createAccesorio,
     onSuccess: () => {
       toast.success('Accesorio creado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['accesorios'] });
-      refetchAccesorios();
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al crear el accesorio'
-      );
+      toast.error('Error al crear el accesorio', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['accesorios'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -205,17 +233,20 @@ const CatalogoPage = () => {
       updateAccesorio(id, data),
     onSuccess: () => {
       toast.success('Accesorio actualizado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['accesorios'] });
-      refetchAccesorios();
       setIsFormOpen(false);
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al actualizar el accesorio'
-      );
+      toast.error('Error al actualizar el accesorio', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['accesorios'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -223,16 +254,24 @@ const CatalogoPage = () => {
     mutationFn: createFormaArreglo,
     onSuccess: () => {
       toast.success('Forma de arreglo creada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['formasArreglo'] });
-      refetchFormas();
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al crear la forma de arreglo'
-      );
+      toast.error('Error al crear la forma de arreglo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['formasArreglo'],
+        refetchType: 'active'
+      });
+      // También invalidar arreglos ya que dependen de formas
+      queryClient.invalidateQueries({ 
+        queryKey: ['arreglos'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -241,17 +280,24 @@ const CatalogoPage = () => {
       updateFormaArreglo(id, data),
     onSuccess: () => {
       toast.success('Forma de arreglo actualizada exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['formasArreglo'] });
-      refetchFormas();
       setIsFormOpen(false);
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al actualizar la forma de arreglo'
-      );
+      toast.error('Error al actualizar la forma de arreglo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['formasArreglo'],
+        refetchType: 'active'
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['arreglos'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -259,16 +305,19 @@ const CatalogoPage = () => {
     mutationFn: createMetodoPago,
     onSuccess: () => {
       toast.success('Método de pago creado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['metodosPago'] });
-      refetchMetodos();
       setIsFormOpen(false);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al crear el método de pago'
-      );
+      toast.error('Error al crear el método de pago', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['metodosPago'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -277,17 +326,20 @@ const CatalogoPage = () => {
       updateMetodoPago(id, data),
     onSuccess: () => {
       toast.success('Método de pago actualizado exitosamente');
-      queryClient.invalidateQueries({ queryKey: ['metodosPago'] });
-      refetchMetodos();
       setIsFormOpen(false);
       setEditingItem(null);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          'Error al actualizar el método de pago'
-      );
+      toast.error('Error al actualizar el método de pago', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['metodosPago'],
+        refetchType: 'active'
+      });
     },
   });
 
@@ -300,7 +352,7 @@ const CatalogoPage = () => {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: EditingItem) => {
     setEditingItem(item);
     setIsFormOpen(true);
   };
@@ -380,31 +432,36 @@ const CatalogoPage = () => {
     }
   };
 
-  // Columnas para cada tabla
+  // Columnas para cada tabla - Responsive
   const floresColumns: Column[] = [
     {
       key: 'nombre',
       label: 'Nombre',
-    },
-    {
-      key: 'color',
-      label: 'Color',
-    },
-    {
-      key: 'tipo',
-      label: 'Tipo',
+      priority: 'high', // Siempre visible en móvil
     },
     {
       key: 'precioUnitario',
       label: 'Precio',
+      priority: 'high', // Siempre visible en móvil
       render: (value: string | number) => {
         const precio = typeof value === 'string' ? parseFloat(value) : value;
         return `C$${precio.toFixed(2)}`;
       },
     },
     {
+      key: 'color',
+      label: 'Color',
+      priority: 'medium', // Visible en tablet y desktop
+    },
+    {
+      key: 'tipo',
+      label: 'Tipo',
+      priority: 'medium', // Visible en tablet y desktop
+    },
+    {
       key: 'estado',
       label: 'Estado',
+      priority: 'low', // Solo visible en pantallas grandes
       render: (value: 'activo' | 'inactivo') => {
         const isActivo = value === 'activo';
         return (
@@ -426,22 +483,26 @@ const CatalogoPage = () => {
     {
       key: 'descripcion',
       label: 'Descripción',
-    },
-    {
-      key: 'categoria',
-      label: 'Categoría',
+      priority: 'high', // Siempre visible en móvil
     },
     {
       key: 'precioUnitario',
       label: 'Precio',
+      priority: 'high', // Siempre visible en móvil
       render: (value: string | number) => {
         const precio = typeof value === 'string' ? parseFloat(value) : value;
         return `C$${precio.toFixed(2)}`;
       },
     },
     {
+      key: 'categoria',
+      label: 'Categoría',
+      priority: 'medium', // Visible en tablet y desktop
+    },
+    {
       key: 'estado',
       label: 'Estado',
+      priority: 'low', // Solo visible en pantallas grandes
       render: (value: 'activo' | 'inactivo') => {
         const isActivo = value === 'activo';
         return (
@@ -463,10 +524,12 @@ const CatalogoPage = () => {
     {
       key: 'descripcion',
       label: 'Descripción',
+      priority: 'high', // Siempre visible en móvil
     },
     {
       key: 'activo',
       label: 'Estado',
+      priority: 'medium', // Visible en tablet y desktop
       render: (value: boolean) => {
         return (
           <Badge
@@ -487,14 +550,17 @@ const CatalogoPage = () => {
     {
       key: 'descripcion',
       label: 'Descripción',
+      priority: 'high', // Siempre visible en móvil
     },
     {
       key: 'tipo',
       label: 'Tipo',
+      priority: 'medium', // Visible en tablet y desktop
     },
     {
       key: 'canalesDisponibles',
       label: 'Canales',
+      priority: 'low', // Solo visible en pantallas grandes
       render: (value: string[]) => {
         return value?.join(', ') || 'N/A';
       },
@@ -502,6 +568,7 @@ const CatalogoPage = () => {
     {
       key: 'estado',
       label: 'Estado',
+      priority: 'low', // Solo visible en pantallas grandes
       render: (value: 'activo' | 'inactivo') => {
         const isActivo = value === 'activo';
         return (
@@ -592,16 +659,16 @@ const CatalogoPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-2 sm:mb-3 text-gray-900 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-title-large mb-2 sm:mb-3 text-gray-900 tracking-tight">
               Catálogo
             </h1>
-            <p className="text-sm sm:text-base text-gray-500 font-medium">
+            <p className="text-sm sm:text-base text-gray-500 font-light">
               Administra flores, accesorios, formas de arreglo y métodos de pago
             </p>
           </div>
           <Button
             onClick={handleCreate}
-            className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-2xl shadow-[#50C878]/50 gap-2 h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0 transition-all duration-200 hover:scale-105 hover:shadow-[#50C878]/60"
+            className="gap-2 h-11 sm:h-12 px-5 sm:px-6 text-sm sm:text-base font-semibold whitespace-nowrap shrink-0"
           >
             <MdAdd className="h-5 w-5" />
             <span className="hidden sm:inline">{currentData.buttonText}</span>
@@ -610,43 +677,43 @@ const CatalogoPage = () => {
         </div>
 
         {/* Tabs */}
-        <div className="bg-gray-100 rounded-xl p-1.5 flex flex-wrap gap-1.5 border border-gray-200">
+        <div className="bg-white rounded-lg p-1.5 flex flex-wrap gap-2 border border-gray-200 shadow-sm">
           <button
-            onClick={() => setActiveTab('flores')}
-            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            onClick={() => handleTabChange('flores')}
+            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === 'flores'
-                ? 'bg-[#50C878] text-white shadow-md shadow-[#50C878]/30'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200 bg-white'
+                ? 'bg-[#1E5128] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 bg-transparent'
             }`}
           >
             Flores
           </button>
           <button
-            onClick={() => setActiveTab('accesorios')}
-            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            onClick={() => handleTabChange('accesorios')}
+            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === 'accesorios'
-                ? 'bg-[#50C878] text-white shadow-md shadow-[#50C878]/30'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200 bg-white'
+                ? 'bg-[#4CAF50] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 bg-transparent'
             }`}
           >
             Accesorios
           </button>
           <button
-            onClick={() => setActiveTab('formas')}
-            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            onClick={() => handleTabChange('formas')}
+            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === 'formas'
-                ? 'bg-[#50C878] text-white shadow-md shadow-[#50C878]/30'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200 bg-white'
+                ? 'bg-[#4CAF50] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 bg-transparent'
             }`}
           >
             Formas
           </button>
           <button
-            onClick={() => setActiveTab('metodos')}
-            className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 ${
+            onClick={() => handleTabChange('metodos')}
+            className={`px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
               activeTab === 'metodos'
-                ? 'bg-[#50C878] text-white shadow-md shadow-[#50C878]/30'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200 bg-white'
+                ? 'bg-[#4CAF50] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 bg-transparent'
             }`}
           >
             Métodos de Pago

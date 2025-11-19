@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getClientes } from '../actions/getClientes';
 import type { Cliente } from '../types/cliente.interface';
@@ -44,22 +44,7 @@ export const useCliente = (options?: UseClienteOptions) => {
     retry: 1,
   });
 
-  useEffect(() => {
-    if (query.isError && query.error) {
-      console.error('Error al cargar clientes:', query.error);
-      if (query.error instanceof Error) {
-        console.error('Error message:', query.error.message);
-        console.error('Error stack:', query.error.stack);
-      }
-      if (
-        query.error &&
-        typeof query.error === 'object' &&
-        'response' in query.error
-      ) {
-        console.error('Error response:', (query.error as any).response);
-      }
-    }
-  }, [query.isError, query.error]);
+  // Error handling se hace en el componente - no necesitamos useEffect aquí
 
   const clientes = useMemo(() => {
     if (!query.data) return [];

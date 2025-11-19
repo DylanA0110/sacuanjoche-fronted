@@ -1,4 +1,3 @@
-import { SidebarTrigger } from '@/shared/components/ui/sidebar';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import {
@@ -27,7 +26,13 @@ const getUserEmail = (): string | null => {
   }
 };
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onToggleSidebar: () => void;
+  onOpenMobile: () => void;
+  isMobile: boolean;
+}
+
+export function AppHeader({ onToggleSidebar, onOpenMobile }: AppHeaderProps) {
   const navigate = useNavigate();
   const userEmail = getUserEmail();
 
@@ -43,13 +48,28 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-14 flex items-center justify-between px-4 border-b bg-white shadow-sm">
-      {/* Botón oficial del sidebar */}
-      <SidebarTrigger className="h-10! w-10! border border-gray-300 rounded-md hover:bg-gray-100 shrink-0">
-        <MdMenu className="h-5 w-5 text-gray-800" />
-      </SidebarTrigger>
+    <header className="sticky top-0 z-40 h-16 bg-white shadow-sm border-b border-gray-200/40 flex items-center justify-between px-4 sm:px-6 font-sans">
+      <div className="flex items-center gap-3">
+        {/* Botón mobile - hamburger menu */}
+        <button
+          onClick={onOpenMobile}
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+          aria-label="Abrir menú"
+        >
+          <MdMenu className="h-6 w-6 text-gray-700" />
+        </button>
 
-      {/* Avatar */}
+        {/* Botón Desktop - toggle sidebar */}
+        <button
+          onClick={onToggleSidebar}
+          className="hidden md:flex p-2 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+          aria-label="Alternar sidebar"
+        >
+          <MdMenu className="h-6 w-6 text-gray-700" />
+        </button>
+      </div>
+
+      {/* Avatar y menú de usuario */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -57,8 +77,8 @@ export function AppHeader() {
             size="sm"
             className="h-9 w-9 p-0 rounded-full hover:bg-gray-100"
           >
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-linear-to-br from-[#50C878] to-[#3aa85c] text-white">
+            <Avatar className="h-9 w-9 ring-2 ring-gray-200">
+              <AvatarFallback className="bg-[#1E5128] text-white font-semibold font-sans shadow-sm">
                 {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
               </AvatarFallback>
             </Avatar>

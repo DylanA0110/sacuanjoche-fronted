@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,12 @@ interface AccesorioFormProps {
   isLoading?: boolean;
 }
 
+interface FormValues {
+  descripcion: string;
+  precioUnitario: number;
+  categoria: string;
+}
+
 export function AccesorioForm({
   open,
   onOpenChange,
@@ -28,54 +35,46 @@ export function AccesorioForm({
   onSubmit,
   isLoading = false,
 }: AccesorioFormProps) {
-  const [formData, setFormData] = useState<CreateAccesorioDto>({
-    descripcion: '',
-    precioUnitario: 0,
-    categoria: '',
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      descripcion: '',
+      precioUnitario: 0,
+      categoria: '',
+    },
   });
+
   const [precioInput, setPrecioInput] = useState('');
 
   useEffect(() => {
     if (accesorio) {
       const precio = typeof accesorio.precioUnitario === 'string' ? parseFloat(accesorio.precioUnitario) : accesorio.precioUnitario;
-      setFormData({
+      reset({
         descripcion: accesorio.descripcion,
         precioUnitario: precio,
         categoria: accesorio.categoria,
       });
       setPrecioInput(precio.toString());
     } else {
-      setFormData({
+      reset({
         descripcion: '',
         precioUnitario: 0,
         categoria: '',
       });
       setPrecioInput('');
     }
-  }, [accesorio, open]);
+  }, [accesorio, open, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.descripcion.trim() || !formData.categoria.trim() || formData.precioUnitario <= 0) {
-      return;
-    }
-
+  const onSubmitForm = (data: FormValues) => {
     const dataToSubmit = accesorio
-      ? formData
-      : { ...formData, estado: 'activo' };
-
+      ? data
+      : { ...data, estado: 'activo' as const };
     onSubmit(dataToSubmit);
-  };
-
-  const handleChange = (
-    field: keyof CreateAccesorioDto,
-    value: string | number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
   };
 
   return (
@@ -91,19 +90,22 @@ export function AccesorioForm({
               : 'Completa los datos para crear un nuevo accesorio'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="descripcion" className="text-sm font-semibold text-gray-700">
               Descripción *
             </Label>
             <Input
               id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => handleChange('descripcion', e.target.value)}
+              {...register('descripcion', {
+                required: 'La descripción es requerida',
+              })}
               placeholder="Cinta decorativa dorada"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.descripcion && (
+              <p className="text-sm text-red-500 mt-1">{errors.descripcion.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -112,12 +114,15 @@ export function AccesorioForm({
             </Label>
             <Input
               id="categoria"
-              value={formData.categoria}
-              onChange={(e) => handleChange('categoria', e.target.value)}
+              {...register('categoria', {
+                required: 'La categoría es requerida',
+              })}
               placeholder="Decoración"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.categoria && (
+              <p className="text-sm text-red-500 mt-1">{errors.categoria.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -136,16 +141,18 @@ export function AccesorioForm({
                   setPrecioInput(value);
                   const numValue = parseFloat(value);
                   if (!isNaN(numValue) && numValue >= 0) {
-                    handleChange('precioUnitario', numValue);
+                    setValue('precioUnitario', numValue);
                   } else if (value === '') {
-                    handleChange('precioUnitario', 0);
+                    setValue('precioUnitario', 0);
                   }
                 }
               }}
               placeholder="2.50 C$"
               className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
-              required
             />
+            {errors.precioUnitario && (
+              <p className="text-sm text-red-500 mt-1">{errors.precioUnitario.message}</p>
+            )}
           </div>
 
           <DialogFooter className="gap-3 pt-4">

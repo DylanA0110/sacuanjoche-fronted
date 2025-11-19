@@ -15,6 +15,8 @@ export interface Column {
   key: string;
   label: string;
   render?: (value: any, row: any) => React.ReactNode;
+  mobileHidden?: boolean; // Ocultar en móvil
+  priority?: 'high' | 'medium' | 'low'; // Prioridad para mostrar en móvil
 }
 
 interface DataTableProps {
@@ -83,27 +85,38 @@ export function DataTable({
                 setInternalSearch(newValue);
               }
             }}
-            className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 text-sm sm:text-base"
+            className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#50C878] focus:ring-[#50C878]/20 text-sm sm:text-base rounded-lg transition-all duration-200"
           />
         </div>
       )}
 
       {/* Table */}
-      <div className="w-full overflow-x-auto border border-gray-200 rounded-lg bg-white">
-        <div className="min-w-[640px]">
-          <Table className="w-full">
+      <div className="w-full overflow-x-auto rounded-lg bg-white border border-gray-200 shadow-md scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        <div className="min-w-max md:min-w-full">
+          <Table className="w-full table-auto min-w-[600px]">
             <TableHeader>
-              <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                {columns.map((col) => (
+              <TableRow className="bg-gray-50 border-b border-gray-200">
+                {columns.map((col, index) => (
                   <TableHead
                     key={col.key}
-                    className="text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap px-3 sm:px-4 py-3 min-w-[100px]"
+                    className={`text-xs sm:text-sm font-semibold text-gray-900 px-4 sm:px-5 py-3.5 sm:py-4 ${
+                      col.mobileHidden ? 'hidden md:table-cell' : ''
+                    } ${
+                      col.priority === 'low' ? 'hidden lg:table-cell' : ''
+                    } ${
+                      // Columna Cliente sticky
+                      col.key === 'cliente' 
+                        ? 'sticky left-0 z-20 bg-gray-50 min-w-[150px] sm:min-w-[180px]'
+                        : col.key === 'direccionTxt'
+                        ? 'min-w-[200px] max-w-[250px] whitespace-normal'
+                        : 'whitespace-nowrap min-w-[80px] sm:min-w-[100px]'
+                    }`}
                   >
                     {col.label}
                   </TableHead>
                 ))}
                 {(onView || onEdit || onDelete || customActions) && (
-                  <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap px-3 sm:px-4 py-3 min-w-[120px]">
+                  <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap px-4 sm:px-5 py-3.5 sm:py-4 min-w-[100px] sm:min-w-[120px]">
                     Acciones
                   </TableHead>
                 )}
@@ -117,11 +130,11 @@ export function DataTable({
                       columns.length +
                       (onView || onEdit || onDelete || customActions ? 1 : 0)
                     }
-                    className="text-center py-12"
+                    className="text-center py-16"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
-                      <span className="text-sm text-gray-500">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-10 h-10 border-3 border-[#50C878]/20 border-t-[#50C878] rounded-full animate-spin" />
+                      <span className="text-sm text-gray-600 font-medium">
                         Cargando datos...
                       </span>
                     </div>
@@ -134,11 +147,13 @@ export function DataTable({
                       columns.length +
                       (onView || onEdit || onDelete || customActions ? 1 : 0)
                     }
-                    className="text-center py-12"
+                    className="text-center py-16"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-lg">⚠️</span>
-                      <span className="text-sm text-red-600">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                        <span className="text-2xl">⚠️</span>
+                      </div>
+                      <span className="text-sm text-red-600 font-medium">
                         Error al cargar los datos
                       </span>
                     </div>
@@ -151,11 +166,13 @@ export function DataTable({
                       columns.length +
                       (onView || onEdit || onDelete || customActions ? 1 : 0)
                     }
-                    className="text-center py-12"
+                    className="text-center py-16"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-lg">📭</span>
-                      <span className="text-sm text-gray-500">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                        <span className="text-2xl">📭</span>
+                      </div>
+                      <span className="text-sm text-gray-600 font-medium">
                         No se encontraron resultados
                       </span>
                     </div>
@@ -165,12 +182,23 @@ export function DataTable({
                 filteredData.map((item, idx) => (
                   <TableRow
                     key={idx}
-                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                    className="border-b border-gray-100 hover:bg-[#D0F0C0]/10 transition-colors duration-150 group"
                   >
                     {columns.map((col) => (
                       <TableCell
                         key={col.key}
-                        className="text-sm text-gray-900 px-3 sm:px-4 py-3 whitespace-nowrap"
+                        className={`text-sm text-gray-800 px-4 sm:px-5 py-3.5 sm:py-4 group-hover:text-gray-900 ${
+                      col.mobileHidden ? 'hidden md:table-cell' : ''
+                    } ${
+                      col.priority === 'low' ? 'hidden lg:table-cell' : ''
+                        } ${
+                      // Columna Cliente sticky
+                      col.key === 'cliente'
+                        ? 'sticky left-0 z-10 bg-white group-hover:bg-gray-50 whitespace-nowrap min-w-[150px] sm:min-w-[180px] shadow-[2px_0_4px_rgba(0,0,0,0.05)]'
+                        : col.key === 'direccionTxt'
+                        ? 'min-w-[200px] max-w-[250px] whitespace-normal break-words'
+                        : 'whitespace-nowrap'
+                    }`}
                       >
                         {col.render
                           ? col.render(item[col.key], item)
@@ -178,7 +206,7 @@ export function DataTable({
                       </TableCell>
                     ))}
                     {(onView || onEdit || onDelete || customActions) && (
-                      <TableCell className="text-right px-3 sm:px-4 py-3 whitespace-nowrap">
+                      <TableCell className="text-right px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           {customActions && customActions(item)}
                           {onView && (
@@ -186,7 +214,7 @@ export function DataTable({
                               size="sm"
                               variant="ghost"
                               onClick={() => onView(item)}
-                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 shrink-0"
+                              className="h-9 w-9 p-0 text-gray-400 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
                               title="Ver detalles"
                             >
                               <MdVisibility className="h-4 w-4" />
@@ -197,7 +225,7 @@ export function DataTable({
                               size="sm"
                               variant="ghost"
                               onClick={() => onEdit(item)}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 shrink-0"
+                              className="h-9 w-9 p-0 text-gray-400 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
                               title="Editar"
                             >
                               <MdEdit className="h-4 w-4" />
@@ -208,7 +236,7 @@ export function DataTable({
                               size="sm"
                               variant="ghost"
                               onClick={() => onDelete(item)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                              className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0 transition-all duration-200"
                               title="Eliminar"
                             >
                               <MdDelete className="h-4 w-4" />
@@ -225,9 +253,9 @@ export function DataTable({
         </div>
       </div>
 
-      {/* Pagination Premium */}
+      {/* Pagination */}
       {totalItems && totalItems > 0 && onPageChange && (
-        <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-gray-200/80 bg-gray-50/50 rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-gray-200 bg-white rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-gray-600 text-center sm:text-left font-medium">
             Mostrando{' '}
             <span className="font-semibold text-gray-900">
@@ -244,13 +272,13 @@ export function DataTable({
             </span>{' '}
             de <span className="font-semibold text-gray-900">{totalItems}</span>
           </p>
-          <div className="flex gap-3 w-full sm:w-auto justify-center sm:justify-end">
+          <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange((currentPage || 1) - 1)}
               disabled={(currentPage || 1) === 1}
-              className="border-gray-300/80 text-gray-700 hover:bg-gray-100 hover:border-gray-400 text-sm font-medium h-9 px-5 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
             >
               Anterior
             </Button>
@@ -259,7 +287,7 @@ export function DataTable({
               size="sm"
               onClick={() => onPageChange((currentPage || 1) + 1)}
               disabled={(currentPage || 1) * (itemsPerPage || 10) >= totalItems}
-              className="border-gray-300/80 text-gray-700 hover:bg-gray-100 hover:border-gray-400 text-sm font-medium h-9 px-5 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
             >
               Siguiente
             </Button>

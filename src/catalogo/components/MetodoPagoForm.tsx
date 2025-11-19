@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,12 @@ interface MetodoPagoFormProps {
   isLoading?: boolean;
 }
 
+interface FormValues {
+  descripcion: string;
+  tipo: string;
+  canalesDisponibles: string[];
+}
+
 export function MetodoPagoForm({
   open,
   onOpenChange,
@@ -35,59 +42,60 @@ export function MetodoPagoForm({
   onSubmit,
   isLoading = false,
 }: MetodoPagoFormProps) {
-  const [formData, setFormData] = useState<CreateMetodoPagoDto>({
-    descripcion: '',
-    tipo: '',
-    canalesDisponibles: [],
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      descripcion: '',
+      tipo: '',
+      canalesDisponibles: [],
+    },
   });
+
+  const canalesDisponibles = watch('canalesDisponibles');
   const [canalInput, setCanalInput] = useState('');
 
   useEffect(() => {
     if (metodoPago) {
-      setFormData({
+      reset({
         descripcion: metodoPago.descripcion,
         tipo: metodoPago.tipo,
         canalesDisponibles: metodoPago.canalesDisponibles || [],
       });
     } else {
-      setFormData({
+      reset({
         descripcion: '',
         tipo: '',
         canalesDisponibles: [],
       });
     }
     setCanalInput('');
-  }, [metodoPago, open]);
+  }, [metodoPago, open, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.descripcion.trim() || !formData.tipo.trim() || formData.canalesDisponibles.length === 0) {
-      return;
-    }
-
+  const onSubmitForm = (data: FormValues) => {
     const dataToSubmit = metodoPago
-      ? formData
-      : { ...formData, estado: 'activo' };
-
+      ? data
+      : { ...data, estado: 'activo' as const };
     onSubmit(dataToSubmit);
   };
 
   const handleAddCanal = () => {
-    if (canalInput.trim() && !formData.canalesDisponibles.includes(canalInput.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        canalesDisponibles: [...prev.canalesDisponibles, canalInput.trim()],
-      }));
+    if (canalInput.trim() && !canalesDisponibles.includes(canalInput.trim())) {
+      setValue('canalesDisponibles', [...canalesDisponibles, canalInput.trim()]);
       setCanalInput('');
     }
   };
 
   const handleRemoveCanal = (canal: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      canalesDisponibles: prev.canalesDisponibles.filter((c) => c !== canal),
-    }));
+    setValue(
+      'canalesDisponibles',
+      canalesDisponibles.filter((c) => c !== canal)
+    );
   };
 
   return (
@@ -103,19 +111,22 @@ export function MetodoPagoForm({
               : 'Completa los datos para crear un nuevo método de pago'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="descripcion" className="text-sm font-semibold text-gray-700">
               Descripción *
             </Label>
             <Input
               id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
+              {...register('descripcion', {
+                required: 'La descripción es requerida',
+              })}
               placeholder="PayPal"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.descripcion && (
+              <p className="text-sm text-red-500 mt-1">{errors.descripcion.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -123,8 +134,8 @@ export function MetodoPagoForm({
               Tipo *
             </Label>
             <Select
-              value={formData.tipo}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, tipo: value }))}
+              value={watch('tipo')}
+              onValueChange={(value) => setValue('tipo', value)}
             >
               <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                 <SelectValue placeholder="Selecciona un tipo" />
@@ -135,6 +146,9 @@ export function MetodoPagoForm({
                 <SelectItem value="mixto">Mixto</SelectItem>
               </SelectContent>
             </Select>
+            {errors.tipo && (
+              <p className="text-sm text-red-500 mt-1">{errors.tipo.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -163,7 +177,7 @@ export function MetodoPagoForm({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {formData.canalesDisponibles.map((canal) => (
+              {canalesDisponibles.map((canal) => (
                 <span
                   key={canal}
                   className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-800 rounded-md text-sm"
@@ -179,6 +193,9 @@ export function MetodoPagoForm({
                 </span>
               ))}
             </div>
+            {errors.canalesDisponibles && (
+              <p className="text-sm text-red-500 mt-1">{errors.canalesDisponibles.message}</p>
+            )}
           </div>
 
           <DialogFooter className="gap-3 pt-4">

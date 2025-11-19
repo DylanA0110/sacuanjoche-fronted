@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,13 @@ interface FlorFormProps {
   isLoading?: boolean;
 }
 
+interface FormValues {
+  nombre: string;
+  color: string;
+  precioUnitario: number;
+  tipo: string;
+}
+
 export function FlorForm({
   open,
   onOpenChange,
@@ -35,18 +43,29 @@ export function FlorForm({
   onSubmit,
   isLoading = false,
 }: FlorFormProps) {
-  const [formData, setFormData] = useState<CreateFlorDto>({
-    nombre: '',
-    color: '',
-    precioUnitario: 0,
-    tipo: '',
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      nombre: '',
+      color: '',
+      precioUnitario: 0,
+      tipo: '',
+    },
   });
+
+  const precioUnitario = watch('precioUnitario');
   const [precioInput, setPrecioInput] = useState('');
 
   useEffect(() => {
     if (flor) {
       const precio = typeof flor.precioUnitario === 'string' ? parseFloat(flor.precioUnitario) : flor.precioUnitario;
-      setFormData({
+      reset({
         nombre: flor.nombre,
         color: flor.color,
         precioUnitario: precio,
@@ -54,7 +73,7 @@ export function FlorForm({
       });
       setPrecioInput(precio.toString());
     } else {
-      setFormData({
+      reset({
         nombre: '',
         color: '',
         precioUnitario: 0,
@@ -62,30 +81,13 @@ export function FlorForm({
       });
       setPrecioInput('');
     }
-  }, [flor, open]);
+  }, [flor, open, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.nombre.trim() || !formData.color.trim() || !formData.tipo.trim() || formData.precioUnitario <= 0) {
-      return;
-    }
-
+  const onSubmitForm = (data: FormValues) => {
     const dataToSubmit = flor
-      ? formData
-      : { ...formData, estado: 'activo' };
-
+      ? data
+      : { ...data, estado: 'activo' as const };
     onSubmit(dataToSubmit);
-  };
-
-  const handleChange = (
-    field: keyof CreateFlorDto,
-    value: string | number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
   };
 
   return (
@@ -101,19 +103,22 @@ export function FlorForm({
               : 'Completa los datos para crear una nueva flor'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nombre" className="text-sm font-semibold text-gray-700">
               Nombre *
             </Label>
             <Input
               id="nombre"
-              value={formData.nombre}
-              onChange={(e) => handleChange('nombre', e.target.value)}
+              {...register('nombre', {
+                required: 'El nombre es requerido',
+              })}
               placeholder="Rosa"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.nombre && (
+              <p className="text-sm text-red-500 mt-1">{errors.nombre.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -122,12 +127,15 @@ export function FlorForm({
             </Label>
             <Input
               id="color"
-              value={formData.color}
-              onChange={(e) => handleChange('color', e.target.value)}
+              {...register('color', {
+                required: 'El color es requerido',
+              })}
               placeholder="Rojo"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.color && (
+              <p className="text-sm text-red-500 mt-1">{errors.color.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -136,12 +144,15 @@ export function FlorForm({
             </Label>
             <Input
               id="tipo"
-              value={formData.tipo}
-              onChange={(e) => handleChange('tipo', e.target.value)}
+              {...register('tipo', {
+                required: 'El tipo es requerido',
+              })}
               placeholder="Tropical"
               className="bg-white border-gray-300 text-gray-900"
-              required
             />
+            {errors.tipo && (
+              <p className="text-sm text-red-500 mt-1">{errors.tipo.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -160,16 +171,18 @@ export function FlorForm({
                   setPrecioInput(value);
                   const numValue = parseFloat(value);
                   if (!isNaN(numValue) && numValue >= 0) {
-                    handleChange('precioUnitario', numValue);
+                    setValue('precioUnitario', numValue);
                   } else if (value === '') {
-                    handleChange('precioUnitario', 0);
+                    setValue('precioUnitario', 0);
                   }
                 }
               }}
               placeholder="100.00 C$"
               className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
-              required
             />
+            {errors.precioUnitario && (
+              <p className="text-sm text-red-500 mt-1">{errors.precioUnitario.message}</p>
+            )}
           </div>
 
           <DialogFooter className="gap-3 pt-4">

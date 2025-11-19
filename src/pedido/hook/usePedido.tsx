@@ -34,22 +34,7 @@ export const usePedido = (options?: UsePedidoOptions) => {
     retry: 1,
   });
 
-  useEffect(() => {
-    if (query.isError && query.error) {
-      console.error('Error al cargar pedidos:', query.error);
-      if (query.error instanceof Error) {
-        console.error('Error message:', query.error.message);
-        console.error('Error stack:', query.error.stack);
-      }
-      if (
-        query.error &&
-        typeof query.error === 'object' &&
-        'response' in query.error
-      ) {
-        console.error('Error response:', (query.error as any).response);
-      }
-    }
-  }, [query.isError, query.error]);
+  // Error handling se hace en el componente - no necesitamos useEffect aquí
 
   const pedidos = useMemo(() => {
     if (!query.data) return [];

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -20,9 +22,17 @@ import {
 } from '@/shared/components/ui/select';
 import { getPedidoById } from '@/pedido/actions/getPedidoById';
 import { createFactura } from '../actions/createFactura';
-import type { CreateFacturaDto } from '../types/factura.interface';
+import type { CreateFacturaDto, FacturaEstado } from '../types/factura.interface';
 import { MdArrowBack, MdSave, MdReceipt } from 'react-icons/md';
 import { getFacturaPdf } from '../actions/getFacturaPdf';
+
+interface FormValues {
+  idPedido: number;
+  idEmpleado: number;
+  numFactura: string;
+  estado: FacturaEstado;
+  montoTotal: number;
+}
 
 const NuevaFacturaPage = () => {
   const { idPedido } = useParams<{ idPedido: string }>();
@@ -37,7 +47,10 @@ const NuevaFacturaPage = () => {
       await getFacturaPdf(idFactura);
       toast.success('PDF de factura descargado');
     } catch (e: any) {
-      toast.error(e?.message || 'Error al descargar PDF');
+      toast.error('Error al descargar PDF', {
+        description: cleanErrorMessage(e),
+        duration: 5000,
+      });
     } finally {
       setDownloadingPdf(false);
     }
@@ -45,12 +58,21 @@ const NuevaFacturaPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<CreateFacturaDto>({
-    idPedido: 0,
-    idEmpleado: 1, // Por ahora siempre se usa el id 1
-    numFactura: '',
-    estado: 'Emitida',
-    montoTotal: 0,
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      idPedido: 0,
+      idEmpleado: 1,
+      numFactura: '',
+      estado: 'pendiente',
+      montoTotal: 0,
+    },
   });
 
   // Obtener el pedido por ID
@@ -76,15 +98,15 @@ const NuevaFacturaPage = () => {
           ? parseFloat(pedido.totalPedido)
           : pedido.totalPedido;
 
-      setFormData({
+      reset({
         idPedido: pedido.idPedido,
-        idEmpleado: 1, // Por ahora siempre se usa el id 1
+        idEmpleado: 1,
         numFactura,
-        estado: 'Emitida',
+        estado: 'pendiente',
         montoTotal: totalPedido,
       });
     }
-  }, [pedido]);
+  }, [pedido, reset]);
 
   const createFacturaMutation = useMutation({
     mutationFn: createFactura,
@@ -95,33 +117,15 @@ const NuevaFacturaPage = () => {
       navigate('/admin/pedidos');
     },
     onError: (error: any) => {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Error al crear la factura';
-      toast.error(errorMessage);
+      toast.error('Error al crear la factura', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.idPedido || !formData.idEmpleado || !formData.numFactura) {
-      toast.error('Por favor completa todos los campos requeridos');
-      return;
-    }
-
-    createFacturaMutation.mutate(formData);
-  };
-
-  const handleChange = (
-    field: keyof CreateFacturaDto,
-    value: string | number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const onSubmitForm = (data: FormValues) => {
+    createFacturaMutation.mutate(data);
   };
 
   if (isLoadingPedido) {
@@ -198,7 +202,7 @@ const NuevaFacturaPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-6 pb-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
             {/* Información del Pedido (solo lectura) */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -241,12 +245,15 @@ const NuevaFacturaPage = () => {
               </Label>
               <Input
                 id="numFactura"
-                value={formData.numFactura}
-                onChange={(e) => handleChange('numFactura', e.target.value)}
+                {...register('numFactura', {
+                  required: 'El número de factura es requerido',
+                })}
                 placeholder="FAC-2024-001"
                 className="bg-white border-gray-300 text-gray-900"
-                required
               />
+              {errors.numFactura && (
+                <p className="text-sm text-red-500 mt-1">{errors.numFactura.message}</p>
+              )}
             </div>
 
             {/* Estado */}
@@ -255,19 +262,21 @@ const NuevaFacturaPage = () => {
                 Estado *
               </Label>
               <Select
-                value={formData.estado}
-                onValueChange={(value) => handleChange('estado', value)}
+                value={watch('estado')}
+                onValueChange={(value) => setValue('estado', value as FacturaEstado)}
               >
                 <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue placeholder="Selecciona un estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Emitida">Emitida</SelectItem>
-                  <SelectItem value="Pagada">Pagada</SelectItem>
-                  <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="Anulada">Anulada</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="pagado">Pagado</SelectItem>
+                  <SelectItem value="anulada">Anulada</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.estado && (
+                <p className="text-sm text-red-500 mt-1">{errors.estado.message}</p>
+              )}
             </div>
 
             {/* Monto Total */}
@@ -279,14 +288,17 @@ const NuevaFacturaPage = () => {
                 id="montoTotal"
                 type="number"
                 step="0.01"
-                value={formData.montoTotal}
-                onChange={(e) =>
-                  handleChange('montoTotal', parseFloat(e.target.value) || 0)
-                }
+                {...register('montoTotal', {
+                  required: 'El monto total es requerido',
+                  min: { value: 0, message: 'El monto debe ser mayor o igual a 0' },
+                  valueAsNumber: true,
+                })}
                 placeholder="0.00"
                 className="bg-white border-gray-300 text-gray-900"
-                required
               />
+              {errors.montoTotal && (
+                <p className="text-sm text-red-500 mt-1">{errors.montoTotal.message}</p>
+              )}
             </div>
 
             {/* Botones */}

@@ -1,18 +1,7 @@
 import { NavLink } from '@/shared/components/layout/NavLink';
 import { useLocation } from 'react-router';
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  useSidebar,
-} from '@/shared/components/ui/sidebar';
 import { Button } from '@/shared/components/ui/button';
+import { MdClose } from 'react-icons/md';
 import {
   MdDashboard,
   MdLocalFlorist,
@@ -32,111 +21,129 @@ const menuItems = [
   { title: 'Rutas & Envíos', url: '/admin/rutas', icon: MdLocalShipping },
 ];
 
-export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar();
+interface AppSidebarProps {
+  isOpen: boolean;
+  mobile: boolean;
+  onToggle?: () => void;
+  onClose?: () => void;
+}
+
+export function AppSidebar({
+  isOpen,
+  mobile,
+  onToggle,
+  onClose,
+}: AppSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const isCollapsed = state === 'collapsed';
 
   return (
-    <ShadcnSidebar
-      collapsible="icon"
-      className="w-64 data-[state=collapsed]:w-16 border-r border-gray-300 shadow-sm"
+    <aside
+      className={`
+        fixed top-0 left-0 h-full bg-gradient-to-b from-[#1a1a1a] via-[#0D0D0D] to-[#1a1a1a] text-white z-50
+        transition-all duration-300 ease-linear
+        ${mobile ? 'w-64' : isOpen ? 'w-64' : 'w-16'}
+        ${mobile ? '' : 'hidden md:block'}
+        ${mobile ? 'shadow-2xl' : 'shadow-xl'}
+        overflow-hidden
+        font-sans
+        border-r border-white/5
+      `}
     >
-      <SidebarContent
-        style={{ backgroundColor: '#1f2937' }}
-        className="border-r border-gray-300 flex flex-col"
-      >
+      <div className="flex flex-col h-full">
         {/* HEADER LOGO */}
         <div
-          className={`${
-            isCollapsed ? 'px-2 py-4' : 'px-4 py-6'
-          } border-b border-gray-300`}
+          className={`flex items-center justify-between shrink-0 ${
+            isOpen ? 'px-4 py-6' : 'px-2 py-4 justify-center'
+          }`}
         >
-          <div className="flex items-center gap-3 justify-center">
+          <div
+            className={`flex items-center ${
+              isOpen ? 'gap-3' : 'justify-center'
+            }`}
+          >
             <div
-              className={`${isCollapsed ? 'w-10 h-10' : 'w-12 h-12'} 
-              rounded-xl flex items-center justify-center bg-linear-to-br from-[#50C878] to-[#3aa85c]`}
+              className={`${
+                isOpen ? 'w-10 h-10' : 'w-9 h-9'
+              } rounded-xl flex items-center justify-center bg-gradient-to-br from-[#50C878]/20 to-[#00A87F]/20 backdrop-blur-sm border border-[#50C878]/30 shadow-lg`}
             >
               <GiRose
-                className={`${isCollapsed ? 'h-6 w-6' : 'h-7 w-7'} text-white`}
+                className={`${isOpen ? 'h-5 w-5' : 'h-4 w-4'} text-[#50C878]`}
               />
             </div>
-
-            {!isCollapsed && (
+            {isOpen && (
               <div className="flex flex-col">
-                <h2 className="text-lg font-bold text-white">Floristería</h2>
-                <p className="text-xs text-white/60">Sacuanjoche</p>
+                <h2 className="text-lg font-bold text-white font-sans">
+                  Floristería
+                </h2>
+                <p className="text-xs text-[#50C878]/80 font-sans">
+                  Sacuanjoche
+                </p>
               </div>
             )}
           </div>
+
+          {/* Botón cerrar en móvil */}
+          {mobile && (
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/10 rounded-md transition-colors"
+              aria-label="Cerrar menú"
+            >
+              <MdClose className="h-5 w-5 text-white" />
+            </button>
+          )}
         </div>
 
         {/* MENU */}
-        <SidebarGroup className={isCollapsed ? 'px-1 py-2' : 'px-2 py-4'}>
-          {!isCollapsed && (
-            <SidebarGroupLabel className="text-[11px] text-white/40 px-3 mb-3">
-              MENÚ PRINCIPAL
-            </SidebarGroupLabel>
-          )}
-
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive =
-                  item.url === '/admin'
-                    ? currentPath === '/admin'
-                    : currentPath.startsWith(item.url);
-
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === '/admin'}
-                        className={`group flex items-center ${
-                          isCollapsed
-                            ? 'justify-center px-2 py-2.5'
-                            : 'gap-3 px-3 py-3'
-                        } rounded-xl text-sm transition-all ${
-                          isActive
-                            ? 'bg-linear-to-r from-[#50C878] to-[#3aa85c] text-white'
-                            : 'text-white/60 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Footer con botón para ocultar sidebar */}
-        <SidebarFooter className="mt-auto border-t border-gray-300 p-1.5">
-          <Button
-            onClick={toggleSidebar}
-            variant="ghost"
-            size="sm"
-            className={`w-full ${
-              isCollapsed ? 'justify-center px-1' : 'justify-start px-2'
-            } h-7 text-white/50 hover:text-white/80 hover:bg-white/5 text-[10px] font-normal`}
-            title={isCollapsed ? 'Expandir' : 'Colapsar'}
-          >
-            {isCollapsed ? (
-              <span className="text-sm">→</span>
-            ) : (
-              <>
-                <span className="text-[10px] mr-1.5">←</span>
-                <span>Ocultar</span>
-              </>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-thin scrollbar-thumb-white-20 scrollbar-track-transparent">
+          <div className="px-2 mb-4">
+            {isOpen && (
+              <p className="text-[11px] text-[#50C878]/60 tracking-wider font-medium">
+                Menú Principal
+              </p>
             )}
-          </Button>
-        </SidebarFooter>
-      </SidebarContent>
-    </ShadcnSidebar>
+          </div>
+
+          <div className="space-y-1">
+            {menuItems.map((item) => {
+              const isActive =
+                item.url === '/admin'
+                  ? currentPath === '/admin'
+                  : currentPath.startsWith(item.url);
+
+              return (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  end={item.url === '/admin'}
+                  onClick={mobile ? onClose : undefined}
+                  className={`
+                    flex items-center gap-3 rounded-lg text-sm transition-all duration-150 font-sans
+                    ${
+                      isOpen
+                        ? 'justify-start px-3 py-2.5'
+                        : 'justify-center px-2 py-2.5'
+                    }
+                    ${
+                      isActive
+                        ? 'bg-gradient-to-r from-[#50C878]/20 to-[#50C878]/10 text-white font-semibold border-l-4 border-[#50C878] shadow-sm shadow-[#50C878]/20'
+                        : 'text-white/70 hover:bg-white/5 hover:text-white hover:border-l-4 hover:border-[#50C878]/30'
+                    }
+                  `}
+                >
+                  <item.icon
+                    className={`h-5 w-5 shrink-0 ${
+                      isActive ? 'text-white' : 'text-white/80'
+                    }`}
+                  />
+                  {isOpen && <span className="font-medium">{item.title}</span>}
+                </NavLink>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
+    </aside>
   );
 }
