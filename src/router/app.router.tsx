@@ -7,6 +7,7 @@ const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
 const CatalogPage = lazy(() => import('../landing/pages/CatalogPage'));
 const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
+const PedidoFormPage = lazy(() => import('../pedido/pages/PedidoFormPage'));
 const NuevaFacturaPage = lazy(() => import('../facturas/pages/NuevaFacturaPage'));
 const ClientesPage = lazy(() => import('../cliente/pages/ClientesPage'));
 const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
@@ -68,6 +69,14 @@ export const router = createBrowserRouter([
       {
         path: 'pedidos',
         element: <PedidosPage />,
+      },
+      {
+        path: 'pedidos/nuevo',
+        element: <PedidoFormPage />,
+      },
+      {
+        path: 'pedidos/:idPedido/editar',
+        element: <PedidoFormPage />,
       },
       {
         path: 'pedidos/:idPedido/nueva-factura',

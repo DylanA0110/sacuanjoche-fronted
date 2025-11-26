@@ -17,6 +17,7 @@ export interface Column {
   render?: (value: any, row: any) => React.ReactNode;
   mobileHidden?: boolean; // Ocultar en móvil
   priority?: 'high' | 'medium' | 'low'; // Prioridad para mostrar en móvil
+  compact?: boolean; // Aplicar estilos compactos (menos padding)
 }
 
 interface DataTableProps {
@@ -99,7 +100,9 @@ export function DataTable({
                 {columns.map((col, index) => (
                   <TableHead
                     key={col.key}
-                    className={`text-xs sm:text-sm font-semibold text-gray-900 px-4 sm:px-5 py-3.5 sm:py-4 ${
+                    className={`text-xs sm:text-sm font-semibold text-gray-900 ${
+                      col.compact ? 'px-2 sm:px-3 py-2 sm:py-2.5' : 'px-4 sm:px-5 py-3.5 sm:py-4'
+                    } ${
                       col.mobileHidden ? 'hidden md:table-cell' : ''
                     } ${
                       col.priority === 'low' ? 'hidden lg:table-cell' : ''
@@ -109,6 +112,8 @@ export function DataTable({
                         ? 'sticky left-0 z-20 bg-gray-50 min-w-[150px] sm:min-w-[180px]'
                         : col.key === 'direccionTxt'
                         ? 'min-w-[200px] max-w-[250px] whitespace-normal'
+                        : col.compact
+                        ? 'whitespace-nowrap min-w-[90px] sm:min-w-[100px]'
                         : 'whitespace-nowrap min-w-[80px] sm:min-w-[100px]'
                     }`}
                   >
@@ -187,7 +192,9 @@ export function DataTable({
                     {columns.map((col) => (
                       <TableCell
                         key={col.key}
-                        className={`text-sm text-gray-800 px-4 sm:px-5 py-3.5 sm:py-4 group-hover:text-gray-900 ${
+                        className={`text-sm text-gray-800 ${
+                          col.compact ? 'px-2 sm:px-3 py-2 sm:py-2.5' : 'px-4 sm:px-5 py-3.5 sm:py-4'
+                        } group-hover:text-gray-900 ${
                       col.mobileHidden ? 'hidden md:table-cell' : ''
                     } ${
                       col.priority === 'low' ? 'hidden lg:table-cell' : ''

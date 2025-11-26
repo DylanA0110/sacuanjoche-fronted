@@ -1,8 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { DataTable } from '@/shared/components/Custom/DataTable';
 import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
@@ -14,17 +11,6 @@ import {
 } from '@/shared/components/ui/card';
 import { usePedido } from '../hook/usePedido';
 import type { Pedido } from '../types/pedido.interface';
-import {
-  createPedido,
-  updatePedido,
-  createDetallePedido,
-  createContactoEntrega,
-  updateContactoEntrega,
-  getPedidoById,
-} from '../actions';
-import { getDetallePedidoByPedidoId } from '../actions/getDetallePedidoByPedidoId';
-import { createDireccion, updateDireccion } from '@/cliente/actions';
-import { PedidoForm } from '../components/PedidoForm';
 import { PedidoDetailsModal } from '../components/PedidoDetailsModal';
 import { MdReceipt, MdAdd, MdEdit, MdVisibility } from 'react-icons/md';
 
@@ -66,29 +52,36 @@ const columns: Column[] = [
     key: 'fechaCreacion',
     label: 'Fecha Creación',
     priority: 'low', // Solo visible en pantallas grandes
+    compact: true, // Marca para aplicar estilos compactos
     render: (value) => {
       const date = new Date(value);
-      return date.toLocaleDateString('es-ES');
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
     },
   },
   {
     key: 'fechaEntregaEstimada',
     label: 'Fecha Entrega',
     priority: 'medium', // Visible en tablet y desktop
+    compact: true, // Marca para aplicar estilos compactos
     render: (value) => {
       const date = new Date(value);
-      return date.toLocaleDateString('es-ES');
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
     },
   },
 ];
 
 const Pedidos = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
-  const [editingPedido, setEditingPedido] = useState<Pedido | null>(null);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   // Derivar valores directamente de searchParams (mejor rendimiento)
@@ -150,221 +143,20 @@ const Pedidos = () => {
     setIsDetailsOpen(true);
   }, []);
 
-  const handleEdit = useCallback(async (item: Pedido) => {
-    try {
-      // Cargar el pedido completo con todas sus relaciones
-      const pedidoCompleto = await getPedidoById(item.idPedido);
-
-      // Si no vienen los detalles, cargarlos por separado
-      if (!pedidoCompleto.detalles || pedidoCompleto.detalles.length === 0) {
-        try {
-          const detalles = await getDetallePedidoByPedidoId(item.idPedido);
-          pedidoCompleto.detalles = detalles;
-        } catch {
-          // Si no se pueden cargar los detalles, continuar sin ellos
-        }
-      }
-
-      setEditingPedido(pedidoCompleto);
-      setIsFormOpen(true);
-    } catch (error) {
-      toast.error('Error al cargar el pedido', {
-        description: cleanErrorMessage(error),
-      });
-    }
-  }, []);
+  const handleEdit = useCallback(
+    (item: Pedido) => {
+      navigate(`/admin/pedidos/${item.idPedido}/editar`);
+    },
+    [navigate]
+  );
 
   const handleDelete = useCallback((_item: Pedido) => {
     // TODO: Implementar eliminación del pedido
   }, []);
 
   const handleAddPedido = useCallback(() => {
-    setIsFormOpen(true);
-  }, []);
-
-  const savePedidoMutation = useMutation({
-    mutationFn: async (data: {
-      pedido: any;
-      direccion?: any;
-      contactoEntrega: { nombre: string; apellido: string; telefono: string };
-      detalles: Array<{
-        idArreglo: number;
-        cantidad: number;
-        precioUnitario: number;
-        subtotal: number;
-      }>;
-      isEdit?: boolean;
-      pedidoId?: number;
-    }) => {
-      const isEdit = data.isEdit && data.pedidoId;
-      let idDireccion = data.pedido.idDireccion || 0;
-      let idContactoEntrega = data.pedido.idContactoEntrega || 0;
-
-      // 1. Actualizar o crear dirección si es necesario
-      if (data.direccion) {
-        if (isEdit && data.pedido.idDireccion) {
-          await updateDireccion(data.pedido.idDireccion, data.direccion);
-          idDireccion = data.pedido.idDireccion;
-        } else {
-          const direccionCreada = await createDireccion(data.direccion);
-          if (!direccionCreada.idDireccion) {
-            throw new Error('La dirección creada no tiene idDireccion');
-          }
-          idDireccion = direccionCreada.idDireccion;
-        }
-      }
-
-      // 2. Actualizar o crear contacto de entrega
-      if (isEdit && data.pedido.idContactoEntrega) {
-        await updateContactoEntrega(
-          data.pedido.idContactoEntrega,
-          data.contactoEntrega
-        );
-        idContactoEntrega = data.pedido.idContactoEntrega;
-      } else {
-        const contactoCreado = await createContactoEntrega(
-          data.contactoEntrega
-        );
-        if (!contactoCreado.idContactoEntrega) {
-          throw new Error(
-            'El contacto de entrega creado no tiene idContactoEntrega'
-          );
-        }
-        idContactoEntrega = contactoCreado.idContactoEntrega;
-      }
-
-      // 3. Crear o actualizar pedido
-      const pedidoDto = {
-        ...data.pedido,
-        idDireccion,
-        idContactoEntrega,
-      };
-
-      let pedidoResultado;
-      if (isEdit && data.pedidoId) {
-        pedidoResultado = await updatePedido(data.pedidoId, pedidoDto);
-      } else {
-        pedidoResultado = await createPedido(pedidoDto);
-        if (!pedidoResultado.idPedido) {
-          throw new Error('El pedido creado no tiene idPedido');
-        }
-      }
-
-      // 4. Actualizar o crear detalles del pedido (solo si hay detalles)
-      if (data.detalles && data.detalles.length > 0) {
-        if (isEdit && data.pedidoId) {
-          // En edición, por simplicidad, eliminamos y recreamos los detalles
-          // (En producción, sería mejor actualizar solo los que cambiaron)
-          const detallesPromises = data.detalles.map((detalle) =>
-            createDetallePedido({
-              idPedido: data.pedidoId!,
-              idArreglo: detalle.idArreglo,
-              cantidad: detalle.cantidad,
-              precioUnitario: detalle.precioUnitario,
-              subtotal: detalle.subtotal,
-            })
-          );
-          await Promise.all(detallesPromises);
-        } else {
-          const detallesPromises = data.detalles.map((detalle) =>
-            createDetallePedido({
-              idPedido: pedidoResultado.idPedido,
-              idArreglo: detalle.idArreglo,
-              cantidad: detalle.cantidad,
-              precioUnitario: detalle.precioUnitario,
-              subtotal: detalle.subtotal,
-            })
-          );
-          await Promise.all(detallesPromises);
-        }
-      }
-      // Si no hay detalles, el pedido se guarda sin detalles (válido para edición de pedidos sin arreglos)
-
-      return pedidoResultado;
-    },
-    onSuccess: (pedido, variables) => {
-      const isEdit = variables.isEdit;
-      toast.success(
-        isEdit
-          ? 'Pedido actualizado exitosamente'
-          : 'Pedido creado exitosamente',
-        {
-          description: isEdit
-            ? `El pedido #${pedido.idPedido} ha sido actualizado correctamente`
-            : `El pedido #${pedido.idPedido} ha sido registrado correctamente`,
-          duration: 4000,
-        }
-      );
-      setIsFormOpen(false);
-      setEditingPedido(null);
-    },
-    onError: (error: any, variables) => {
-      const isEdit = variables.isEdit;
-      toast.error(
-        isEdit ? 'Error al actualizar el pedido' : 'Error al crear el pedido',
-        {
-          description: cleanErrorMessage(error),
-          duration: 5000,
-        }
-      );
-    },
-    onSettled: (_data, _error, variables) => {
-      // Invalidación inteligente: solo invalidar lo necesario según la operación
-      const isEdit = variables.isEdit;
-      if (isEdit) {
-        // En edición, invalidar solo el pedido específico si es posible
-        if (variables.pedidoId) {
-          queryClient.invalidateQueries({
-            queryKey: ['pedidos', variables.pedidoId],
-            refetchType: 'active',
-          });
-        }
-        // También invalidar la lista para reflejar cambios
-        queryClient.invalidateQueries({
-          queryKey: ['pedidos'],
-          refetchType: 'active',
-        });
-      } else {
-        // En creación, invalidar la lista completa
-        queryClient.invalidateQueries({
-          queryKey: ['pedidos'],
-          refetchType: 'active',
-        });
-      }
-      // Invalidar detalles solo si se modificaron
-      queryClient.invalidateQueries({
-        queryKey: ['detalle-pedido'],
-        refetchType: 'active',
-      });
-    },
-  });
-
-  const handleSubmitPedido = useCallback(
-    (data: {
-      pedido: any;
-      direccion?: any;
-      contactoEntrega: { nombre: string; apellido: string; telefono: string };
-      detalles: Array<{
-        idArreglo: number;
-        cantidad: number;
-        precioUnitario: number;
-        subtotal: number;
-      }>;
-    }) => {
-      const isEdit = !!editingPedido;
-      savePedidoMutation.mutate({
-        ...data,
-        isEdit,
-        pedidoId: editingPedido?.idPedido,
-        pedido: {
-          ...data.pedido,
-          idDireccion: editingPedido?.idDireccion,
-          idContactoEntrega: editingPedido?.idContactoEntrega,
-        },
-      });
-    },
-    [savePedidoMutation, editingPedido]
-  );
+    navigate('/admin/pedidos/nuevo');
+  }, [navigate]);
 
   // Memoizar datos de tabla para evitar recálculos innecesarios
   const tableData = useMemo(
@@ -412,20 +204,6 @@ const Pedidos = () => {
           </Button>
         </div>
       </div>
-
-      {/* Formulario de Pedido */}
-      <PedidoForm
-        open={isFormOpen}
-        onOpenChange={(open) => {
-          setIsFormOpen(open);
-          if (!open) {
-            setEditingPedido(null);
-          }
-        }}
-        onSubmit={handleSubmitPedido}
-        isLoading={savePedidoMutation.isPending}
-        pedido={editingPedido}
-      />
 
       {/* Modal de Detalles del Pedido */}
       <PedidoDetailsModal

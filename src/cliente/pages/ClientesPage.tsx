@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -89,27 +89,33 @@ const ClientesPage = () => {
   // Usar directamente searchQuery - solo necesitamos un input local para el debounce
   const [searchInput, setSearchInput] = useState(searchQuery);
   const debouncedSearch = useDebounce(searchInput, 500);
+  const isUserTypingRef = useRef(false);
 
   // Actualizar URL cuando cambia el debounced search (único useEffect necesario)
   useEffect(() => {
-    if (debouncedSearch === searchQuery) return;
+    if (debouncedSearch === searchQuery) {
+      isUserTypingRef.current = false;
+      return;
+    }
 
-      const newParams = new URLSearchParams(searchParams);
+    isUserTypingRef.current = true;
+    const newParams = new URLSearchParams(searchParams);
     if (debouncedSearch) {
       newParams.set('q', debouncedSearch);
-      } else {
-        newParams.delete('q');
-      }
-      newParams.delete('page');
-      setSearchParams(newParams, { replace: true });
+    } else {
+      newParams.delete('q');
+    }
+    newParams.delete('page');
+    setSearchParams(newParams, { replace: true });
   }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
 
-  // Sincronizar searchInput cuando cambia la URL (solo si es diferente)
+  // Sincronizar searchInput cuando cambia la URL desde fuera (navegación, etc.)
+  // No sincronizar mientras el usuario está escribiendo
   useEffect(() => {
-    if (searchQuery !== searchInput) {
+    if (!isUserTypingRef.current && searchQuery !== searchInput) {
       setSearchInput(searchQuery);
     }
-  }, [searchQuery, searchInput]);
+  }, [searchQuery]);
 
   const { clientes, totalItems, isLoading, isError, error, refetch } =
     useCliente({

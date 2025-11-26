@@ -1,5 +1,4 @@
-import { useReducer, useEffect, useMemo, useCallback } from 'react';
-import { MdExpandMore, MdExpandLess } from 'react-icons/md';
+import { useReducer, useEffect, useMemo, useCallback, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,7 +34,6 @@ interface ModalState {
   loadingAssoc: boolean;
   flores: ArregloFlor[];
   accesorios: AccesorioArreglo[];
-  showTechnical: boolean;
 }
 
 type ModalAction =
@@ -45,7 +43,6 @@ type ModalAction =
   | { type: 'SET_LOADING_ASSOC'; payload: boolean }
   | { type: 'SET_FLORES'; payload: ArregloFlor[] }
   | { type: 'SET_ACCESORIOS'; payload: AccesorioArreglo[] }
-  | { type: 'TOGGLE_TECHNICAL' }
   | { type: 'RESET' }
   | { type: 'NEXT_IMAGE' }
   | { type: 'PREV_IMAGE' };
@@ -57,7 +54,6 @@ const initialState: ModalState = {
   loadingAssoc: false,
   flores: [],
   accesorios: [],
-  showTechnical: false,
 };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
@@ -74,8 +70,6 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
       return { ...state, flores: action.payload };
     case 'SET_ACCESORIOS':
       return { ...state, accesorios: action.payload };
-    case 'TOGGLE_TECHNICAL':
-      return { ...state, showTechnical: !state.showTechnical };
     case 'NEXT_IMAGE':
       return {
         ...state,
@@ -159,10 +153,6 @@ export function ArregloDetailsModal({
     dispatch({ type: 'PREV_IMAGE' });
   }, []);
 
-  const toggleTechnical = useCallback(() => {
-    dispatch({ type: 'TOGGLE_TECHNICAL' });
-  }, []);
-
   // Valores derivados usando useMemo (ANTES del return condicional)
   const precio = useMemo(
     () =>
@@ -178,6 +168,46 @@ export function ArregloDetailsModal({
     () => state.images[state.currentImageIndex],
     [state.images, state.currentImageIndex]
   );
+
+  // Estado para el aspecto de la imagen actual
+  const [imageAspect, setImageAspect] = useState<{
+    width: number;
+    height: number;
+    ratio: number;
+  } | null>(null);
+
+  // Detectar el aspecto de la imagen cuando cambia
+  useEffect(() => {
+    if (currentImage?.url) {
+      const img = new Image();
+      let isMounted = true;
+
+      img.onload = () => {
+        if (isMounted) {
+          const ratio = img.width / img.height;
+          setImageAspect({
+            width: img.width,
+            height: img.height,
+            ratio,
+          });
+        }
+      };
+
+      img.onerror = () => {
+        if (isMounted) {
+          setImageAspect(null);
+        }
+      };
+
+      img.src = currentImage.url;
+
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setImageAspect(null);
+    }
+  }, [currentImage?.url]);
 
   const totalFlores = useMemo(
     () => state.flores.reduce((sum, f) => sum + f.cantidad, 0),
@@ -202,16 +232,16 @@ export function ArregloDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-6xl max-h-[90vh] overflow-hidden p-0 rounded-2xl">
+      <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-6xl max-h-[90vh] sm:max-h-[95vh] overflow-hidden p-0 rounded-xl sm:rounded-2xl">
         <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
           {/* Sección de Imágenes - Carrusel */}
-          <div className="lg:w-1/2 bg-[#F9F9F7] flex flex-col relative rounded-l-2xl">
+          <div className="lg:w-1/2 bg-[#F9F9F7] flex flex-col relative rounded-l-2xl min-h-[300px] sm:min-h-[400px] lg:min-h-0">
             {state.loadingImages ? (
-              <div className="flex items-center justify-center h-full min-h-[400px]">
+              <div className="flex items-center justify-center h-full min-h-[300px] sm:min-h-[400px]">
                 <div className="w-8 h-8 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
               </div>
             ) : state.images.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] sm:min-h-[400px] gap-4">
                 <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
                   <MdImage className="h-12 w-12 text-gray-400" />
                 </div>
@@ -221,16 +251,37 @@ export function ArregloDetailsModal({
               </div>
             ) : (
               <>
-                {/* Imagen Principal */}
-                <div className="flex-1 relative overflow-hidden bg-gray-900">
+                {/* Imagen Principal - Responsive según aspecto */}
+                <div
+                  className={`flex-1 relative overflow-hidden bg-gray-900 flex items-center justify-center ${
+                    imageAspect
+                      ? imageAspect.ratio > 1
+                        ? 'min-h-[50vh] sm:min-h-[60vh] lg:min-h-0'
+                        : 'min-h-[60vh] sm:min-h-[70vh] lg:min-h-0'
+                      : 'min-h-[50vh] sm:min-h-[60vh] lg:min-h-0'
+                  }`}
+                >
                   <img
                     src={currentImage?.url}
                     alt={
                       currentImage?.altText ||
                       `Imagen ${state.currentImageIndex + 1}`
                     }
-                    className="w-full h-full object-contain"
+                    className={`max-w-full max-h-full ${
+                      imageAspect
+                        ? imageAspect.ratio > 1.2
+                          ? 'w-full h-auto object-contain'
+                          : imageAspect.ratio < 0.8
+                          ? 'w-auto h-full object-contain'
+                          : 'w-full h-full object-contain'
+                        : 'w-full h-full object-contain'
+                    }`}
                     loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
                   />
 
                   {/* Controles del Carrusel */}
@@ -240,23 +291,23 @@ export function ArregloDetailsModal({
                         variant="ghost"
                         size="icon"
                         onClick={prevImage}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-12 w-12 shadow-lg border border-gray-200/60"
+                        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-lg border border-gray-200/60 z-10"
                         aria-label="Imagen anterior"
                       >
-                        <MdChevronLeft className="h-6 w-6" />
+                        <MdChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={nextImage}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-12 w-12 shadow-lg border border-gray-200/60"
+                        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-lg border border-gray-200/60 z-10"
                         aria-label="Imagen siguiente"
                       >
-                        <MdChevronRight className="h-6 w-6" />
+                        <MdChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
                       </Button>
 
                       {/* Indicador de posición */}
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-900 px-4 py-1.5 rounded-full text-sm font-medium shadow-lg border border-gray-200/60">
+                      <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium shadow-lg border border-gray-200/60 z-10">
                         {state.currentImageIndex + 1} / {state.images.length}
                       </div>
                     </>
@@ -265,15 +316,15 @@ export function ArregloDetailsModal({
 
                 {/* Miniaturas */}
                 {state.images.length > 1 && (
-                  <div className="p-4 bg-white/50 backdrop-blur-sm border-t border-gray-200/60">
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  <div className="p-3 sm:p-4 bg-white/50 backdrop-blur-sm border-t border-gray-200/60">
+                    <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                       {state.images.map((image, index) => (
                         <button
                           key={image.idMedia || index}
                           onClick={() => goToImage(index)}
-                          className={`shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                          className={`shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-200 ${
                             index === state.currentImageIndex
-                              ? 'border-[#50C878] ring-2 ring-[#50C878]/30 shadow-md'
+                              ? 'border-[#50C878] ring-2 ring-[#50C878]/30 shadow-md scale-105'
                               : 'border-gray-200 hover:border-[#50C878]/50 opacity-70 hover:opacity-100'
                           }`}
                         >
@@ -282,6 +333,11 @@ export function ArregloDetailsModal({
                             alt={image.altText || `Miniatura ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
                           />
                         </button>
                       ))}
@@ -433,68 +489,6 @@ export function ArregloDetailsModal({
                     {totalAccesorios}
                   </span>
                 </p>
-              </div>
-
-              {/* Información Técnica - Colapsable */}
-              <div className="pt-4 border-t border-gray-200/60">
-                <button
-                  onClick={toggleTechnical}
-                  className="flex items-center justify-between w-full text-left text-xs uppercase tracking-wider text-gray-500 font-medium hover:text-gray-700 transition-colors"
-                >
-                  <span>Datos Técnicos</span>
-                  {state.showTechnical ? (
-                    <MdExpandLess className="h-4 w-4" />
-                  ) : (
-                    <MdExpandMore className="h-4 w-4" />
-                  )}
-                </button>
-                {state.showTechnical && (
-                  <div className="mt-4 space-y-3 text-xs text-gray-500">
-                    {arreglo.url && (
-                      <div>
-                        <span className="font-medium text-gray-600">
-                          URL Externa:
-                        </span>{' '}
-                        <a
-                          href={arreglo.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#1E5128] hover:underline break-all"
-                        >
-                          {arreglo.url}
-                        </a>
-                      </div>
-                    )}
-                    {arreglo.fechaCreacion && (
-                      <div>
-                        <span className="font-medium text-gray-600">
-                          Fecha de Creación:
-                        </span>{' '}
-                        <span className="text-gray-500">
-                          {new Date(arreglo.fechaCreacion).toLocaleDateString(
-                            'es-ES',
-                            {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            }
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium text-gray-600">
-                        Galería:
-                      </span>{' '}
-                      <span className="text-gray-500">
-                        {state.images.length}{' '}
-                        {state.images.length === 1 ? 'imagen' : 'imágenes'}{' '}
-                        disponible
-                        {state.images.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
