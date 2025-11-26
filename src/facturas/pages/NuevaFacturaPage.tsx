@@ -22,7 +22,7 @@ import {
 } from '@/shared/components/ui/select';
 import { getPedidoById } from '@/pedido/actions/getPedidoById';
 import { createFactura } from '../actions/createFactura';
-import type { CreateFacturaDto, FacturaEstado } from '../types/factura.interface';
+import type { FacturaEstado } from '@/shared/types/estados.types';
 import { MdArrowBack, MdSave, MdReceipt } from 'react-icons/md';
 import { getFacturaPdf } from '../actions/getFacturaPdf';
 
@@ -36,7 +36,7 @@ interface FormValues {
 
 const NuevaFacturaPage = () => {
   const { idPedido } = useParams<{ idPedido: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const idFacturaParam = searchParams.get('idFactura');
   const idFactura = idFacturaParam ? Number(idFacturaParam) : null;
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -110,11 +110,41 @@ const NuevaFacturaPage = () => {
 
   const createFacturaMutation = useMutation({
     mutationFn: createFactura,
-    onSuccess: () => {
+    onSuccess: (factura) => {
       toast.success('Factura creada exitosamente');
       queryClient.invalidateQueries({ queryKey: ['facturas'] });
       queryClient.invalidateQueries({ queryKey: ['pedidos'] });
-      navigate('/admin/pedidos');
+
+      // Actualizar URL con el idFactura para poder descargar PDF
+      if (factura && factura.idFactura) {
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('idFactura', String(factura.idFactura));
+        setSearchParams(newSearchParams, { replace: true });
+      }
+
+      // Limpiar formulario pero mantener datos del pedido
+      if (pedido) {
+        const fecha = new Date();
+        const numFactura = `FAC-${fecha.getFullYear()}-${String(
+          fecha.getMonth() + 1
+        ).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(
+          3,
+          '0'
+        )}`;
+
+        const totalPedido =
+          typeof pedido.totalPedido === 'string'
+            ? parseFloat(pedido.totalPedido)
+            : pedido.totalPedido;
+
+        reset({
+          idPedido: pedido.idPedido,
+          idEmpleado: 1,
+          numFactura,
+          estado: 'pendiente',
+          montoTotal: totalPedido,
+        });
+      }
     },
     onError: (error: any) => {
       toast.error('Error al crear la factura', {
@@ -178,8 +208,12 @@ const NuevaFacturaPage = () => {
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
             className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-colors"
-            title={downloadingPdf ? 'Descargando PDF...' : 'Descargar PDF de factura'}
-            aria-label={downloadingPdf ? 'Descargando PDF' : 'Descargar PDF de factura'}
+            title={
+              downloadingPdf ? 'Descargando PDF...' : 'Descargar PDF de factura'
+            }
+            aria-label={
+              downloadingPdf ? 'Descargando PDF' : 'Descargar PDF de factura'
+            }
           >
             <MdReceipt className="h-5 w-5" />
           </Button>
@@ -210,7 +244,9 @@ const NuevaFacturaPage = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs text-gray-500">Número de Pedido</Label>
+                  <Label className="text-xs text-gray-500">
+                    Número de Pedido
+                  </Label>
                   <p className="text-sm font-medium text-gray-900">
                     PED-{pedido.idPedido}
                   </p>
@@ -219,14 +255,20 @@ const NuevaFacturaPage = () => {
                   <div>
                     <Label className="text-xs text-gray-500">Cliente</Label>
                     <p className="text-sm font-medium text-gray-900">
-                      {pedido.cliente.primerNombre} {pedido.cliente.primerApellido}
+                      {pedido.cliente.primerNombre}{' '}
+                      {pedido.cliente.primerApellido}
                     </p>
                   </div>
                 )}
                 <div>
-                  <Label className="text-xs text-gray-500">Total del Pedido</Label>
+                  <Label className="text-xs text-gray-500">
+                    Total del Pedido
+                  </Label>
                   <p className="text-sm font-medium text-gray-900">
-                    ${typeof pedido.totalPedido === 'string' ? parseFloat(pedido.totalPedido).toFixed(2) : pedido.totalPedido.toFixed(2)}
+                    $
+                    {typeof pedido.totalPedido === 'string'
+                      ? parseFloat(pedido.totalPedido).toFixed(2)
+                      : pedido.totalPedido.toFixed(2)}
                   </p>
                 </div>
                 <div>
@@ -240,7 +282,10 @@ const NuevaFacturaPage = () => {
 
             {/* Número de Factura */}
             <div className="space-y-2">
-              <Label htmlFor="numFactura" className="text-sm font-semibold text-gray-700">
+              <Label
+                htmlFor="numFactura"
+                className="text-sm font-semibold text-gray-700"
+              >
                 Número de Factura *
               </Label>
               <Input
@@ -252,18 +297,25 @@ const NuevaFacturaPage = () => {
                 className="bg-white border-gray-300 text-gray-900"
               />
               {errors.numFactura && (
-                <p className="text-sm text-red-500 mt-1">{errors.numFactura.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.numFactura.message}
+                </p>
               )}
             </div>
 
             {/* Estado */}
             <div className="space-y-2">
-              <Label htmlFor="estado" className="text-sm font-semibold text-gray-700">
+              <Label
+                htmlFor="estado"
+                className="text-sm font-semibold text-gray-700"
+              >
                 Estado *
               </Label>
               <Select
                 value={watch('estado')}
-                onValueChange={(value) => setValue('estado', value as FacturaEstado)}
+                onValueChange={(value) =>
+                  setValue('estado', value as FacturaEstado)
+                }
               >
                 <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue placeholder="Selecciona un estado" />
@@ -275,29 +327,40 @@ const NuevaFacturaPage = () => {
                 </SelectContent>
               </Select>
               {errors.estado && (
-                <p className="text-sm text-red-500 mt-1">{errors.estado.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.estado.message}
+                </p>
               )}
             </div>
 
             {/* Monto Total */}
             <div className="space-y-2">
-              <Label htmlFor="montoTotal" className="text-sm font-semibold text-gray-700">
+              <Label
+                htmlFor="montoTotal"
+                className="text-sm font-semibold text-gray-700"
+              >
                 Monto Total *
               </Label>
               <Input
                 id="montoTotal"
                 type="number"
                 step="0.01"
+                readOnly
                 {...register('montoTotal', {
                   required: 'El monto total es requerido',
-                  min: { value: 0, message: 'El monto debe ser mayor o igual a 0' },
+                  min: {
+                    value: 0,
+                    message: 'El monto debe ser mayor o igual a 0',
+                  },
                   valueAsNumber: true,
                 })}
                 placeholder="0.00"
-                className="bg-white border-gray-300 text-gray-900"
+                className="bg-gray-50 border-gray-300 text-gray-700 cursor-not-allowed"
               />
               {errors.montoTotal && (
-                <p className="text-sm text-red-500 mt-1">{errors.montoTotal.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.montoTotal.message}
+                </p>
               )}
             </div>
 
@@ -313,11 +376,15 @@ const NuevaFacturaPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createFacturaMutation.isPending}
-                className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/20 gap-2"
+                disabled={createFacturaMutation.isPending || !!idFactura}
+                className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <MdSave className="h-4 w-4" />
-                {createFacturaMutation.isPending ? 'Guardando...' : 'Crear Factura'}
+                {createFacturaMutation.isPending
+                  ? 'Guardando...'
+                  : idFactura
+                  ? 'Factura Creada'
+                  : 'Crear Factura'}
               </Button>
               {idFactura && (
                 <Button
@@ -326,8 +393,16 @@ const NuevaFacturaPage = () => {
                   onClick={handleDownloadPdf}
                   disabled={downloadingPdf}
                   className="h-9 w-9 p-0 text-[#50C878] hover:text-[#50C878] rounded-full hover:bg-[#50C878]/10 transition-colors"
-                  title={downloadingPdf ? 'Descargando PDF...' : 'Descargar PDF de factura'}
-                  aria-label={downloadingPdf ? 'Descargando PDF' : 'Descargar PDF de factura'}
+                  title={
+                    downloadingPdf
+                      ? 'Descargando PDF...'
+                      : 'Descargar PDF de factura'
+                  }
+                  aria-label={
+                    downloadingPdf
+                      ? 'Descargando PDF'
+                      : 'Descargar PDF de factura'
+                  }
                 >
                   <MdReceipt className="h-5 w-5" />
                 </Button>
@@ -341,4 +416,3 @@ const NuevaFacturaPage = () => {
 };
 
 export default NuevaFacturaPage;
-

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation, Link } from 'react-router';
 import { Header } from '../components/Header';
 import {
   HiLocationMarker,
@@ -40,6 +41,48 @@ const LoadingFallback = () => (
 );
 
 export default function LandingPage() {
+  const location = useLocation();
+
+  // Handler para enlaces con hash en el footer
+  const handleHashLink = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+      e.preventDefault();
+      const element = document.querySelector(hash);
+      if (element) {
+        const headerOffset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition =
+          elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth',
+        });
+      }
+    },
+    []
+  );
+
+  // Manejar scroll a sección cuando se navega con hash
+  useEffect(() => {
+    if (location.hash) {
+      const element = document.querySelector(location.hash);
+      if (element) {
+        setTimeout(() => {
+          const headerOffset = 80;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition =
+            elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth',
+          });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -115,20 +158,35 @@ export default function LandingPage() {
                     { href: '#inicio', label: 'Inicio' },
                     { href: '#servicios', label: 'Servicios' },
                     { href: '#galeria', label: 'Galería' },
+                    { href: '/catalogo', label: 'Catálogo' },
                     { href: '#historia', label: 'Historia' },
                     { href: '#contacto', label: 'Contacto' },
-                  ].map((link) => (
-                    <li key={link.href}>
-                      <motion.a
-                        href={link.href}
-                        className="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
-                        whileHover={{ x: 4 }}
-                      >
-                        <HiArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-white/60" />
-                        <span>{link.label}</span>
-                      </motion.a>
-                    </li>
-                  ))}
+                  ].map((link) => {
+                    const isHashLink = link.href.startsWith('#');
+                    return (
+                      <li key={link.href}>
+                        {isHashLink ? (
+                          <motion.a
+                            href={link.href}
+                            onClick={(e) => handleHashLink(e, link.href)}
+                            className="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium cursor-pointer"
+                            whileHover={{ x: 4 }}
+                          >
+                            <HiArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-white/60" />
+                            <span>{link.label}</span>
+                          </motion.a>
+                        ) : (
+                          <Link
+                            to={link.href}
+                            className="group flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
+                          >
+                            <HiArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-white/60" />
+                            <span>{link.label}</span>
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </motion.div>
 

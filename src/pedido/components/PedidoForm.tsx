@@ -97,6 +97,7 @@ export function PedidoForm({
   const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(
     null
   );
+  const [mapboxSearchValue, setMapboxSearchValue] = useState('');
 
   // Hook del carrito de pedidos
   const {
@@ -159,7 +160,7 @@ export function PedidoForm({
 
       // Prellenar dirección del mapa si existe
       if (pedido.direccion) {
-        setDireccionData({
+        const direccionMapbox: MapboxAddressData = {
           formattedAddress: pedido.direccion.formattedAddress,
           country: pedido.direccion.country,
           adminArea: pedido.direccion.adminArea,
@@ -169,13 +170,15 @@ export function PedidoForm({
           houseNumber: pedido.direccion.houseNumber,
           postalCode: pedido.direccion.postalCode,
           referencia: pedido.direccion.referencia,
-          lat: pedido.direccion.lat,
-          lng: pedido.direccion.lng,
+          lat: pedido.direccion.lat.toString(),
+          lng: pedido.direccion.lng.toString(),
           provider: pedido.direccion.provider,
           placeId: pedido.direccion.placeId,
           accuracy: pedido.direccion.accuracy,
           geolocation: pedido.direccion.geolocation,
-        });
+        };
+        setDireccionData(direccionMapbox);
+        setMapboxSearchValue(direccionMapbox.formattedAddress);
       }
 
       // Prellenar carrito con detalles del pedido (SILENT - sin toasts)
@@ -308,7 +311,6 @@ export function PedidoForm({
     // Si el canal es "interno", nunca enviar idPago
     const pedidoDto: CreatePedidoDto = {
       canal: 'interno',
-      // idPago nunca se envía para canal interno
       idEmpleado,
       idCliente: parseInt(data.idCliente),
       idDireccion: 0, // Se asignará después de crear la dirección
@@ -323,7 +325,7 @@ export function PedidoForm({
       idArreglo: arr.idArreglo,
       cantidad: arr.cantidad,
       precioUnitario: arr.precioUnitario,
-      subtotal: arr.subtotal,
+      subtotal: 0,
     }));
 
     onSubmit({
@@ -338,8 +340,6 @@ export function PedidoForm({
     });
   };
 
-  // Resetear formulario al cerrar usando el prop open directamente
-  // React Hook Form maneja el reset automáticamente cuando cambia el estado del formulario
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
       if (!newOpen) {
@@ -353,6 +353,7 @@ export function PedidoForm({
           direccionTexto: '',
         });
         setDireccionData(null);
+        setMapboxSearchValue('');
         clearCart();
         setSearchArreglo('');
         setCurrentPage(1);
@@ -362,7 +363,8 @@ export function PedidoForm({
     [reset, clearCart, onOpenChange]
   );
 
-  const newLocal = "bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200";
+  const newLocal =
+    'bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200';
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-6xl max-h-[90vh] overflow-y-auto p-0">
@@ -601,7 +603,11 @@ export function PedidoForm({
             {/* PASO 4: Sección: Dirección */}
             <div className="bg-linear-to-br from-blue-50/30 to-green-50/30 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-6">
               <div className="flex items-center gap-3">
-                <div className={"p-2 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg shadow-md"}>
+                <div
+                  className={
+                    'p-2 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg shadow-md'
+                  }
+                >
                   <MdLocationOn className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -652,8 +658,8 @@ export function PedidoForm({
                   es independiente.
                 </p>
                 <MapboxAddressSearch
-                  value=""
-                  onChange={() => {}} // No sincronizar con el input de texto
+                  value={mapboxSearchValue}
+                  onChange={setMapboxSearchValue}
                   onSelect={handleDireccionChange}
                   placeholder="Busca una ubicación en el mapa..."
                   className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
@@ -674,7 +680,7 @@ export function PedidoForm({
 
             {/* PASO 5: Sección: Información Adicional */}
             <div className="bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-              <h3 className={"text-lg font-bold text-gray-900 mb-4"}>
+              <h3 className={'text-lg font-bold text-gray-900 mb-4'}>
                 5. Información Adicional
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

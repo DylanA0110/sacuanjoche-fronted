@@ -4,6 +4,7 @@ import { Layout } from '@/shared/components/layout/Layout';
 
 // Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
+const CatalogPage = lazy(() => import('../landing/pages/CatalogPage'));
 const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const NuevaFacturaPage = lazy(() => import('../facturas/pages/NuevaFacturaPage'));
@@ -45,6 +46,14 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<RouterLoadingFallback />}>
         <LandingPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/catalogo',
+    element: (
+      <Suspense fallback={<RouterLoadingFallback />}>
+        <CatalogPage />
       </Suspense>
     ),
   },

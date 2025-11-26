@@ -14,7 +14,6 @@ import {
 } from '@/shared/components/ui/card';
 import { usePedido } from '../hook/usePedido';
 import type { Pedido } from '../types/pedido.interface';
-import { createFacturaDesdePedido } from '@/facturas/actions/createFacturaDesdePedido';
 import {
   createPedido,
   updatePedido,
@@ -49,8 +48,8 @@ const columns: Column[] = [
       if (!value) return 'N/A';
       // Truncar direcciones muy largas
       const maxLength = 50;
-      return value.length > maxLength 
-        ? `${value.substring(0, maxLength)}...` 
+      return value.length > maxLength
+        ? `${value.substring(0, maxLength)}...`
         : value;
     },
   },
@@ -93,7 +92,10 @@ const Pedidos = () => {
   const navigate = useNavigate();
 
   // Derivar valores directamente de searchParams (mejor rendimiento)
-  const searchQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
+  const searchQuery = useMemo(
+    () => searchParams.get('q') || '',
+    [searchParams]
+  );
   const limit = useMemo(
     () => parseInt(searchParams.get('limit') || '10', 10),
     [searchParams]
@@ -109,42 +111,6 @@ const Pedidos = () => {
     limit,
     offset,
     q: searchQuery || undefined,
-  });
-
-  const generateFacturaMutation = useMutation({
-    mutationFn: (idPedido: number) => createFacturaDesdePedido(idPedido),
-    onSuccess: (factura) => {
-      toast.success('Factura creada exitosamente desde el pedido');
-      // Navegar a la página de nueva factura con el idFactura para poder descargar PDF
-      if (factura && factura.idFactura && factura.idPedido) {
-        navigate(
-          `/admin/pedidos/${factura.idPedido}/nueva-factura?idFactura=${factura.idFactura}`
-        );
-      }
-    },
-    onError: (error: any) => {
-      toast.error('Error al generar la factura', {
-        description: cleanErrorMessage(error),
-        duration: 5000,
-      });
-    },
-    onSettled: (data) => {
-      // Invalidar solo facturas y el pedido específico relacionado
-      queryClient.invalidateQueries({
-        queryKey: ['facturas'],
-        refetchType: 'active',
-      });
-      if (data?.idPedido) {
-        queryClient.invalidateQueries({
-          queryKey: ['pedidos', data.idPedido],
-          refetchType: 'active',
-        });
-      }
-      queryClient.invalidateQueries({
-        queryKey: ['pedidos'],
-        refetchType: 'active',
-      });
-    },
   });
 
   // Manejar búsqueda con debounce usando URL params directamente
@@ -175,7 +141,8 @@ const Pedidos = () => {
       return;
     }
 
-    generateFacturaMutation.mutate(idPedido);
+    // Navegar a NuevaFacturaPage para crear la factura manualmente
+    navigate(`/admin/pedidos/${idPedido}/nueva-factura`);
   };
 
   const handleView = useCallback((item: Pedido) => {
@@ -187,7 +154,7 @@ const Pedidos = () => {
     try {
       // Cargar el pedido completo con todas sus relaciones
       const pedidoCompleto = await getPedidoById(item.idPedido);
-      
+
       // Si no vienen los detalles, cargarlos por separado
       if (!pedidoCompleto.detalles || pedidoCompleto.detalles.length === 0) {
         try {
@@ -197,7 +164,7 @@ const Pedidos = () => {
           // Si no se pueden cargar los detalles, continuar sin ellos
         }
       }
-      
+
       setEditingPedido(pedidoCompleto);
       setIsFormOpen(true);
     } catch (error) {
@@ -512,18 +479,9 @@ const Pedidos = () => {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleGenerateFactura(item)}
-                  disabled={generateFacturaMutation.isPending}
-                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#3aa85c] rounded-lg hover:bg-[#50C878]/10 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={
-                    generateFacturaMutation.isPending
-                      ? 'Generando factura...'
-                      : 'Generar factura'
-                  }
-                  aria-label={
-                    generateFacturaMutation.isPending
-                      ? 'Generando factura'
-                      : 'Generar factura'
-                  }
+                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#3aa85c] rounded-lg hover:bg-[#50C878]/10 transition-colors duration-150"
+                  title="Generar factura"
+                  aria-label="Generar factura"
                 >
                   <MdReceipt className="h-4 w-4" />
                 </Button>

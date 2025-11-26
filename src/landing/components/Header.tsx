@@ -1,11 +1,14 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { GiRose } from 'react-icons/gi';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { scrollY } = useScroll();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Transformaciones FUERA del JSX (muy importante - evita recreación constante)
   const headerHeight = useTransform(scrollY, [0, 100], [72, 60]);
@@ -16,9 +19,38 @@ export const Header = () => {
   const menuItems = [
     { label: 'Inicio', href: '#inicio' },
     { label: 'Servicios', href: '#servicios' },
+    { label: 'Galería', href: '#galeria' },
+    { label: 'Catálogo', href: '/catalogo' },
     { label: 'Historia', href: '#historia' },
     { label: 'Contacto', href: '#contacto' },
   ];
+
+  // Handler para enlaces con hash
+  const handleHashLink = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+      e.preventDefault();
+      
+      if (location.pathname !== '/') {
+        // Si no estamos en la landing, navegar primero
+        navigate(`/${hash}`);
+      } else {
+        // Si estamos en la landing, hacer scroll suave
+        const element = document.querySelector(hash);
+        if (element) {
+          const headerOffset = 80;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth',
+          });
+        }
+      }
+      setIsMenuOpen(false);
+    },
+    [location.pathname, navigate]
+  );
 
   return (
     <motion.header
@@ -42,6 +74,7 @@ export const Header = () => {
           {/* Logo con más vida */}
           <motion.a
             href="#inicio"
+            onClick={(e) => handleHashLink(e, '#inicio')}
             whileHover={{ scale: 1.02 }}
             className="flex items-center gap-3 group relative"
           >
@@ -59,18 +92,37 @@ export const Header = () => {
 
           {/* Menú desktop con más vida */}
           <div className="hidden md:flex items-center space-x-1">
-            {menuItems.map((item) => (
-              <motion.a
-                key={item.href}
-                href={item.href}
-                className="px-5 py-2 text-white/80 hover:text-[#50C878] transition-colors font-medium text-sm uppercase tracking-wider relative group"
-                whileHover={{ y: -2 }}
-              >
-                {item.label}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
-                <span className="absolute inset-0 bg-[#50C878]/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
-              </motion.a>
-            ))}
+            {menuItems.map((item) => {
+              const isHashLink = item.href.startsWith('#');
+              
+              if (isHashLink) {
+                return (
+                  <motion.a
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => handleHashLink(e, item.href)}
+                    className="px-5 py-2 text-white/80 hover:text-[#50C878] transition-colors font-medium text-sm uppercase tracking-wider relative group cursor-pointer"
+                    whileHover={{ y: -2 }}
+                  >
+                    {item.label}
+                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
+                    <span className="absolute inset-0 bg-[#50C878]/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+                  </motion.a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="px-5 py-2 text-white/80 hover:text-[#50C878] transition-colors font-medium text-sm uppercase tracking-wider relative group"
+                >
+                  {item.label}
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
+                  <span className="absolute inset-0 bg-[#50C878]/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+                </Link>
+              );
+            })}
           </div>
 
           {/* Botón menú móvil */}
@@ -91,16 +143,33 @@ export const Header = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden pb-4 space-y-1 border-t border-white/10 mt-2 pt-4"
           >
-            {menuItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMenuOpen(false)}
-                className="block py-3 px-4 text-white/80 hover:text-[#50C878] hover:bg-white/5 rounded-lg transition-all font-medium text-sm uppercase tracking-wider"
-              >
-                {item.label}
-              </a>
-            ))}
+            {menuItems.map((item) => {
+              const isHashLink = item.href.startsWith('#');
+              
+              if (isHashLink) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => handleHashLink(e, item.href)}
+                    className="block py-3 px-4 text-white/80 hover:text-[#50C878] hover:bg-white/5 rounded-lg transition-all font-medium text-sm uppercase tracking-wider cursor-pointer"
+                  >
+                    {item.label}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block py-3 px-4 text-white/80 hover:text-[#50C878] hover:bg-white/5 rounded-lg transition-all font-medium text-sm uppercase tracking-wider"
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </motion.div>
         )}
       </nav>
