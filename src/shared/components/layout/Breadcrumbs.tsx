@@ -101,7 +101,7 @@ export const Breadcrumbs: React.FC = () => {
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator>
-            <MdChevronRight className="h-4 w-4 text-gray-400" />
+            <MdChevronRight className="h-4 w-4 text-gray-500" aria-hidden="true" />
           </BreadcrumbSeparator>
           <BreadcrumbItem>
             <BreadcrumbPage className="text-gray-900 font-semibold text-sm">
@@ -161,7 +161,7 @@ export const Breadcrumbs: React.FC = () => {
           return (
             <React.Fragment key={crumb.to}>
               <BreadcrumbSeparator>
-                <MdChevronRight className="h-4 w-4 text-gray-400" />
+                <MdChevronRight className="h-4 w-4 text-gray-500" aria-hidden="true" />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
                 {isLast ? (

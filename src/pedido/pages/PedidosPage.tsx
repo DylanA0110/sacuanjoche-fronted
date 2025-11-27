@@ -9,10 +9,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { usePedido } from '../hook/usePedido';
 import type { Pedido } from '../types/pedido.interface';
 import { PedidoDetailsModal } from '../components/PedidoDetailsModal';
-import { MdReceipt, MdAdd, MdEdit, MdVisibility } from 'react-icons/md';
+import { getOrdenTrabajoPdf } from '../actions';
+import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
+import { MdReceipt, MdAdd, MdEdit, MdVisibility, MdMoreVert, MdDescription } from 'react-icons/md';
 
 const columns: Column[] = [
   {
@@ -82,6 +92,7 @@ const Pedidos = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Derivar valores directamente de searchParams (mejor rendimiento)
@@ -137,6 +148,31 @@ const Pedidos = () => {
     // Navegar a NuevaFacturaPage para crear la factura manualmente
     navigate(`/admin/pedidos/${idPedido}/nueva-factura`);
   };
+
+  const handleDownloadOrdenTrabajo = useCallback(async (pedido: Pedido) => {
+    const idPedido =
+      typeof pedido.idPedido === 'string'
+        ? parseInt(pedido.idPedido, 10)
+        : Number(pedido.idPedido);
+
+    if (isNaN(idPedido)) {
+      toast.error('Pedido inválido');
+      return;
+    }
+
+    try {
+      setDownloadingPdf(idPedido);
+      await getOrdenTrabajoPdf(idPedido);
+      toast.success('Orden de trabajo descargada exitosamente');
+    } catch (error: any) {
+      toast.error('Error al descargar orden de trabajo', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    } finally {
+      setDownloadingPdf(null);
+    }
+  }, []);
 
   const handleView = useCallback((item: Pedido) => {
     setSelectedPedidoId(item.idPedido);
@@ -233,38 +269,66 @@ const Pedidos = () => {
             currentPage={currentPage}
             itemsPerPage={limit}
             onPageChange={handlePageChange}
-            customActions={(item: Pedido) => (
-              <div className="flex items-center justify-center gap-2 sm:gap-2 px-1 sm:px-2 min-w-[130px]">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleView(item)}
-                  className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100/80 transition-colors duration-150"
-                  title="Ver detalles"
-                >
-                  <MdVisibility className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEdit(item)}
-                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#3aa85c] rounded-lg hover:bg-[#50C878]/10 transition-colors duration-150"
-                  title="Editar"
-                >
-                  <MdEdit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleGenerateFactura(item)}
-                  className="h-9 w-9 p-0 text-[#50C878] hover:text-[#3aa85c] rounded-lg hover:bg-[#50C878]/10 transition-colors duration-150"
-                  title="Generar factura"
-                  aria-label="Generar factura"
-                >
-                  <MdReceipt className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            customActions={(item: Pedido) => {
+              const idPedido =
+                typeof item.idPedido === 'string'
+                  ? parseInt(item.idPedido, 10)
+                  : Number(item.idPedido);
+              const isDownloading = downloadingPdf === idPedido;
+
+              return (
+                <div className="flex items-center justify-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-gray-500 hover:text-gray-900 hover:bg-gray-100/80 rounded-lg transition-colors duration-150"
+                        aria-label="Más acciones"
+                      >
+                        <MdMoreVert className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => handleView(item)}
+                        className="cursor-pointer"
+                      >
+                        <MdVisibility className="mr-2 h-4 w-4" />
+                        <span>Ver detalles</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEdit(item)}
+                        className="cursor-pointer"
+                      >
+                        <MdEdit className="mr-2 h-4 w-4" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleGenerateFactura(item)}
+                        className="cursor-pointer"
+                      >
+                        <MdReceipt className="mr-2 h-4 w-4" />
+                        <span>Generar factura</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDownloadOrdenTrabajo(item)}
+                        disabled={isDownloading}
+                        className="cursor-pointer"
+                      >
+                        <MdDescription className="mr-2 h-4 w-4" />
+                        <span>
+                          {isDownloading
+                            ? 'Descargando...'
+                            : 'Descargar orden de trabajo'}
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              );
+            }}
           />
         </CardContent>
       </Card>

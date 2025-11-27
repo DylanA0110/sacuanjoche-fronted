@@ -567,7 +567,7 @@ export default function PedidoFormPage() {
                     value={searchArreglo}
                     onChange={(e) => setSearchArreglo(e.target.value)}
                     placeholder="Buscar arreglos por nombre..."
-                    className="bg-white border-gray-300 text-gray-700 placeholder:text-gray-400 focus:border-[#50C878] focus:ring-[#50C878]/20"
+                    className="bg-white border-gray-300 text-gray-700 placeholder:text-gray-500 focus:border-[#50C878] focus:ring-[#50C878]/40"
                   />
                 </div>
 

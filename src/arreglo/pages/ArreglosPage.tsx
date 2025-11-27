@@ -352,7 +352,7 @@ const ArreglosPage = () => {
                   placeholder="Buscar por nombre, descripción o forma..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-400 focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20 text-sm transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/40 text-base transition-all duration-200"
                 />
               </div>
             </div>

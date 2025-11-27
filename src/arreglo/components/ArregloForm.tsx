@@ -313,7 +313,7 @@ export function ArregloForm({
                     }
                   }}
                   placeholder="25.99"
-                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
                 />
                 <p className="text-xs text-gray-500">Precio en córdobas (C$)</p>
                 {errors.precioUnitario && (
@@ -359,7 +359,7 @@ export function ArregloForm({
                   required: 'La descripción es requerida',
                 })}
                 placeholder="Hermoso ramo de rosas rojas para ocasiones especiales..."
-                className="w-full min-h-[100px] px-3 py-2 rounded-lg border-2 border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#50C878]/20 focus:border-[#50C878] transition-all duration-200 resize-y"
+                className="w-full min-h-[100px] px-3 py-2 rounded-lg border-2 border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#50C878]/40 focus:border-[#50C878] transition-all duration-200 resize-y"
               />
               {errors.descripcion && (
                 <p className="text-sm text-red-500 mt-1">

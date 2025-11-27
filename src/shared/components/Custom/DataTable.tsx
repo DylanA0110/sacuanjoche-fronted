@@ -74,7 +74,7 @@ export function DataTable({
       {/* Search Bar */}
       {onSearchChange && (
         <div className="relative">
-          <MdSearch className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+          <MdSearch className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500" aria-hidden="true" />
           <Input
             placeholder={searchPlaceholder}
             value={search}
@@ -86,7 +86,7 @@ export function DataTable({
                 setInternalSearch(newValue);
               }
             }}
-            className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-[#50C878] focus:ring-[#50C878]/20 text-sm sm:text-base rounded-lg transition-all duration-200"
+            className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-[#50C878] focus:ring-[#50C878]/40 text-sm sm:text-base rounded-lg transition-all duration-200"
           />
         </div>
       )}
@@ -221,10 +221,11 @@ export function DataTable({
                               size="sm"
                               variant="ghost"
                               onClick={() => onView(item)}
-                              className="h-9 w-9 p-0 text-gray-400 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
+                              className="h-9 w-9 p-0 text-gray-500 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
                               title="Ver detalles"
+                              aria-label={`Ver detalles de ${columns[0]?.key ? (item[columns[0].key] || 'elemento') : 'elemento'}`}
                             >
-                              <MdVisibility className="h-4 w-4" />
+                              <MdVisibility className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           )}
                           {onEdit && (
@@ -232,10 +233,11 @@ export function DataTable({
                               size="sm"
                               variant="ghost"
                               onClick={() => onEdit(item)}
-                              className="h-9 w-9 p-0 text-gray-400 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
+                              className="h-9 w-9 p-0 text-gray-500 hover:text-[#50C878] hover:bg-[#50C878]/10 rounded-lg shrink-0 transition-all duration-200"
                               title="Editar"
+                              aria-label={`Editar ${columns[0]?.key ? (item[columns[0].key] || 'elemento') : 'elemento'}`}
                             >
-                              <MdEdit className="h-4 w-4" />
+                              <MdEdit className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           )}
                           {onDelete && (
@@ -245,8 +247,9 @@ export function DataTable({
                               onClick={() => onDelete(item)}
                               className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0 transition-all duration-200"
                               title="Eliminar"
+                              aria-label={`Eliminar ${columns[0]?.key ? (item[columns[0].key] || 'elemento') : 'elemento'}`}
                             >
-                              <MdDelete className="h-4 w-4" />
+                              <MdDelete className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           )}
                         </div>
@@ -285,7 +288,7 @@ export function DataTable({
               size="sm"
               onClick={() => onPageChange((currentPage || 1) - 1)}
               disabled={(currentPage || 1) === 1}
-              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-base font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-60 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-lg"
             >
               Anterior
             </Button>
@@ -294,7 +297,7 @@ export function DataTable({
               size="sm"
               onClick={() => onPageChange((currentPage || 1) + 1)}
               disabled={(currentPage || 1) * (itemsPerPage || 10) >= totalItems}
-              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-base font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-60 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-lg"
             >
               Siguiente
             </Button>

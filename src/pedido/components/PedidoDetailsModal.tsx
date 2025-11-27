@@ -186,16 +186,6 @@ export function PedidoDetailsModal({
                       {pedido.canal || 'interno'}
                     </p>
                   </div>
-                  {pedido.idPago && (
-                    <div>
-                      <Label className="text-xs text-gray-500">
-                        ID de Pago
-                      </Label>
-                      <p className="text-sm font-medium text-gray-900">
-                        {pedido.idPago}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -330,8 +320,7 @@ export function PedidoDetailsModal({
                       >
                         <div className="flex-1">
                           <p className="font-semibold text-gray-900 text-base">
-                            {detalle.arreglo?.nombre ||
-                              `Arreglo #${detalle.idArreglo}`}
+                            {detalle.arreglo?.nombre || 'Arreglo'}
                           </p>
                           <p className="text-sm text-gray-600 mt-1">
                             Cantidad:{' '}

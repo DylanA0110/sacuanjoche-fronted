@@ -226,7 +226,7 @@ export function ClienteForm({
                   onChange={(value) => setValue('direccionTexto', value)}
                   onSelect={handleDireccionChange}
                   placeholder="Escribe una dirección en Nicaragua..."
-                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
                   showMap={true}
                   mapHeight="300px"
                 />

@@ -634,7 +634,7 @@ export function PedidoForm({
                     required: 'La dirección es requerida',
                   })}
                   placeholder="Ej: 2 cuadras al sur del Metrocentro, Barrio Centro"
-                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Escribe la dirección completa con referencias, cuadras, etc.
@@ -662,7 +662,7 @@ export function PedidoForm({
                   onChange={setMapboxSearchValue}
                   onSelect={handleDireccionChange}
                   placeholder="Busca una ubicación en el mapa..."
-                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
                   showMap={true}
                   mapHeight="250px"
                 />
@@ -727,7 +727,7 @@ export function PedidoForm({
                       },
                     })}
                     placeholder="0.00"
-                    className="bg-white border-gray-300 text-gray-900 h-11 text-base focus:border-[#50C878] focus:ring-[#50C878]/20"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base focus:border-[#50C878] focus:ring-[#50C878]/40"
                   />
                   {errors.costoEnvio && (
                     <p className="text-sm text-red-500 mt-1">

@@ -178,7 +178,7 @@ export function FlorForm({
                 }
               }}
               placeholder="100.00 C$"
-              className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
+              className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
             />
             {errors.precioUnitario && (
               <p className="text-sm text-red-500 mt-1">{errors.precioUnitario.message}</p>

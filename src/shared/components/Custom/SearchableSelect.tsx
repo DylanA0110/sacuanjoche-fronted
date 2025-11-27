@@ -53,7 +53,7 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            'w-full justify-between bg-white border-gray-300 text-gray-900 hover:bg-gray-50 hover:border-[#50C878] focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20',
+            'w-full justify-between bg-white border-gray-300 text-gray-900 hover:bg-gray-50 hover:border-[#50C878] focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/40',
             className
           )}
         >
