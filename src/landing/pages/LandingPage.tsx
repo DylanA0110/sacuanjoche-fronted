@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation, Link } from 'react-router';
+import { useLocation, Link, useNavigate } from 'react-router';
 import { Header } from '../components/Header';
 import {
   HiLocationMarker,
@@ -40,13 +40,30 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Hashes válidos en la landing page
+const VALID_HASHES = [
+  '#inicio',
+  '#servicios',
+  '#galeria',
+  '#historia',
+  '#contacto',
+];
+
 export default function LandingPage() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Handler para enlaces con hash en el footer
   const handleHashLink = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
       e.preventDefault();
+
+      // Validar que el hash sea válido
+      if (!VALID_HASHES.includes(hash)) {
+        navigate('/', { replace: true });
+        return;
+      }
+
       const element = document.querySelector(hash);
       if (element) {
         const headerOffset = 80;
@@ -60,12 +77,29 @@ export default function LandingPage() {
         });
       }
     },
-    []
+    [navigate]
   );
+
+  // Validar hash y rutas inválidas - useEffect es lo profesional
+  useEffect(() => {
+    // Validar hash inválido
+    if (location.hash && !VALID_HASHES.includes(location.hash)) {
+      window.history.replaceState(null, '', '/');
+      navigate('/', { replace: true });
+      return;
+    }
+
+    // Validar ruta inválida (excepto /catalogo que es válida)
+    if (location.pathname !== '/' && location.pathname !== '/catalogo') {
+      window.history.replaceState(null, '', '/');
+      navigate('/', { replace: true });
+      return;
+    }
+  }, [location.hash, location.pathname, navigate]);
 
   // Manejar scroll a sección cuando se navega con hash
   useEffect(() => {
-    if (location.hash) {
+    if (location.hash && VALID_HASHES.includes(location.hash)) {
       const element = document.querySelector(location.hash);
       if (element) {
         setTimeout(() => {
@@ -156,9 +190,9 @@ export default function LandingPage() {
                 <ul className="space-y-2">
                   {[
                     { href: '#inicio', label: 'Inicio' },
+                    { href: '/catalogo', label: 'Catálogo' },
                     { href: '#servicios', label: 'Servicios' },
                     { href: '#galeria', label: 'Galería' },
-                    { href: '/catalogo', label: 'Catálogo' },
                     { href: '#historia', label: 'Historia' },
                     { href: '#contacto', label: 'Contacto' },
                   ].map((link) => {

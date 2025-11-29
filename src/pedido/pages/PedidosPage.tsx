@@ -106,17 +106,6 @@ const Pedidos = () => {
     q: pagination.searchQuery || undefined,
   });
 
-  // Debug: Log para verificar valores
-  useEffect(() => {
-    console.log('PedidosPage - Debug:', {
-      totalItems,
-      limit: pagination.limit,
-      offset: pagination.offset,
-      page: pagination.page,
-      pedidosCount: pedidos.length,
-      calculatedTotalPages: Math.ceil(totalItems / pagination.limit),
-    });
-  }, [totalItems, pagination.limit, pagination.offset, pagination.page, pedidos.length]);
 
   // Recalcular paginación con totalItems real
   const finalPagination = useTablePagination(totalItems);

@@ -116,4 +116,12 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: '*',
+    element: (
+      <Suspense fallback={<RouterLoadingFallback />}>
+        <LandingPage />
+      </Suspense>
+    ),
+  },
 ]);

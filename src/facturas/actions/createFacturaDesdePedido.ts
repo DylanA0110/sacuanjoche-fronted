@@ -17,8 +17,6 @@ export const createFacturaDesdePedido = async (
     // Convertir a string numérico limpio (sin espacios, sin decimales)
     const idPedidoStr = String(Math.floor(idPedidoNum));
 
-    console.log('Enviando factura desde pedido:', { idPedido, idPedidoNum, idPedidoStr });
-
     // El backend requiere idEmpleado en el body, por ahora siempre será 1
     const response = await facturaApi.post<Factura>(
       `/desde-pedido/${idPedidoStr}`,

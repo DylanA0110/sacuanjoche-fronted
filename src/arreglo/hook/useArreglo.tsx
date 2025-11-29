@@ -122,7 +122,6 @@ export const useArreglo = (options?: UseArregloOptions) => {
     if (options?.estado !== undefined) {
       if (options?.usePagination) {
         // Con paginación y filtro, usar el total filtrado
-        console.log('useArreglo - totalItems filtrado:', filteredTotal);
         return filteredTotal;
       }
       
@@ -147,7 +146,6 @@ export const useArreglo = (options?: UseArregloOptions) => {
     if (options?.usePagination) {
       if (typeof query.data === 'object' && 'total' in query.data) {
         const total = (query.data as PaginatedResponse<Arreglo>).total ?? 0;
-        console.log('useArreglo - totalItems desde PaginatedResponse (sin filtro):', total);
         return total;
       }
       

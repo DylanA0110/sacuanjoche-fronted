@@ -126,7 +126,6 @@ export const useCliente = (options?: UseClienteOptions) => {
     if (options?.activo !== undefined) {
       if (options?.usePagination) {
         // Con paginación y filtro, usar el total filtrado
-        console.log('useCliente - totalItems filtrado:', filteredTotal);
         return filteredTotal;
       }
       
@@ -153,7 +152,6 @@ export const useCliente = (options?: UseClienteOptions) => {
     if (options?.usePagination) {
       if (typeof query.data === 'object' && 'total' in query.data) {
         const total = (query.data as PaginatedResponse<Cliente>).total ?? 0;
-        console.log('useCliente - totalItems desde PaginatedResponse (sin filtro):', total);
         return total;
       }
       

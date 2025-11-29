@@ -56,7 +56,6 @@ export const usePedido = (options?: UsePedidoOptions) => {
       // Con paginación, siempre buscar el 'total' en la respuesta
       if (typeof query.data === 'object' && 'total' in query.data) {
         const total = (query.data as PaginatedResponse<Pedido>).total ?? 0;
-        console.log('usePedido - totalItems desde PaginatedResponse:', total);
         return total;
       }
       

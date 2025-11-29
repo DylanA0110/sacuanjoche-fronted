@@ -32,7 +32,7 @@ const CatalogPage = () => {
 
   const arreglos = arreglosResponse?.arreglos || [];
   const totalItems = arreglosResponse?.total || 0;
-  const totalPages = arreglosResponse?.pages || 0;
+  const totalPages = arreglosResponse?.pages || Math.ceil(totalItems / (+limit || 12));
 
   // Calcular items por página según tamaño de pantalla
   const calculateItemsPerPage = useCallback(() => {

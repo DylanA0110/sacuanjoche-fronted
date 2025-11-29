@@ -71,36 +71,36 @@ export function AppHeader({ onToggleSidebar, onOpenMobile }: AppHeaderProps) {
 
       {/* Avatar y menú de usuario - Siempre visible a la derecha */}
       <div className="shrink-0 ml-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
               className="h-9 w-9 p-0 rounded-full hover:bg-gray-100 shrink-0"
-            >
-              <Avatar className="h-9 w-9 ring-2 ring-gray-200">
-                <AvatarFallback className="bg-[#1E5128] text-white font-semibold font-sans shadow-sm">
-                  {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
+          >
+            <Avatar className="h-9 w-9 ring-2 ring-gray-200">
+              <AvatarFallback className="bg-[#1E5128] text-white font-semibold font-sans shadow-sm">
+                {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleProfileClick}>
-              <MdPerson className="h-4 w-4 mr-2" />
-              Mi Perfil
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-red-600 focus:bg-red-50"
-            >
-              <MdLogout className="h-4 w-4 mr-2" />
-              Cerrar Sesión
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleProfileClick}>
+            <MdPerson className="h-4 w-4 mr-2" />
+            Mi Perfil
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="text-red-600 focus:bg-red-50"
+          >
+            <MdLogout className="h-4 w-4 mr-2" />
+            Cerrar Sesión
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       </div>
     </header>
   );

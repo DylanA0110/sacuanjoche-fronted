@@ -86,7 +86,6 @@ const NuevaFacturaPage = () => {
       const facturaExistenteMatch = errorMessage.match(/\(ID:\s*(\d+)\)/i);
       if (facturaExistenteMatch) {
         const idFacturaExistente = parseInt(facturaExistenteMatch[1], 10);
-        console.log('Factura existente detectada, ID:', idFacturaExistente);
 
         // Actualizar URL con el idFactura para mostrar el botón de descargar PDF
         const newSearchParams = new URLSearchParams(searchParams);
@@ -100,11 +99,10 @@ const NuevaFacturaPage = () => {
         });
       } else {
         // Para otros errores, mostrar como error
-        console.log('Mensaje de error a mostrar:', errorMessage);
-        toast.error('Error al crear la factura', {
+      toast.error('Error al crear la factura', {
           description: errorMessage,
-          duration: 5000,
-        });
+        duration: 5000,
+      });
       }
     },
   });
@@ -151,14 +149,14 @@ const NuevaFacturaPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/pedidos')}
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/admin/pedidos')}
             className="text-gray-600 hover:text-gray-900 shrink-0"
-          >
-            <MdArrowBack className="h-5 w-5 mr-2" />
-            Volver
-          </Button>
+        >
+          <MdArrowBack className="h-5 w-5 mr-2" />
+          Volver
+        </Button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 text-gray-900 truncate">
               {idFactura ? 'Factura Creada' : 'Nueva Factura'}
@@ -207,9 +205,9 @@ const NuevaFacturaPage = () => {
                 <p className="text-sm text-gray-600">
                   La factura #{idFactura} ha sido creada. Puedes descargar el
                   PDF usando el botón de arriba.
-                </p>
-              </div>
-            </div>
+          </p>
+        </div>
+      </div>
           </CardContent>
         </Card>
       )}
@@ -284,8 +282,8 @@ const NuevaFacturaPage = () => {
                       generarán automáticamente.
                     </p>
                   </div>
-                </div>
-              </div>
+            </div>
+            </div>
             )}
 
             {/* Botones */}
@@ -299,16 +297,16 @@ const NuevaFacturaPage = () => {
                 {idFactura ? 'Volver a Pedidos' : 'Cancelar'}
               </Button>
               {!idFactura && (
-                <Button
+              <Button
                   type="button"
                   onClick={handleCrearFactura}
                   disabled={createFacturaMutation.isPending}
                   className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 >
-                  {createFacturaMutation.isPending
+                {createFacturaMutation.isPending
                     ? 'Creando...'
                     : 'Crear Factura desde Pedido'}
-                </Button>
+              </Button>
               )}
               {idFactura && (
                 <Button

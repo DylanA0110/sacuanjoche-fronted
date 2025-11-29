@@ -16,11 +16,14 @@ export const Header = () => {
   // Fondo fijo sin cambio de color - más simple y moderno
   const backgroundColor = 'rgba(15, 15, 15, 0.95)';
 
+  // Hashes válidos
+  const VALID_HASHES = ['#inicio', '#servicios', '#galeria', '#historia', '#contacto'];
+
   const menuItems = [
     { label: 'Inicio', href: '#inicio' },
+    { label: 'Catálogo', href: '/catalogo' },
     { label: 'Servicios', href: '#servicios' },
     { label: 'Galería', href: '#galeria' },
-    { label: 'Catálogo', href: '/catalogo' },
     { label: 'Historia', href: '#historia' },
     { label: 'Contacto', href: '#contacto' },
   ];
@@ -30,11 +33,22 @@ export const Header = () => {
     (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
       e.preventDefault();
       
+      // Validar que el hash sea válido
+      if (!VALID_HASHES.includes(hash)) {
+        // Limpiar URL y redirigir a inicio
+        window.history.replaceState(null, '', '/');
+        navigate('/', { replace: true });
+        setIsMenuOpen(false);
+        return;
+      }
+      
       if (location.pathname !== '/') {
         // Si no estamos en la landing, navegar primero
         navigate(`/${hash}`);
       } else {
-        // Si estamos en la landing, hacer scroll suave
+        // Si estamos en la landing, actualizar la URL con el hash y hacer scroll suave
+        window.history.pushState(null, '', hash);
+        
         const element = document.querySelector(hash);
         if (element) {
           const headerOffset = 80;

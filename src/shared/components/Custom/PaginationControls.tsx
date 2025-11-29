@@ -33,16 +33,6 @@ export function PaginationControls({
   // Calcular totalPages correctamente - siempre recalcular desde totalItems
   const calculatedTotalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
-  // Debug logs
-  console.log('PaginationControls - Debug:', {
-    currentPage,
-    totalPages,
-    calculatedTotalPages,
-    itemsPerPage,
-    totalItems,
-    canGoNext: currentPage < calculatedTotalPages,
-  });
-
   const canGoPrevious = currentPage > 1;
   const canGoNext = currentPage < calculatedTotalPages;
 

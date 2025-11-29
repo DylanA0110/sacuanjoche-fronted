@@ -97,7 +97,6 @@ export const useFactura = (options?: UseFacturaOptions) => {
     if (options?.excludeAnuladas) {
       if (options?.usePagination) {
         // Con paginación y filtro, usar el total filtrado
-        console.log('useFactura - totalItems filtrado:', filteredTotal);
         return filteredTotal;
       }
 
@@ -118,10 +117,6 @@ export const useFactura = (options?: UseFacturaOptions) => {
     if (options?.usePagination) {
       if (typeof query.data === 'object' && 'total' in query.data) {
         const total = (query.data as PaginatedResponse<Factura>).total ?? 0;
-        console.log(
-          'useFactura - totalItems desde PaginatedResponse (sin filtro):',
-          total
-        );
         return total;
       }
 
