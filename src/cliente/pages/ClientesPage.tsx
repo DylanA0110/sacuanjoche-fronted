@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
@@ -69,62 +69,48 @@ const columns: Column[] = [
 ];
 
 const ClientesPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const queryClient = useQueryClient();
 
-  // Derivar valores de searchParams
-  const searchQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
-  const limit = useMemo(
-    () => parseInt(searchParams.get('limit') || '10', 10),
-    [searchParams]
-  );
-  const currentPage = useMemo(
-    () => parseInt(searchParams.get('page') || '1', 10),
-    [searchParams]
-  );
-  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
+  // Hook de paginación general
+  const pagination = useTablePagination(0);
+
+  // Obtener clientes con paginación usando valores del hook
+  const { clientes, totalItems, isLoading, isError, error, refetch } =
+    useCliente({
+      usePagination: true,
+      limit: pagination.limit,
+      offset: pagination.offset,
+      q: pagination.searchQuery || undefined,
+      activo: 'activo', // Solo clientes activos
+    });
+
+  // Recalcular paginación con totalItems real
+  const finalPagination = useTablePagination(totalItems);
 
   // Usar directamente searchQuery - solo necesitamos un input local para el debounce
-  const [searchInput, setSearchInput] = useState(searchQuery);
+  const [searchInput, setSearchInput] = useState(finalPagination.searchQuery);
   const debouncedSearch = useDebounce(searchInput, 500);
   const isUserTypingRef = useRef(false);
 
-  // Actualizar URL cuando cambia el debounced search (único useEffect necesario)
+  // Actualizar URL cuando cambia el debounced search
   useEffect(() => {
-    if (debouncedSearch === searchQuery) {
+    if (debouncedSearch === finalPagination.searchQuery) {
       isUserTypingRef.current = false;
       return;
     }
 
     isUserTypingRef.current = true;
-    const newParams = new URLSearchParams(searchParams);
-    if (debouncedSearch) {
-      newParams.set('q', debouncedSearch);
-    } else {
-      newParams.delete('q');
-    }
-    newParams.delete('page');
-    setSearchParams(newParams, { replace: true });
-  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
+    finalPagination.setSearch(debouncedSearch);
+  }, [debouncedSearch, finalPagination]);
 
-  // Sincronizar searchInput cuando cambia la URL desde fuera (navegación, etc.)
-  // No sincronizar mientras el usuario está escribiendo
+  // Sincronizar searchInput cuando cambia la URL desde fuera
   useEffect(() => {
-    if (!isUserTypingRef.current && searchQuery !== searchInput) {
-      setSearchInput(searchQuery);
+    if (!isUserTypingRef.current && finalPagination.searchQuery !== searchInput) {
+      setSearchInput(finalPagination.searchQuery);
     }
-  }, [searchQuery]);
-
-  const { clientes, totalItems, isLoading, isError, error, refetch } =
-    useCliente({
-      usePagination: true,
-      limit,
-      offset,
-      q: searchQuery || undefined,
-      activo: 'activo', // Solo clientes activos
-    });
+  }, [finalPagination.searchQuery]);
 
   // Error handling se hace vía toast notifications - no necesitamos useEffect
 
@@ -432,7 +418,7 @@ const ClientesPage = () => {
 
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 w-full">
+      <div className="space-y-6 sm:space-y-8 w-full min-w-0 max-w-full overflow-x-hidden">
         {/* Header Premium - Sticky para mantener visible */}
         <div className="sticky top-0 z-30 bg-[#F9F9F7] pb-4 -mt-6 pt-6 border-b border-gray-200/50 backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
@@ -472,19 +458,15 @@ const ClientesPage = () => {
               isLoading={isLoading}
               isError={isError}
               searchValue={searchInput}
-              onSearchChange={handleSearch}
-              totalItems={totalItems}
-              currentPage={currentPage}
-              itemsPerPage={limit}
-              onPageChange={(page) => {
-                const newParams = new URLSearchParams(searchParams);
-                if (page === 1) {
-                  newParams.delete('page');
-                } else {
-                  newParams.set('page', String(page));
-                }
-                setSearchParams(newParams, { replace: true });
+              onSearchChange={(value) => {
+                setSearchInput(value);
+                finalPagination.setSearch(value);
               }}
+              totalItems={totalItems}
+              currentPage={finalPagination.page}
+              itemsPerPage={finalPagination.limit}
+              onPageChange={finalPagination.setPage}
+              onLimitChange={finalPagination.setLimit}
             />
           </CardContent>
         </Card>

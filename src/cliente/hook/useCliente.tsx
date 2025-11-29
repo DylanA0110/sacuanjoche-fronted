@@ -5,6 +5,49 @@ import type { Cliente } from '../types/cliente.interface';
 import type { PaginatedResponse } from '@/shared/types/pagination';
 import type { GetClientesParams } from '../types/cliente.interface';
 
+// Query separada para obtener el total de elementos filtrados
+const useFilteredTotal = (
+  activo?: 'activo' | 'inactivo' | boolean,
+  q?: string
+): number => {
+  const estadoFilter: 'activo' | 'inactivo' | undefined =
+    activo !== undefined
+      ? typeof activo === 'string'
+        ? activo
+        : activo
+        ? 'activo'
+        : 'inactivo'
+      : undefined;
+
+  // Solo hacer esta query si hay filtro de estado
+  const { data: allData } = useQuery<Cliente[] | PaginatedResponse<Cliente>>({
+    queryKey: ['clientes', 'total-filtered', estadoFilter, q],
+    queryFn: () =>
+      getClientes({
+        limit: 10000, // Obtener todos para contar
+        offset: 0,
+        ...(q && q.trim() && { q: q.trim() }),
+      }),
+    enabled: estadoFilter !== undefined, // Solo ejecutar si hay filtro
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+
+  return useMemo(() => {
+    if (!allData || estadoFilter === undefined) return 0;
+
+    let allClientes: Cliente[] = [];
+    if (Array.isArray(allData)) {
+      allClientes = allData;
+    } else if (typeof allData === 'object' && 'data' in allData) {
+      allClientes = (allData as PaginatedResponse<Cliente>).data || [];
+    }
+
+    return allClientes.filter((cliente) => cliente.estado === estadoFilter)
+      .length;
+  }, [allData, estadoFilter]);
+};
+
 interface UseClienteOptions {
   limit?: number;
   offset?: number;
@@ -70,29 +113,59 @@ export const useCliente = (options?: UseClienteOptions) => {
     return allClientes;
   }, [query.data, options?.activo]);
 
+  // Obtener el total de elementos filtrados si hay filtro de estado
+  const filteredTotal = useFilteredTotal(
+    options?.activo,
+    options?.q
+  );
+
   const totalItems = useMemo(() => {
     if (!query.data) return 0;
 
-    let allClientes: Cliente[] = [];
-    if (Array.isArray(query.data)) {
-      allClientes = query.data;
-    } else if (typeof query.data === 'object' && 'data' in query.data) {
-      allClientes = (query.data as PaginatedResponse<Cliente>).data || [];
-    }
-
-    // Si hay filtrado por estado, contar los clientes filtrados
+    // Si hay filtro de estado, usar el total filtrado
     if (options?.activo !== undefined) {
+      if (options?.usePagination) {
+        // Con paginación y filtro, usar el total filtrado
+        console.log('useCliente - totalItems filtrado:', filteredTotal);
+        return filteredTotal;
+      }
+      
+      // Sin paginación, contar los elementos de la página actual
+      let allClientes: Cliente[] = [];
+      if (Array.isArray(query.data)) {
+        allClientes = query.data;
+      } else if (typeof query.data === 'object' && 'data' in query.data) {
+        allClientes = (query.data as PaginatedResponse<Cliente>).data || [];
+      }
+      
       const estadoFilter =
         typeof options.activo === 'string'
           ? options.activo
           : options.activo
           ? 'activo'
           : 'inactivo';
+      
       return allClientes.filter((cliente) => cliente.estado === estadoFilter)
         .length;
     }
 
-    // Si no hay filtrado, usar el total del backend
+    // Sin filtro de estado, usar el total del backend
+    if (options?.usePagination) {
+      if (typeof query.data === 'object' && 'total' in query.data) {
+        const total = (query.data as PaginatedResponse<Cliente>).total ?? 0;
+        console.log('useCliente - totalItems desde PaginatedResponse (sin filtro):', total);
+        return total;
+      }
+      
+      if (Array.isArray(query.data)) {
+        console.warn('useCliente - Backend devolvió array cuando se esperaba respuesta paginada.');
+        return query.data.length;
+      }
+      
+      return 0;
+    }
+
+    // Sin paginación ni filtro, contar elementos
     if (Array.isArray(query.data)) return query.data.length;
 
     if (typeof query.data === 'object' && 'total' in query.data) {
@@ -100,7 +173,7 @@ export const useCliente = (options?: UseClienteOptions) => {
     }
 
     return 0;
-  }, [query.data, options?.activo]);
+  }, [query.data, options?.activo, options?.usePagination, filteredTotal]);
 
   return {
     clientes,

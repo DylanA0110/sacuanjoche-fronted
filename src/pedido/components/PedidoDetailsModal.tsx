@@ -14,7 +14,6 @@ import {
   MdShoppingCart,
   MdCalendarToday,
   MdAttachMoney,
-  MdClose,
 } from 'react-icons/md';
 import type { Pedido } from '../types/pedido.interface';
 import type { PedidoEstado } from '@/shared/types/estados.types';
@@ -30,7 +29,7 @@ export function PedidoDetailsModal({
   onOpenChange,
   pedidoId,
 }: PedidoDetailsModalProps) {
-  // Obtener pedido por ID (ya incluye los detalles)
+  // Obtener pedido por ID (ya incluye los detalles con arreglos)
   const {
     data: pedido,
     isLoading,
@@ -41,7 +40,7 @@ export function PedidoDetailsModal({
     enabled: !!pedidoId && open,
   });
 
-  // Los detalles vienen incluidos en el pedido
+  // Los detalles vienen incluidos en el pedido desde el backend
   const detalles = pedido?.detalles || [];
 
   if (!open || !pedidoId) return null;
@@ -85,42 +84,61 @@ export function PedidoDetailsModal({
     }
   };
 
+  // Calcular subtotal de productos desde los detalles (cantidad × precio del arreglo)
+  const subtotalProductosCalculado = detalles
+    ? detalles.reduce((sum, detalle) => {
+        const precioArreglo =
+          typeof detalle.arreglo?.precioUnitario === 'string'
+            ? parseFloat(detalle.arreglo.precioUnitario)
+            : detalle.arreglo?.precioUnitario || 0;
+        return sum + detalle.cantidad * precioArreglo;
+      }, 0)
+    : 0;
+
+  // Obtener costo de envío del pedido (puede venir en pedido.envio.costoEnvio o pedido.costoEnvio)
+  const costoEnvio =
+    pedido?.envio?.costoEnvio !== undefined
+      ? typeof pedido.envio.costoEnvio === 'string'
+        ? parseFloat(pedido.envio.costoEnvio)
+        : pedido.envio.costoEnvio
+      : pedido?.costoEnvio !== undefined
+      ? typeof pedido.costoEnvio === 'string'
+        ? parseFloat(pedido.costoEnvio)
+        : pedido.costoEnvio
+      : 0;
+
+  // Calcular total del pedido (subtotal + costo de envío)
+  const totalPedidoCalculado = subtotalProductosCalculado + costoEnvio;
+
+  // Mantener valores del pedido como fallback si no hay detalles
   const totalProductos =
-    typeof pedido?.totalProductos === 'string'
+    detalles && detalles.length > 0
+      ? subtotalProductosCalculado
+      : typeof pedido?.totalProductos === 'string'
       ? parseFloat(pedido.totalProductos)
       : pedido?.totalProductos || 0;
 
-  const costoEnvio =
-    typeof pedido?.costoEnvio === 'string'
-      ? parseFloat(pedido.costoEnvio)
-      : pedido?.costoEnvio || 0;
-
   const totalPedido =
-    typeof pedido?.totalPedido === 'string'
+    detalles && detalles.length > 0
+      ? totalPedidoCalculado
+      : typeof pedido?.totalPedido === 'string'
       ? parseFloat(pedido.totalPedido)
       : pedido?.totalPedido || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-        <div className="p-6 sm:p-8">
-          <DialogHeader className="mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="text-3xl font-bold text-gray-900">
+      <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-[95vw] sm:max-w-4xl max-h-[95vh] overflow-y-auto p-0">
+        <div className="p-4 sm:p-6 md:p-8">
+          <DialogHeader className="mb-4 sm:mb-6">
+            <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 break-words">
                   Detalles del Pedido #{pedidoId}
                 </DialogTitle>
                 <div className="mt-2">
                   {pedido && getEstadoBadge(pedido.estado || 'pendiente')}
                 </div>
               </div>
-              <button
-                onClick={() => onOpenChange(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Cerrar"
-              >
-                <MdClose className="h-6 w-6 text-gray-600" />
-              </button>
             </div>
           </DialogHeader>
 
@@ -141,14 +159,14 @@ export function PedidoDetailsModal({
           )}
 
           {pedido && !isLoading && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Información General */}
-              <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <MdCalendarToday className="h-5 w-5 text-[#50C878]" />
+              <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 sm:p-6 border border-gray-200">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <MdCalendarToday className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
                   Información General
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label className="text-xs text-gray-500">
                       Fecha de Creación
@@ -251,12 +269,12 @@ export function PedidoDetailsModal({
 
               {/* Contacto de Entrega */}
               {pedido.contactoEntrega && (
-                <div className="bg-linear-to-br from-purple-50/50 to-pink-50/50 rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <MdPerson className="h-5 w-5 text-[#50C878]" />
+                <div className="bg-linear-to-br from-purple-50/50 to-pink-50/50 rounded-xl p-4 sm:p-6 border border-gray-200">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <MdPerson className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
                     Contacto de Entrega
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <Label className="text-xs text-gray-500">Nombre</Label>
                       <p className="text-sm font-medium text-gray-900">
@@ -277,12 +295,12 @@ export function PedidoDetailsModal({
 
               {/* Empleado */}
               {pedido.empleado && (
-                <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <MdPerson className="h-5 w-5 text-[#50C878]" />
+                <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 sm:p-6 border border-gray-200">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                    <MdPerson className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
                     Empleado
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <Label className="text-xs text-gray-500">Nombre</Label>
                       <p className="text-sm font-medium text-gray-900">
@@ -302,9 +320,9 @@ export function PedidoDetailsModal({
               )}
 
               {/* Detalles del Pedido (Arreglos) */}
-              <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <MdShoppingCart className="h-5 w-5 text-[#50C878]" />
+              <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 sm:p-6 border border-gray-200">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <MdShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
                   Arreglos del Pedido
                 </h3>
                 {isLoading ? (
@@ -316,10 +334,10 @@ export function PedidoDetailsModal({
                     {detalles.map((detalle, index) => (
                       <div
                         key={detalle.idDetallePedido || `detalle-${index}`}
-                        className="flex items-center justify-between p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-[#50C878]/30 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-[#50C878]/30 transition-colors"
                       >
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900 text-base">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 text-sm sm:text-base break-words">
                             {detalle.arreglo?.nombre || 'Arreglo'}
                           </p>
                           <p className="text-sm text-gray-600 mt-1">
@@ -328,17 +346,28 @@ export function PedidoDetailsModal({
                               {detalle.cantidad}
                             </span>{' '}
                             x $
-                            {typeof detalle.precioUnitario === 'string'
-                              ? parseFloat(detalle.precioUnitario).toFixed(2)
-                              : detalle.precioUnitario.toFixed(2)}
+                            {(() => {
+                              // Calcular precio unitario desde el arreglo (no desde la BD que es 0)
+                              const precioArreglo =
+                                typeof detalle.arreglo?.precioUnitario === 'string'
+                                  ? parseFloat(detalle.arreglo.precioUnitario)
+                                  : detalle.arreglo?.precioUnitario || 0;
+                              return precioArreglo.toFixed(2);
+                            })()}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-[#50C878]">
                             $
-                            {typeof detalle.subtotal === 'string'
-                              ? parseFloat(detalle.subtotal).toFixed(2)
-                              : detalle.subtotal.toFixed(2)}
+                            {(() => {
+                              // Calcular subtotal desde el arreglo (cantidad * precio del arreglo)
+                              const precioArreglo =
+                                typeof detalle.arreglo?.precioUnitario === 'string'
+                                  ? parseFloat(detalle.arreglo.precioUnitario)
+                                  : detalle.arreglo?.precioUnitario || 0;
+                              const subtotalCalculado = detalle.cantidad * precioArreglo;
+                              return subtotalCalculado.toFixed(2);
+                            })()}
                           </p>
                         </div>
                       </div>
@@ -352,30 +381,37 @@ export function PedidoDetailsModal({
               </div>
 
               {/* Resumen de Totales */}
-              <div className="bg-linear-to-br from-[#50C878]/10 to-[#3aa85c]/10 rounded-xl p-6 border-2 border-[#50C878]/30">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <MdAttachMoney className="h-5 w-5 text-[#50C878]" />
+              <div className="bg-linear-to-br from-[#50C878]/10 to-[#3aa85c]/10 rounded-xl p-4 sm:p-6 border-2 border-[#50C878]/30">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <MdAttachMoney className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
                   Resumen de Totales
                 </h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-gray-700">
+                  <div className="flex justify-between text-sm sm:text-base text-gray-700">
                     <span>Subtotal de Productos:</span>
                     <span className="font-semibold">
                       ${totalProductos.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Costo de Envío:</span>
-                    <span className="font-semibold">
-                      ${costoEnvio.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-300">
+                  {costoEnvio > 0 && (
+                    <div className="flex justify-between text-sm sm:text-base text-gray-700">
+                      <span>Costo de Envío:</span>
+                      <span className="font-semibold">
+                        ${costoEnvio.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg sm:text-xl font-bold text-gray-900 pt-2 border-t border-gray-300">
                     <span>Total del Pedido:</span>
                     <span className="text-[#50C878]">
                       ${totalPedido.toFixed(2)}
                     </span>
                   </div>
+                  {detalles && detalles.length > 0 && (
+                    <p className="text-xs text-gray-500 italic mt-2">
+                      * Los precios se calculan desde los arreglos del catálogo
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

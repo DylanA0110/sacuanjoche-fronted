@@ -232,16 +232,16 @@ export function ArregloDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-6xl max-h-[90vh] sm:max-h-[95vh] overflow-hidden p-0 rounded-xl sm:rounded-2xl">
-        <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
+      <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-[95vw] sm:max-w-6xl max-h-[95vh] overflow-hidden p-0 rounded-xl sm:rounded-2xl">
+        <div className="flex flex-col lg:flex-row h-full max-h-[95vh]">
           {/* Sección de Imágenes - Carrusel */}
-          <div className="lg:w-1/2 bg-[#F9F9F7] flex flex-col relative rounded-l-2xl min-h-[300px] sm:min-h-[400px] lg:min-h-0">
+          <div className="w-full lg:w-1/2 bg-[#F9F9F7] flex flex-col relative lg:rounded-l-2xl rounded-t-xl lg:rounded-tr-none min-h-[250px] sm:min-h-[300px] md:min-h-[350px] lg:min-h-0 lg:max-h-full">
             {state.loadingImages ? (
-              <div className="flex items-center justify-center h-full min-h-[300px] sm:min-h-[400px]">
+              <div className="flex items-center justify-center h-full min-h-[250px] sm:min-h-[300px] md:min-h-[350px]">
                 <div className="w-8 h-8 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
               </div>
             ) : state.images.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-[300px] sm:min-h-[400px] gap-4">
+              <div className="flex flex-col items-center justify-center h-full min-h-[250px] sm:min-h-[300px] md:min-h-[350px] gap-4">
                 <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
                   <MdImage className="h-12 w-12 text-gray-400" />
                 </div>
@@ -256,9 +256,9 @@ export function ArregloDetailsModal({
                   className={`flex-1 relative overflow-hidden bg-gray-900 flex items-center justify-center ${
                     imageAspect
                       ? imageAspect.ratio > 1
-                        ? 'min-h-[50vh] sm:min-h-[60vh] lg:min-h-0'
-                        : 'min-h-[60vh] sm:min-h-[70vh] lg:min-h-0'
-                      : 'min-h-[50vh] sm:min-h-[60vh] lg:min-h-0'
+                        ? 'h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-full lg:min-h-[400px]'
+                        : 'h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-full lg:min-h-[500px]'
+                      : 'h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-full lg:min-h-[400px]'
                   }`}
                 >
                   <img
@@ -267,15 +267,19 @@ export function ArregloDetailsModal({
                       currentImage?.altText ||
                       `Imagen ${state.currentImageIndex + 1}`
                     }
-                    className={`max-w-full max-h-full ${
+                    className={`${
                       imageAspect
                         ? imageAspect.ratio > 1.2
-                          ? 'w-full h-auto object-contain'
+                          ? 'w-full h-auto max-h-full object-contain'
                           : imageAspect.ratio < 0.8
-                          ? 'w-auto h-full object-contain'
+                          ? 'w-auto h-full max-w-full object-contain'
                           : 'w-full h-full object-contain'
                         : 'w-full h-full object-contain'
                     }`}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                    }}
                     loading="lazy"
                     decoding="async"
                     onError={(e) => {
@@ -316,13 +320,13 @@ export function ArregloDetailsModal({
 
                 {/* Miniaturas */}
                 {state.images.length > 1 && (
-                  <div className="p-3 sm:p-4 bg-white/50 backdrop-blur-sm border-t border-gray-200/60">
+                  <div className="p-2 sm:p-3 md:p-4 bg-white/50 backdrop-blur-sm border-t border-gray-200/60 shrink-0">
                     <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                       {state.images.map((image, index) => (
                         <button
                           key={image.idMedia || index}
                           onClick={() => goToImage(index)}
-                          className={`shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                          className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-200 ${
                             index === state.currentImageIndex
                               ? 'border-[#50C878] ring-2 ring-[#50C878]/30 shadow-md scale-105'
                               : 'border-gray-200 hover:border-[#50C878]/50 opacity-70 hover:opacity-100'
@@ -349,23 +353,23 @@ export function ArregloDetailsModal({
           </div>
 
           {/* Sección de Información */}
-          <div className="lg:w-1/2 flex flex-col overflow-y-auto rounded-r-2xl">
-            <DialogHeader className="px-8 pt-8 pb-6 border-b border-gray-200/60">
-              <DialogTitle className="text-3xl sm:text-4xl font-title-large text-gray-900 mb-3 leading-tight">
+          <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto lg:rounded-r-2xl rounded-b-xl lg:rounded-bl-none max-h-[50vh] lg:max-h-full">
+            <DialogHeader className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-6 border-b border-gray-200/60 shrink-0">
+              <DialogTitle className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-title-large text-gray-900 mb-2 sm:mb-3 leading-tight">
                 {arreglo.nombre}
               </DialogTitle>
-              <DialogDescription className="text-gray-500 text-sm">
+              <DialogDescription className="text-gray-500 text-xs sm:text-sm">
                 Detalles del arreglo floral
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 px-8 py-6 space-y-6">
+            <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 overflow-y-auto">
               {/* Precio - DESTACADO */}
               <div className={precioCardClass}>
                 <span className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2 block">
                   Precio Unitario
                 </span>
-                <p className="text-4xl sm:text-5xl font-title-large text-[#1E5128] leading-none">
+                <p className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-title-large text-[#1E5128] leading-none">
                   C${precio.toFixed(2)}
                 </p>
               </div>

@@ -9,9 +9,13 @@ const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const PedidoFormPage = lazy(() => import('../pedido/pages/PedidoFormPage'));
 const NuevaFacturaPage = lazy(() => import('../facturas/pages/NuevaFacturaPage'));
+const FacturasPage = lazy(() => import('../facturas/pages/FacturasPage'));
+const EditarFacturaPage = lazy(() => import('../facturas/pages/EditarFacturaPage'));
 const ClientesPage = lazy(() => import('../cliente/pages/ClientesPage'));
 const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
 const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
+const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
+const RutasPage = lazy(() => import('../rutas/pages/RutasPage'));
 
 // Componente de carga para el router (Landing Page)
 const RouterLoadingFallback = () => (
@@ -83,6 +87,14 @@ export const router = createBrowserRouter([
         element: <NuevaFacturaPage />,
       },
       {
+        path: 'facturas',
+        element: <FacturasPage />,
+      },
+      {
+        path: 'facturas/:idFactura/editar',
+        element: <EditarFacturaPage />,
+      },
+      {
         path: 'clientes',
         element: <ClientesPage />,
       },
@@ -93,6 +105,14 @@ export const router = createBrowserRouter([
       {
         path: 'arreglos',
         element: <ArreglosPage />,
+      },
+      {
+        path: 'reportes',
+        element: <ReportesPage />,
+      },
+      {
+        path: 'rutas',
+        element: <RutasPage />,
       },
     ],
   },

@@ -22,7 +22,8 @@ export const getDetallePedidoByPedidoId = async (
           DetallePedido[] | { data: DetallePedido[] }
         >(`/detalle-pedido/pedido/${idPedido}`);
       } catch {
-        // Si ambas opciones fallan, retornar array vacío
+        // Si ambas opciones fallan, retornar array vacío silenciosamente
+        // No loguear error porque los detalles pueden no existir aún
         return [];
       }
     }
@@ -43,6 +44,7 @@ export const getDetallePedidoByPedidoId = async (
     return [];
   } catch {
     // No lanzar error, retornar array vacío para que el modal se muestre
+    // Los detalles pueden venir en el pedido directamente
     return [];
   }
 };

@@ -67,6 +67,62 @@ export const getArreglos = async (
     // Fallback: si viene como array directo (caso legacy)
     if (Array.isArray(response.data)) {
       const mapped = response.data.map(mapArregloResponse);
+      
+      // Si hay parámetros de paginación, necesitamos obtener el total real
+      if (params?.limit !== undefined || params?.offset !== undefined) {
+        const limit = params.limit || 10;
+        const offset = params.offset || 0;
+        
+        // Si tenemos menos elementos que el limit, sabemos que es la última página
+        if (mapped.length < limit) {
+          return {
+            data: mapped,
+            total: offset + mapped.length,
+          };
+        }
+        
+        // Si tenemos exactamente 'limit' elementos, obtener el total real
+        try {
+          const totalResponse = await arregloApi.get<ArreglosPaginatedResponse | ArregloResponse[]>('/', {
+            params: {
+              ...(params.q && params.q.trim() && { q: params.q.trim() }),
+              limit: 10000, // Límite muy alto para obtener todos
+              offset: 0,
+            },
+          });
+          
+          let total = 0;
+          if (Array.isArray(totalResponse.data)) {
+            total = totalResponse.data.length;
+          } else if (totalResponse.data && typeof totalResponse.data === 'object' && 'total' in totalResponse.data) {
+            total = (totalResponse.data as any).total || 0;
+          }
+          
+          // Si el total sigue siendo 10 (igual al limit actual), usar estimación
+          if (total === 10 && mapped.length === 10 && limit === 10) {
+            total = offset + mapped.length + 1;
+          }
+          
+          return {
+            data: mapped,
+            total: total,
+          };
+        } catch (totalError) {
+          // Si falla obtener el total, usar lógica de fallback
+          if (mapped.length < limit) {
+            return {
+              data: mapped,
+              total: offset + mapped.length,
+            };
+          }
+          return {
+            data: mapped,
+            total: offset + mapped.length + 1,
+          };
+        }
+      }
+      
+      // Sin paginación, devolver con total = length
       return {
         data: mapped,
         total: mapped.length,

@@ -10,6 +10,7 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import { MdSearch, MdEdit, MdDelete, MdVisibility } from 'react-icons/md';
+import { PaginationControls } from './PaginationControls';
 
 export interface Column {
   key: string;
@@ -37,6 +38,7 @@ interface DataTableProps {
   currentPage?: number;
   itemsPerPage?: number;
   onPageChange?: (page: number) => void;
+  onLimitChange?: (limit: number) => void;
 }
 
 export function DataTable({
@@ -55,6 +57,7 @@ export function DataTable({
   currentPage,
   itemsPerPage,
   onPageChange,
+  onLimitChange,
 }: DataTableProps) {
   const [internalSearch, setInternalSearch] = useState('');
 
@@ -92,9 +95,9 @@ export function DataTable({
       )}
 
       {/* Table */}
-      <div className="w-full overflow-x-auto rounded-lg bg-white border border-gray-200 shadow-md scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+      <div className="w-full max-w-full overflow-x-auto rounded-lg bg-white border border-gray-200 shadow-md scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="min-w-max md:min-w-full">
-          <Table className="w-full table-auto min-w-[600px]">
+          <Table className="w-full table-auto min-w-[320px] sm:min-w-[500px] md:min-w-[600px] max-w-full">
             <TableHeader>
               <TableRow className="bg-gray-50 border-b border-gray-200">
                 {columns.map((col, index) => (
@@ -265,44 +268,14 @@ export function DataTable({
 
       {/* Pagination */}
       {totalItems && totalItems > 0 && onPageChange && (
-        <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-gray-200 bg-white rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-600 text-center sm:text-left font-medium">
-            Mostrando{' '}
-            <span className="font-semibold text-gray-900">
-              {Math.min(
-                (currentPage || 1) * (itemsPerPage || 10) -
-                  (itemsPerPage || 10) +
-                  1,
-                totalItems
-              )}
-            </span>{' '}
-            -{' '}
-            <span className="font-semibold text-gray-900">
-              {Math.min((currentPage || 1) * (itemsPerPage || 10), totalItems)}
-            </span>{' '}
-            de <span className="font-semibold text-gray-900">{totalItems}</span>
-          </p>
-          <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange((currentPage || 1) - 1)}
-              disabled={(currentPage || 1) === 1}
-              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-base font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-60 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-lg"
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange((currentPage || 1) + 1)}
-              disabled={(currentPage || 1) * (itemsPerPage || 10) >= totalItems}
-              className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/30 hover:text-[#50C878] text-base font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-60 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-lg"
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
+        <PaginationControls
+          currentPage={currentPage || 1}
+          totalPages={Math.max(1, Math.ceil(totalItems / (itemsPerPage || 10)))}
+          itemsPerPage={itemsPerPage || 10}
+          totalItems={totalItems}
+          onPageChange={onPageChange}
+          onLimitChange={onLimitChange || (() => {})}
+        />
       )}
     </div>
   );

@@ -9,6 +9,8 @@ import {
   MdShoppingCart,
   MdLocalShipping,
   MdCategory,
+  MdDescription,
+  MdReceipt,
 } from 'react-icons/md';
 import { GiRose } from 'react-icons/gi';
 
@@ -18,7 +20,9 @@ const menuItems = [
   { title: 'Catálogo', url: '/admin/catalogo', icon: MdCategory },
   { title: 'Clientes', url: '/admin/clientes', icon: MdPeople },
   { title: 'Pedidos', url: '/admin/pedidos', icon: MdShoppingCart },
+  { title: 'Facturas', url: '/admin/facturas', icon: MdReceipt },
   { title: 'Rutas & Envíos', url: '/admin/rutas', icon: MdLocalShipping },
+  { title: 'Reportes', url: '/admin/reportes', icon: MdDescription },
 ];
 
 interface AppSidebarProps {

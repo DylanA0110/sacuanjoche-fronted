@@ -80,8 +80,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ÁREA DERECHA (HEADER + CONTENIDO) */}
       <div
-        className={`flex flex-col w-full transition-all duration-300 ${
-          isMobile ? 'ml-0' : sidebarOpen ? 'md:ml-64' : 'md:ml-16'
+        className={`flex flex-col transition-all duration-300 min-w-0 flex-1 ${
+          isMobile ? 'ml-0 w-full' : sidebarOpen ? 'md:ml-64 md:w-[calc(100%-16rem)]' : 'md:ml-16 md:w-[calc(100%-4rem)]'
         }`}
       >
         <AppHeader
@@ -90,11 +90,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           isMobile={isMobile}
         />
 
-        <main className="flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent min-w-0">
           <Suspense fallback={<BreadcrumbsFallback />}>
             <BreadcrumbsLazy />
           </Suspense>
-          {children}
+          <div className="min-w-0 w-full max-w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

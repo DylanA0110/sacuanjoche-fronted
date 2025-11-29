@@ -34,6 +34,7 @@ import {
   updateContactoEntrega,
   getPedidoById,
 } from '../actions';
+import { createEnvio } from '../actions/createEnvio';
 import { getDetallePedidoByPedidoId } from '../actions/getDetallePedidoByPedidoId';
 import { createDireccion, updateDireccion } from '@/cliente/actions';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -326,11 +327,12 @@ export default function PedidoFormPage() {
 
       // 3. Crear o actualizar pedido
       const pedidoDto: CreatePedidoDto = {
-        canal: data.pedido.canal || 'interno',
+        canal: 'interno', // Siempre interno
+        idPago: null, // Siempre null para canal interno
         idCliente: data.pedido.idCliente,
         idEmpleado: data.pedido.idEmpleado,
+        idFolio: 2, // Siempre 2
         fechaEntregaEstimada: data.pedido.fechaEntregaEstimada,
-        costoEnvio: data.pedido.costoEnvio,
         direccionTxt: data.pedido.direccionTxt,
         idDireccion,
         idContactoEntrega,
@@ -338,7 +340,19 @@ export default function PedidoFormPage() {
 
       let pedidoResultado;
       if (isEdit && idPedido) {
-        pedidoResultado = await updatePedido(Number(idPedido), pedidoDto);
+        // Para actualizar, usar UpdatePedidoDto con la misma lógica
+        const updateDto = {
+          canal: 'interno' as const,
+          idPago: null,
+          idCliente: pedidoDto.idCliente,
+          idEmpleado: pedidoDto.idEmpleado,
+          idFolio: 2,
+          fechaEntregaEstimada: pedidoDto.fechaEntregaEstimada,
+          direccionTxt: pedidoDto.direccionTxt,
+          idDireccion,
+          idContactoEntrega,
+        };
+        pedidoResultado = await updatePedido(Number(idPedido), updateDto);
       } else {
         pedidoResultado = await createPedido(pedidoDto);
         if (!pedidoResultado.idPedido) {
@@ -353,11 +367,27 @@ export default function PedidoFormPage() {
             idPedido: pedidoResultado.idPedido,
             idArreglo: detalle.idArreglo,
             cantidad: detalle.cantidad,
-            precioUnitario: detalle.precioUnitario,
-            subtotal: detalle.subtotal,
+            precioUnitario: 0, // Siempre 0 según requerimientos
+            subtotal: 0, // Siempre 0 según requerimientos
           })
         );
         await Promise.all(detallesPromises);
+      }
+
+      // 5. Crear envío con el costo de envío (solo para nuevos pedidos)
+      if (!isEdit && pedidoResultado.idPedido && data.pedido.costoEnvio > 0) {
+        try {
+          await createEnvio({
+            idPedido: pedidoResultado.idPedido,
+            idEmpleado: data.pedido.idEmpleado,
+            estadoEnvio: 'Programado',
+            fechaProgramada: data.pedido.fechaEntregaEstimada,
+            costoEnvio: data.pedido.costoEnvio,
+          });
+        } catch (error) {
+          // No fallar el pedido si falla el envío, solo loguear
+          console.error('Error al crear envío:', error);
+        }
       }
 
       return pedidoResultado;
@@ -431,12 +461,13 @@ export default function PedidoFormPage() {
     }
 
     // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)
+    // El costoEnvio NO va en el pedido, va en el envío
     const pedidoBase = {
       canal: 'interno' as const, // Siempre interno según la interfaz
       idCliente: Number(data.idCliente),
       idEmpleado,
       fechaEntregaEstimada: new Date(data.fechaEntregaEstimada).toISOString(),
-      costoEnvio: parseFloat(data.costoEnvio) || 0,
+      costoEnvio: parseFloat(data.costoEnvio) || 0, // Se guarda temporalmente para el envío
       direccionTxt:
         data.direccionTexto || direccionData?.formattedAddress || '',
       // idDireccion e idContactoEntrega se asignarán en la mutation después de crearlos
@@ -488,7 +519,7 @@ export default function PedidoFormPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

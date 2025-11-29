@@ -3,16 +3,27 @@
  * Elimina IDs, términos técnicos y hace los mensajes más amigables
  */
 export function cleanErrorMessage(error: any): string {
+  // Intentar obtener el mensaje de diferentes formas
   let message =
     error?.response?.data?.message ||
     error?.response?.data?.error ||
     error?.message ||
+    (typeof error === 'string' ? error : null) ||
     'Ocurrió un error inesperado';
+  
+  // Si el mensaje es un objeto, intentar extraer el mensaje
+  if (typeof message === 'object' && message !== null) {
+    message = message.message || message.error || 'Ocurrió un error inesperado';
+  }
 
-  // Eliminar IDs (números solos o patrones como "ID: 123", "id: 123", etc.)
-  message = message.replace(/\b(id|ID|Id):\s*\d+\b/gi, '');
-  message = message.replace(/\b\d{3,}\b/g, ''); // Eliminar números largos (probablemente IDs)
-  message = message.replace(/\b(id|ID|Id)\s+\d+\b/gi, '');
+  // NO eliminar IDs de factura o pedido en mensajes de error importantes
+  // Solo eliminar IDs genéricos que no aportan información útil
+  // Mantener IDs cuando están en contexto útil (ej: "factura asociada (ID: 21)")
+  if (!message.includes('factura') && !message.includes('pedido')) {
+    message = message.replace(/\b(id|ID|Id):\s*\d+\b/gi, '');
+    message = message.replace(/\b\d{3,}\b/g, ''); // Eliminar números largos (probablemente IDs)
+    message = message.replace(/\b(id|ID|Id)\s+\d+\b/gi, '');
+  }
 
   // Reemplazar términos técnicos con lenguaje amigable
   const replacements: [RegExp, string][] = [

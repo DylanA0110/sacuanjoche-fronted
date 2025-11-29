@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
+import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
@@ -60,52 +61,37 @@ const CatalogoPage = () => {
   const [editingItem, setEditingItem] = useState<EditingItem>(null);
   const queryClient = useQueryClient();
 
-  // Derivar valores de searchParams (eliminamos useState para activeTab y searchInput)
+  // Derivar activeTab de searchParams
   const activeTab = useMemo(
     () => (searchParams.get('tab') as TabType) || 'flores',
     [searchParams]
   );
-  const searchQuery = useMemo(() => searchParams.get('q') || '', [searchParams]);
-  const limit = useMemo(
-    () => parseInt(searchParams.get('limit') || '10', 10),
-    [searchParams]
-  );
-  const currentPage = useMemo(
-    () => parseInt(searchParams.get('page') || '1', 10),
-    [searchParams]
-  );
-  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
+
+  // Hook de paginación general
+  const pagination = useTablePagination(0);
 
   // Usar directamente searchQuery - solo necesitamos un input local para el debounce
-  const [searchInput, setSearchInput] = useState(searchQuery);
+  const [searchInput, setSearchInput] = useState(pagination.searchQuery);
   const debouncedSearch = useDebounce(searchInput, 500);
   const isUserTypingRef = useRef(false);
 
-  // Actualizar URL cuando cambia el debounced search (único useEffect para búsqueda)
+  // Actualizar URL cuando cambia el debounced search
   useEffect(() => {
-    if (debouncedSearch === searchQuery) {
+    if (debouncedSearch === pagination.searchQuery) {
       isUserTypingRef.current = false;
       return;
     }
 
     isUserTypingRef.current = true;
-    const newParams = new URLSearchParams(searchParams);
-    if (debouncedSearch) {
-      newParams.set('q', debouncedSearch);
-    } else {
-      newParams.delete('q');
-    }
-    newParams.delete('page');
-    setSearchParams(newParams, { replace: true });
-  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
+    pagination.setSearch(debouncedSearch);
+  }, [debouncedSearch, pagination]);
 
-  // Sincronizar searchInput cuando cambia la URL desde fuera (navegación, etc.)
-  // No sincronizar mientras el usuario está escribiendo
+  // Sincronizar searchInput cuando cambia la URL desde fuera
   useEffect(() => {
-    if (!isUserTypingRef.current && searchQuery !== searchInput) {
-      setSearchInput(searchQuery);
+    if (!isUserTypingRef.current && pagination.searchQuery !== searchInput) {
+      setSearchInput(pagination.searchQuery);
     }
-  }, [searchQuery]);
+  }, [pagination.searchQuery]);
 
   // Handler para cambiar tab (actualiza URL directamente)
   const handleTabChange = useCallback((tab: TabType) => {
@@ -114,7 +100,7 @@ const CatalogoPage = () => {
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // Hooks para cada sección
+  // Hooks para cada sección usando valores del hook de paginación
   const {
     flores,
     totalItems: totalFlores,
@@ -123,9 +109,9 @@ const CatalogoPage = () => {
     refetch: refetchFlores,
   } = useFlor({
     usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
     estado: 'activo',
   });
 
@@ -137,9 +123,9 @@ const CatalogoPage = () => {
     refetch: refetchAccesorios,
   } = useAccesorio({
     usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
     estado: 'activo',
   });
 
@@ -151,9 +137,9 @@ const CatalogoPage = () => {
     refetch: refetchFormas,
   } = useFormaArreglo({
     usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
     activo: true,
   });
 
@@ -165,11 +151,30 @@ const CatalogoPage = () => {
     refetch: refetchMetodos,
   } = useMetodoPago({
     usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
     estado: 'activo',
   });
+
+  // Calcular totalItems según el tab activo
+  const totalItems = useMemo(() => {
+    switch (activeTab) {
+      case 'flores':
+        return totalFlores;
+      case 'accesorios':
+        return totalAccesorios;
+      case 'formas':
+        return totalFormas;
+      case 'metodos':
+        return totalMetodos;
+      default:
+        return 0;
+    }
+  }, [activeTab, totalFlores, totalAccesorios, totalFormas, totalMetodos]);
+
+  // Recalcular paginación con totalItems real según el tab
+  const finalPagination = useTablePagination(totalItems);
 
   // Mutations
   const createFlorMutation = useMutation({
@@ -349,9 +354,6 @@ const CatalogoPage = () => {
     },
   });
 
-  const handleSearch = (value: string) => {
-    setSearchInput(value);
-  };
 
   const handleCreate = () => {
     setEditingItem(null);
@@ -661,7 +663,7 @@ const CatalogoPage = () => {
 
   return (
     <>
-      <div className="space-y-6 sm:space-y-8 w-full">
+      <div className="space-y-6 sm:space-y-8 w-full min-w-0 max-w-full overflow-x-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
           <div className="flex-1 min-w-0">
@@ -746,19 +748,15 @@ const CatalogoPage = () => {
               isLoading={currentData.isLoading}
               isError={currentData.isError}
               searchValue={searchInput}
-              onSearchChange={handleSearch}
-              totalItems={currentData.totalItems}
-              currentPage={currentPage}
-              itemsPerPage={limit}
-              onPageChange={(page) => {
-                const newParams = new URLSearchParams(searchParams);
-                if (page === 1) {
-                  newParams.delete('page');
-                } else {
-                  newParams.set('page', String(page));
-                }
-                setSearchParams(newParams, { replace: true });
+              onSearchChange={(value) => {
+                setSearchInput(value);
+                finalPagination.setSearch(value);
               }}
+              totalItems={currentData.totalItems}
+              currentPage={finalPagination.page}
+              itemsPerPage={finalPagination.limit}
+              onPageChange={finalPagination.setPage}
+              onLimitChange={finalPagination.setLimit}
             />
           </CardContent>
         </Card>

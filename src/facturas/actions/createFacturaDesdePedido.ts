@@ -40,20 +40,18 @@ export const createFacturaDesdePedido = async (
         data?.error?.message ||
         (typeof data === 'string' ? data : null);
 
-      if (status === 400) {
-        throw new Error(
-          message ||
-            'El pedido no está pagado, ya tiene factura, o no tiene detalles'
-        );
-      }
+      // Crear un error con el mensaje apropiado
+      const errorMessage = message || 
+        (status === 400 
+          ? 'El pedido no está pagado, ya tiene factura, o no tiene detalles'
+          : status === 404
+          ? 'Pedido no encontrado'
+          : `Error al crear la factura: ${error.response.status}`);
 
-      if (status === 404) {
-        throw new Error(message || 'Pedido no encontrado');
-      }
-
-      throw new Error(
-        message || `Error al crear la factura: ${error.response.status}`
-      );
+      const customError = new Error(errorMessage);
+      // Agregar información adicional al error para que toastHelpers pueda usarla
+      (customError as any).response = error.response;
+      throw customError;
     }
 
     // Si no hay response, es un error de red u otro tipo

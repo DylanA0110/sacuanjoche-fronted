@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { DataTable } from '@/shared/components/Custom/DataTable';
 import type { Column } from '@/shared/components/Custom/DataTable';
 import { Button } from '@/shared/components/ui/button';
@@ -89,49 +90,36 @@ const columns: Column[] = [
 ];
 
 const Pedidos = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Derivar valores directamente de searchParams (mejor rendimiento)
-  const searchQuery = useMemo(
-    () => searchParams.get('q') || '',
-    [searchParams]
-  );
-  const limit = useMemo(
-    () => parseInt(searchParams.get('limit') || '10', 10),
-    [searchParams]
-  );
-  const currentPage = useMemo(
-    () => parseInt(searchParams.get('page') || '1', 10),
-    [searchParams]
-  );
-  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
+  // Hook de paginación general
+  const pagination = useTablePagination(0);
 
+  // Obtener pedidos con paginación usando valores del hook
   const { pedidos, totalItems, isLoading, isError } = usePedido({
     usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
   });
 
-  // Manejar búsqueda con debounce usando URL params directamente
-  const handleSearch = useCallback(
-    (value: string) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (value) {
-        newParams.set('q', value);
-      } else {
-        newParams.delete('q');
-      }
-      // Resetear a página 1 cuando se busca
-      newParams.delete('page');
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
+  // Debug: Log para verificar valores
+  useEffect(() => {
+    console.log('PedidosPage - Debug:', {
+      totalItems,
+      limit: pagination.limit,
+      offset: pagination.offset,
+      page: pagination.page,
+      pedidosCount: pedidos.length,
+      calculatedTotalPages: Math.ceil(totalItems / pagination.limit),
+    });
+  }, [totalItems, pagination.limit, pagination.offset, pagination.page, pedidos.length]);
+
+  // Recalcular paginación con totalItems real
+  const finalPagination = useTablePagination(totalItems);
 
   const handleGenerateFactura = (pedido: Pedido) => {
     // Asegurar que idPedido sea un número
@@ -204,21 +192,9 @@ const Pedidos = () => {
     [pedidos]
   );
 
-  const handlePageChange = useCallback(
-    (page: number) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (page === 1) {
-        newParams.delete('page');
-      } else {
-        newParams.set('page', String(page));
-      }
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
 
   return (
-    <div className="space-y-6 sm:space-y-8 w-full">
+    <div className="space-y-6 sm:space-y-8 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Header Premium - Sticky para mantener visible */}
       <div className="sticky top-0 z-30 bg-[#F9F9F7] pb-4 -mt-6 pt-6 border-b border-gray-200/50 backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
@@ -263,12 +239,13 @@ const Pedidos = () => {
             onDelete={handleDelete}
             isLoading={isLoading}
             isError={isError}
-            searchValue={searchQuery}
-            onSearchChange={handleSearch}
+            searchValue={finalPagination.searchQuery}
+            onSearchChange={finalPagination.setSearch}
             totalItems={totalItems}
-            currentPage={currentPage}
-            itemsPerPage={limit}
-            onPageChange={handlePageChange}
+            currentPage={finalPagination.page}
+            itemsPerPage={finalPagination.limit}
+            onPageChange={finalPagination.setPage}
+            onLimitChange={finalPagination.setLimit}
             customActions={(item: Pedido) => {
               const idPedido =
                 typeof item.idPedido === 'string'

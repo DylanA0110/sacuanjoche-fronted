@@ -1,4 +1,5 @@
 import type { PedidoEstado, PedidoCanal, ArregloEstado } from '@/shared/types/estados.types';
+import type { Envio } from './envio.interface';
 
 export interface Pedido {
   idPedido: number;
@@ -11,7 +12,7 @@ export interface Pedido {
   fechaActualizacion: string | Date;
   fechaEntregaEstimada: string | Date;
   direccionTxt: string;
-  costoEnvio: string | number;
+  costoEnvio?: string | number; // Puede venir directamente o en el objeto envio
   totalPedido: string | number;
   estado?: PedidoEstado;
   idPago?: number | null;
@@ -22,20 +23,21 @@ export interface Pedido {
   cliente?: Cliente;
   direccion?: Direccion;
   contactoEntrega?: ContactoEntrega;
+  envio?: Envio; // Objeto envío con costo de envío
   detalles?: DetallePedido[];
 }
 
 // DTO para crear un pedido (según documentación de la API)
 export interface CreatePedidoDto {
   canal: PedidoCanal; // Siempre "interno"
-  idPago?: number;
+  idPago?: number | null;
   idEmpleado: number;
   idCliente: number;
   idDireccion: number;
   idContactoEntrega: number;
+  idFolio?: number; // Siempre 2
   fechaEntregaEstimada: string; // ISO 8601 format
   direccionTxt: string;
-  costoEnvio: number;
 }
 
 // DTO para crear un detalle de pedido
@@ -77,14 +79,16 @@ export interface DetallePedido {
 }
 
 export interface UpdatePedidoDto {
+  canal?: PedidoCanal; // Siempre "interno"
+  idPago?: number | null; // Siempre null para canal interno
   idEmpleado?: number;
   idCliente?: number;
   idDireccion?: number;
   idContactoEntrega?: number;
+  idFolio?: number; // Siempre 2
   totalProductos?: number;
   fechaEntregaEstimada?: string;
   direccionTxt?: string;
-  costoEnvio?: number;
   totalPedido?: number;
 }
 

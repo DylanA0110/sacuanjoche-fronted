@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
@@ -27,68 +27,52 @@ import { saveArregloInsumos } from '../actions';
 import { ArregloDetailsModal } from '../components/ArregloDetailsModal';
 import { MdAdd, MdSearch } from 'react-icons/md';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import { PaginationControls } from '@/shared/components/Custom/PaginationControls';
 
 const ArreglosPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedArreglo, setSelectedArreglo] = useState<Arreglo | null>(null);
   const [editingArreglo, setEditingArreglo] = useState<Arreglo | null>(null);
   const queryClient = useQueryClient();
 
-  // Derivar valores directamente de searchParams (mejor rendimiento)
-  const searchQuery = useMemo(
-    () => searchParams.get('q') || '',
-    [searchParams]
-  );
-  const limit = useMemo(
-    () => parseInt(searchParams.get('limit') || '10', 10),
-    [searchParams]
-  );
-  const currentPage = useMemo(
-    () => parseInt(searchParams.get('page') || '1', 10),
-    [searchParams]
-  );
-  const offset = useMemo(() => (currentPage - 1) * limit, [currentPage, limit]);
+  // Hook de paginación general
+  const pagination = useTablePagination(0);
 
-  // Usar directamente searchQuery - no necesitamos searchInput local
-  const [searchInput, setSearchInput] = useState(searchQuery);
+  // Obtener arreglos con paginación usando valores del hook
+  const { arreglos, totalItems, isLoading, isError, refetch } = useArreglo({
+    usePagination: true,
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: pagination.searchQuery || undefined,
+    estado: 'activo',
+  });
+
+  // Recalcular paginación con totalItems real
+  const finalPagination = useTablePagination(totalItems);
+
+  // Usar directamente searchQuery - solo necesitamos un input local para el debounce
+  const [searchInput, setSearchInput] = useState(finalPagination.searchQuery);
   const debouncedSearch = useDebounce(searchInput, 500);
   const isUserTypingRef = useRef(false);
 
-  // Actualizar URL cuando cambia el debounced search (único useEffect necesario)
+  // Actualizar URL cuando cambia el debounced search
   useEffect(() => {
-    if (debouncedSearch === searchQuery) {
+    if (debouncedSearch === finalPagination.searchQuery) {
       isUserTypingRef.current = false;
       return;
     }
 
     isUserTypingRef.current = true;
-    const newParams = new URLSearchParams(searchParams);
-    if (debouncedSearch) {
-      newParams.set('q', debouncedSearch);
-    } else {
-      newParams.delete('q');
-    }
-    newParams.delete('page');
-    setSearchParams(newParams, { replace: true });
-  }, [debouncedSearch, searchQuery, searchParams, setSearchParams]);
+    finalPagination.setSearch(debouncedSearch);
+  }, [debouncedSearch, finalPagination]);
 
-  // Sincronizar searchInput cuando cambia la URL desde fuera (navegación, etc.)
-  // No sincronizar mientras el usuario está escribiendo
+  // Sincronizar searchInput cuando cambia la URL desde fuera
   useEffect(() => {
-    if (!isUserTypingRef.current && searchQuery !== searchInput) {
-      setSearchInput(searchQuery);
+    if (!isUserTypingRef.current && finalPagination.searchQuery !== searchInput) {
+      setSearchInput(finalPagination.searchQuery);
     }
-  }, [searchQuery]);
-
-  const { arreglos, totalItems, isLoading, isError, refetch } = useArreglo({
-    usePagination: true,
-    limit,
-    offset,
-    q: searchQuery || undefined,
-    estado: 'activo',
-  });
+  }, [finalPagination.searchQuery]);
 
   const createArregloMutation = useMutation({
     mutationFn: createArreglo,
@@ -314,7 +298,7 @@ const ArreglosPage = () => {
 
   return (
     <>
-      <div className="space-y-4 sm:space-y-6 w-full">
+      <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full overflow-x-hidden">
         {/* Header limpio y profesional */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4 sm:mb-6">
           <div className="flex-1 min-w-0">
@@ -351,7 +335,9 @@ const ArreglosPage = () => {
                   type="text"
                   placeholder="Buscar por nombre, descripción o forma..."
                   value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                  }}
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder:text-gray-500 focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/40 text-base transition-all duration-200"
                 />
               </div>
@@ -368,54 +354,14 @@ const ArreglosPage = () => {
 
             {/* Paginación */}
             {totalItems && totalItems > 0 && (
-              <div className="mt-6 px-4 sm:px-6 md:px-8 py-4 border-t border-gray-200 bg-white rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-sm text-gray-600 text-center sm:text-left font-medium">
-                  Mostrando{' '}
-                  <span className="font-semibold text-gray-900">
-                    {Math.min(currentPage * limit - limit + 1, totalItems)}
-                  </span>{' '}
-                  -{' '}
-                  <span className="font-semibold text-gray-900">
-                    {Math.min(currentPage * limit, totalItems)}
-                  </span>{' '}
-                  de{' '}
-                  <span className="font-semibold text-gray-900">
-                    {totalItems}
-                  </span>
-                </p>
-                <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const newParams = new URLSearchParams(searchParams);
-                      if (currentPage > 1) {
-                        newParams.set('page', String(currentPage - 1));
-                      } else {
-                        newParams.delete('page');
-                      }
-                      setSearchParams(newParams, { replace: true });
-                    }}
-                    disabled={currentPage === 1}
-                    className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/40 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const newParams = new URLSearchParams(searchParams);
-                      newParams.set('page', String(currentPage + 1));
-                      setSearchParams(newParams, { replace: true });
-                    }}
-                    disabled={currentPage * limit >= totalItems}
-                    className="border-gray-200 text-gray-700 hover:bg-[#50C878]/10 hover:border-[#50C878]/40 hover:text-[#50C878] text-sm font-medium h-9 px-4 flex-1 sm:flex-initial transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              </div>
+              <PaginationControls
+                currentPage={finalPagination.page}
+                totalPages={finalPagination.totalPages}
+                itemsPerPage={finalPagination.limit}
+                totalItems={totalItems}
+                onPageChange={finalPagination.setPage}
+                onLimitChange={finalPagination.setLimit}
+              />
             )}
           </CardContent>
         </Card>

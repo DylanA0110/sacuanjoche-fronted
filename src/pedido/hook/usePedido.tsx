@@ -51,6 +51,30 @@ export const usePedido = (options?: UsePedidoOptions) => {
   const totalItems = useMemo(() => {
     if (!query.data) return 0;
 
+    // Si estamos usando paginación, el backend DEBE devolver un objeto con 'total'
+    if (options?.usePagination) {
+      // Con paginación, siempre buscar el 'total' en la respuesta
+      if (typeof query.data === 'object' && 'total' in query.data) {
+        const total = (query.data as PaginatedResponse<Pedido>).total ?? 0;
+        console.log('usePedido - totalItems desde PaginatedResponse:', total);
+        return total;
+      }
+      
+      // Si el backend devuelve un array cuando se espera paginación,
+      // esto es un error - el backend debería devolver el total real
+      // Pero por ahora, asumimos que si hay más elementos que el limit, hay más páginas
+      if (Array.isArray(query.data)) {
+        console.warn('Backend devolvió array cuando se esperaba respuesta paginada. Esto no debería pasar con paginación.');
+        // Si tenemos exactamente 'limit' elementos, podría haber más páginas
+        // Pero no podemos saber el total real sin hacer otra llamada
+        // Por ahora, retornamos el length pero esto es incorrecto
+        return query.data.length;
+      }
+      
+      return 0;
+    }
+
+    // Sin paginación, contar los elementos del array
     if (Array.isArray(query.data)) return query.data.length;
 
     if (typeof query.data === 'object' && 'total' in query.data) {
@@ -58,7 +82,7 @@ export const usePedido = (options?: UsePedidoOptions) => {
     }
 
     return 0;
-  }, [query.data]);
+  }, [query.data, options?.usePagination]);
 
   return {
     pedidos,

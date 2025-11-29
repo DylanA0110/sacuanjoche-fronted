@@ -1,15 +1,19 @@
 import type { FacturaEstado } from '@/shared/types/estados.types';
 
+import type { FacturaDetalle } from './factura-detalle.interface';
+
 export interface Factura {
   idFactura: number;
   idPedido: number;
   idEmpleado: number;
   numFactura: string;
-  fechaEmision: Date;
+  fechaEmision: Date | string;
   estado: FacturaEstado;
-  montoTotal: string;
+  montoTotal: string | number;
+  idFolio?: number | null;
   pedido?: Pedido;
   empleado?: Empleado;
+  detallesFactura?: FacturaDetalle[]; // Detalles de la factura
 }
 
 export interface CreateFacturaDto {
@@ -24,6 +28,7 @@ export interface UpdateFacturaDto {
   idPedido?: number;
   idEmpleado?: number;
   numFactura?: string;
+  idFolio?: number | null;
   estado?: FacturaEstado;
   montoTotal?: number;
 }
@@ -52,6 +57,15 @@ export interface Empleado {
   fechaCreacion: Date;
 }
 
+export interface Cliente {
+  idCliente: number;
+  primerNombre: string;
+  primerApellido: string;
+  telefono?: string;
+  estado?: string;
+  fechaCreacion?: Date | string;
+}
+
 export interface Pedido {
   idPedido: number;
   idEmpleado: number;
@@ -65,4 +79,6 @@ export interface Pedido {
   direccionTxt: string;
   costoEnvio: string;
   totalPedido: string;
+  numeroPedido?: string | null;
+  cliente?: Cliente; // Cliente asociado al pedido
 }
