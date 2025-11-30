@@ -18,8 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import type { Empleado, CreateEmpleadoDto, UpdateEmpleadoDto } from '../types/empleado.interface';
-import { sanitizeName, validateName, formatTelefono, validateTelefono } from '@/shared/utils/validation';
+import type {
+  Empleado,
+  CreateEmpleadoDto,
+  UpdateEmpleadoDto,
+} from '../types/empleado.interface';
+import {
+  sanitizeName,
+  validateName,
+  formatTelefono,
+  validateTelefono,
+} from '@/shared/utils/validation';
 import { toast } from 'sonner';
 
 interface EmpleadoFormProps {
@@ -85,7 +94,13 @@ export function EmpleadoForm({
     }
   }, [empleado, reset, open]);
 
-  const handleNombreChange = (field: 'primerNombre' | 'segundoNombre' | 'primerApellido' | 'segundoApellido') => {
+  const handleNombreChange = (
+    field:
+      | 'primerNombre'
+      | 'segundoNombre'
+      | 'primerApellido'
+      | 'segundoApellido'
+  ) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const sanitized = sanitizeName(e.target.value, 30);
       setValue(field, sanitized);
@@ -99,20 +114,29 @@ export function EmpleadoForm({
 
   const onFormSubmit = (data: CreateEmpleadoDto) => {
     // Validar nombres
-    const primerNombreError = validateName(data.primerNombre, 'El primer nombre');
+    const primerNombreError = validateName(
+      data.primerNombre,
+      'El primer nombre'
+    );
     if (primerNombreError) {
       toast.error(primerNombreError);
       return;
     }
 
-    const primerApellidoError = validateName(data.primerApellido, 'El primer apellido');
+    const primerApellidoError = validateName(
+      data.primerApellido,
+      'El primer apellido'
+    );
     if (primerApellidoError) {
       toast.error(primerApellidoError);
       return;
     }
 
     if (data.segundoNombre && data.segundoNombre.trim()) {
-      const segundoNombreError = validateName(data.segundoNombre, 'El segundo nombre');
+      const segundoNombreError = validateName(
+        data.segundoNombre,
+        'El segundo nombre'
+      );
       if (segundoNombreError) {
         toast.error(segundoNombreError);
         return;
@@ -120,7 +144,10 @@ export function EmpleadoForm({
     }
 
     if (data.segundoApellido && data.segundoApellido.trim()) {
-      const segundoApellidoError = validateName(data.segundoApellido, 'El segundo apellido');
+      const segundoApellidoError = validateName(
+        data.segundoApellido,
+        'El segundo apellido'
+      );
       if (segundoApellidoError) {
         toast.error(segundoApellidoError);
         return;
@@ -146,8 +173,9 @@ export function EmpleadoForm({
 
     // Formatear teléfono: agregar 505 si no lo tiene
     const telefonoLimpio = data.telefono.replace(/\D/g, '');
-    const telefonoBackend = telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
-    
+    const telefonoBackend =
+      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+
     onSubmit({
       ...data,
       telefono: telefonoBackend,
@@ -170,7 +198,9 @@ export function EmpleadoForm({
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="primerNombre">Primer Nombre * (2-30 letras, sin espacios)</Label>
+              <Label htmlFor="primerNombre">
+                Primer Nombre * (2-30 letras, sin espacios)
+              </Label>
               <Input
                 id="primerNombre"
                 {...register('primerNombre', {
@@ -186,7 +216,16 @@ export function EmpleadoForm({
                 })}
                 onChange={handleNombreChange('primerNombre')}
                 onKeyDown={(e) => {
+                  // Bloquear espacios y cualquier carácter que no sea letra
                   if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    return;
+                  }
+                  // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                  if (
+                    e.key.length === 1 &&
+                    !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                  ) {
                     e.preventDefault();
                   }
                 }}
@@ -200,18 +239,31 @@ export function EmpleadoForm({
                 maxLength={30}
               />
               {errors.primerNombre && (
-                <p className="text-sm text-red-500">{errors.primerNombre.message}</p>
+                <p className="text-sm text-red-500">
+                  {errors.primerNombre.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="segundoNombre">Segundo Nombre (2-30 letras, sin espacios)</Label>
+              <Label htmlFor="segundoNombre">
+                Segundo Nombre (2-30 letras, sin espacios)
+              </Label>
               <Input
                 id="segundoNombre"
                 {...register('segundoNombre')}
                 onChange={handleNombreChange('segundoNombre')}
                 onKeyDown={(e) => {
+                  // Bloquear espacios y cualquier carácter que no sea letra
                   if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    return;
+                  }
+                  // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                  if (
+                    e.key.length === 1 &&
+                    !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                  ) {
                     e.preventDefault();
                   }
                 }}
@@ -227,7 +279,9 @@ export function EmpleadoForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primerApellido">Primer Apellido * (2-30 letras, sin espacios)</Label>
+              <Label htmlFor="primerApellido">
+                Primer Apellido * (2-30 letras, sin espacios)
+              </Label>
               <Input
                 id="primerApellido"
                 {...register('primerApellido', {
@@ -243,7 +297,16 @@ export function EmpleadoForm({
                 })}
                 onChange={handleNombreChange('primerApellido')}
                 onKeyDown={(e) => {
+                  // Bloquear espacios y cualquier carácter que no sea letra
                   if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    return;
+                  }
+                  // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                  if (
+                    e.key.length === 1 &&
+                    !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                  ) {
                     e.preventDefault();
                   }
                 }}
@@ -257,18 +320,31 @@ export function EmpleadoForm({
                 maxLength={30}
               />
               {errors.primerApellido && (
-                <p className="text-sm text-red-500">{errors.primerApellido.message}</p>
+                <p className="text-sm text-red-500">
+                  {errors.primerApellido.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="segundoApellido">Segundo Apellido (2-30 letras, sin espacios)</Label>
+              <Label htmlFor="segundoApellido">
+                Segundo Apellido (2-30 letras, sin espacios)
+              </Label>
               <Input
                 id="segundoApellido"
                 {...register('segundoApellido')}
                 onChange={handleNombreChange('segundoApellido')}
                 onKeyDown={(e) => {
+                  // Bloquear espacios y cualquier carácter que no sea letra
                   if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    return;
+                  }
+                  // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                  if (
+                    e.key.length === 1 &&
+                    !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                  ) {
                     e.preventDefault();
                   }
                 }}
@@ -300,9 +376,9 @@ export function EmpleadoForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono *</Label>
+              <Label htmlFor="telefono">Teléfono * (8 dígitos)</Label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-600 pointer-events-none z-10">
                   +505
                 </div>
                 <Input
@@ -316,13 +392,15 @@ export function EmpleadoForm({
                     },
                   })}
                   onChange={handleTelefonoChange}
-                  className="pl-14"
+                  className="pl-14 h-11 text-base"
                   placeholder="12345678"
                   maxLength={8}
                 />
               </div>
               {errors.telefono && (
-                <p className="text-sm text-red-500">{errors.telefono.message}</p>
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.telefono.message}
+                </p>
               )}
             </div>
 
@@ -347,7 +425,9 @@ export function EmpleadoForm({
                 max={new Date().toISOString().split('T')[0]}
               />
               {errors.fechaNac && (
-                <p className="text-sm text-red-500">{errors.fechaNac.message}</p>
+                <p className="text-sm text-red-500">
+                  {errors.fechaNac.message}
+                </p>
               )}
             </div>
 
@@ -355,7 +435,9 @@ export function EmpleadoForm({
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={watch('estado')}
-                onValueChange={(value) => setValue('estado', value as 'activo' | 'inactivo')}
+                onValueChange={(value) =>
+                  setValue('estado', value as 'activo' | 'inactivo')
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona el estado" />
@@ -378,11 +460,7 @@ export function EmpleadoForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading
-                ? 'Guardando...'
-                : empleado
-                ? 'Actualizar'
-                : 'Crear'}
+              {isLoading ? 'Guardando...' : empleado ? 'Actualizar' : 'Crear'}
             </Button>
           </DialogFooter>
         </form>
@@ -390,4 +468,3 @@ export function EmpleadoForm({
     </Dialog>
   );
 }
-

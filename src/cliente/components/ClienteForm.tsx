@@ -18,17 +18,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import type { Cliente, CreateClienteDto, UpdateClienteDto } from '../types/cliente.interface';
-import { MapboxAddressSearch, type MapboxAddressData as MapboxData } from '@/shared/components/Custom/MapboxAddressSearch';
+import type {
+  Cliente,
+  CreateClienteDto,
+  UpdateClienteDto,
+} from '../types/cliente.interface';
+import {
+  MapboxAddressSearch,
+  type MapboxAddressData as MapboxData,
+} from '@/shared/components/Custom/MapboxAddressSearch';
 import { MdSave, MdLocationOn } from 'react-icons/md';
 import { toast } from 'sonner';
-import { sanitizeName, validateName, formatTelefono, validateTelefono } from '@/shared/utils/validation';
+import {
+  sanitizeName,
+  validateName,
+  formatTelefono,
+  validateTelefono,
+} from '@/shared/utils/validation';
 
 interface ClienteFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cliente?: Cliente | null;
-  onSubmit: (data: CreateClienteDto | UpdateClienteDto, direccionData?: MapboxAddressData & { etiqueta: string; esPredeterminada: boolean }) => void;
+  onSubmit: (
+    data: CreateClienteDto | UpdateClienteDto,
+    direccionData?: MapboxAddressData & {
+      etiqueta: string;
+      esPredeterminada: boolean;
+    }
+  ) => void;
   isLoading?: boolean;
 }
 
@@ -74,7 +92,9 @@ export function ClienteForm({
   const formValues = watch();
 
   // Estado para la dirección (Mapbox data)
-  const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(null);
+  const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(
+    null
+  );
 
   const handleNombreChange = (field: 'primerNombre' | 'primerApellido') => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,13 +135,19 @@ export function ClienteForm({
 
   const onSubmitForm = async (data: FormValues) => {
     // Validar nombres
-    const primerNombreError = validateName(data.primerNombre, 'El primer nombre');
+    const primerNombreError = validateName(
+      data.primerNombre,
+      'El primer nombre'
+    );
     if (primerNombreError) {
       toast.error(primerNombreError);
       return;
     }
 
-    const primerApellidoError = validateName(data.primerApellido, 'El primer apellido');
+    const primerApellidoError = validateName(
+      data.primerApellido,
+      'El primer apellido'
+    );
     if (primerApellidoError) {
       toast.error(primerApellidoError);
       return;
@@ -136,11 +162,21 @@ export function ClienteForm({
 
     // Formatear teléfono: agregar 505 si no lo tiene
     const telefonoLimpio = data.telefono.replace(/\D/g, '');
-    const telefonoBackend = telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+    const telefonoBackend =
+      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
 
     const dataToSubmit = cliente
-      ? { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: telefonoBackend }
-      : { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: telefonoBackend, estado: 'activo' as const };
+      ? {
+          primerNombre: data.primerNombre,
+          primerApellido: data.primerApellido,
+          telefono: telefonoBackend,
+        }
+      : {
+          primerNombre: data.primerNombre,
+          primerApellido: data.primerApellido,
+          telefono: telefonoBackend,
+          estado: 'activo' as const,
+        };
 
     // Si hay datos de dirección (crear o editar), pasar también los datos de dirección
     if (direccionData) {
@@ -184,7 +220,10 @@ export function ClienteForm({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="primerNombre" className="text-sm font-semibold text-gray-700">
+                  <Label
+                    htmlFor="primerNombre"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Primer Nombre * (2-30 letras, sin espacios)
                   </Label>
                   <Input
@@ -202,7 +241,16 @@ export function ClienteForm({
                     })}
                     onChange={handleNombreChange('primerNombre')}
                     onKeyDown={(e) => {
+                      // Bloquear espacios y cualquier carácter que no sea letra
                       if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        return;
+                      }
+                      // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                      if (
+                        e.key.length === 1 &&
+                        !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                      ) {
                         e.preventDefault();
                       }
                     }}
@@ -217,12 +265,17 @@ export function ClienteForm({
                     maxLength={30}
                   />
                   {errors.primerNombre && (
-                    <p className="text-sm text-red-500 mt-1">{errors.primerNombre.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.primerNombre.message}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="primerApellido" className="text-sm font-semibold text-gray-700">
+                  <Label
+                    htmlFor="primerApellido"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Primer Apellido * (2-30 letras, sin espacios)
                   </Label>
                   <Input
@@ -240,7 +293,16 @@ export function ClienteForm({
                     })}
                     onChange={handleNombreChange('primerApellido')}
                     onKeyDown={(e) => {
+                      // Bloquear espacios y cualquier carácter que no sea letra
                       if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        return;
+                      }
+                      // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                      if (
+                        e.key.length === 1 &&
+                        !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                      ) {
                         e.preventDefault();
                       }
                     }}
@@ -255,16 +317,21 @@ export function ClienteForm({
                     maxLength={30}
                   />
                   {errors.primerApellido && (
-                    <p className="text-sm text-red-500 mt-1">{errors.primerApellido.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.primerApellido.message}
+                    </p>
                   )}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="telefono" className="text-sm font-semibold text-gray-700">
+                  <Label
+                    htmlFor="telefono"
+                    className="text-sm font-semibold text-gray-700"
+                  >
                     Teléfono * (8 dígitos)
                   </Label>
                   <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-600 pointer-events-none z-10">
                       +505
                     </div>
                     <Input
@@ -284,7 +351,9 @@ export function ClienteForm({
                     />
                   </div>
                   {errors.telefono && (
-                    <p className="text-sm text-red-500 mt-1">{errors.telefono.message}</p>
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.telefono.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -307,7 +376,10 @@ export function ClienteForm({
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="direccionTexto" className="text-sm font-semibold text-gray-700">
+                <Label
+                  htmlFor="direccionTexto"
+                  className="text-sm font-semibold text-gray-700"
+                >
                   Buscar Dirección
                 </Label>
                 <MapboxAddressSearch
@@ -330,16 +402,22 @@ export function ClienteForm({
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-700">Ciudad:</span>
+                        <span className="font-semibold text-gray-700">
+                          Ciudad:
+                        </span>
                         <span>{direccionData.city}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-700">País:</span>
+                        <span className="font-semibold text-gray-700">
+                          País:
+                        </span>
                         <span>{direccionData.country}</span>
                       </div>
                       {direccionData.neighborhood && (
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-700">Barrio:</span>
+                          <span className="font-semibold text-gray-700">
+                            Barrio:
+                          </span>
                           <span>{direccionData.neighborhood}</span>
                         </div>
                       )}
@@ -348,7 +426,10 @@ export function ClienteForm({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="referencia" className="text-sm font-semibold text-gray-700">
+                      <Label
+                        htmlFor="referencia"
+                        className="text-sm font-semibold text-gray-700"
+                      >
                         Referencia (Opcional)
                       </Label>
                       <Input
@@ -360,12 +441,17 @@ export function ClienteForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="etiqueta" className="text-sm font-semibold text-gray-700">
+                      <Label
+                        htmlFor="etiqueta"
+                        className="text-sm font-semibold text-gray-700"
+                      >
                         Etiqueta de la Dirección
                       </Label>
                       <Select
                         value={formValues.etiquetaDireccion}
-                        onValueChange={(value) => setValue('etiquetaDireccion', value)}
+                        onValueChange={(value) =>
+                          setValue('etiquetaDireccion', value)
+                        }
                       >
                         <SelectTrigger className="bg-white border-gray-300 text-gray-900 h-11 text-base">
                           <SelectValue />
@@ -386,7 +472,10 @@ export function ClienteForm({
                       {...register('esPredeterminada')}
                       className="w-5 h-5 text-[#50C878] border-gray-300 rounded focus:ring-[#50C878] cursor-pointer"
                     />
-                    <Label htmlFor="esPredeterminada" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    <Label
+                      htmlFor="esPredeterminada"
+                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                    >
                       Marcar como dirección predeterminada
                     </Label>
                   </div>
@@ -424,4 +513,3 @@ export function ClienteForm({
     </Dialog>
   );
 }
-

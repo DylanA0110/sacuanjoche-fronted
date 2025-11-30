@@ -9,42 +9,46 @@
  * - Mínimo 2 caracteres, máximo 30
  */
 export const sanitizeName = (value: string, maxLength: number = 30): string => {
-  // Remover todo excepto letras
+  // Remover TODO excepto letras (incluyendo espacios, números, símbolos, etc.)
+  // Usar regex más estricto que elimina absolutamente todo lo que no sea letra
   let cleaned = value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '');
-  
+
   // Limitar longitud
   if (cleaned.length > maxLength) {
     cleaned = cleaned.slice(0, maxLength);
   }
-  
+
   // Primera letra mayúscula, resto minúsculas
   if (cleaned.length > 0) {
     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
   }
-  
+
   return cleaned;
 };
 
 /**
  * Valida un nombre o apellido
  */
-export const validateName = (value: string, fieldName: string = 'Campo'): string | null => {
+export const validateName = (
+  value: string,
+  fieldName: string = 'Campo'
+): string | null => {
   if (!value || value.trim().length === 0) {
     return `${fieldName} es requerido`;
   }
-  
+
   if (value.length < 2) {
     return `${fieldName} debe tener al menos 2 caracteres`;
   }
-  
+
   if (value.length > 30) {
     return `${fieldName} debe tener máximo 30 caracteres`;
   }
-  
+
   if (!/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]*$/.test(value)) {
     return `${fieldName} solo debe contener letras, sin espacios`;
   }
-  
+
   return null;
 };
 
@@ -55,12 +59,12 @@ export const validateEmail = (email: string): string | null => {
   if (!email || email.trim().length === 0) {
     return 'El email es requerido';
   }
-  
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email.trim())) {
     return 'El email no es válido';
   }
-  
+
   return null;
 };
 
@@ -130,20 +134,23 @@ export const validatePrecioAccesorio = (precio: number): string | null => {
 /**
  * Valida una descripción (solo texto, máximo caracteres)
  */
-export const validateDescripcion = (descripcion: string, maxLength: number = 500): string | null => {
+export const validateDescripcion = (
+  descripcion: string,
+  maxLength: number = 500
+): string | null => {
   if (!descripcion || descripcion.trim().length === 0) {
     return 'La descripción es requerida';
   }
-  
+
   if (descripcion.length > maxLength) {
     return `La descripción debe tener máximo ${maxLength} caracteres`;
   }
-  
+
   // Solo texto (letras, números, espacios, puntuación básica)
   if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.,;:!?()-]+$/.test(descripcion)) {
     return 'La descripción solo puede contener texto y caracteres básicos';
   }
-  
+
   return null;
 };
 
@@ -154,11 +161,11 @@ export const validateFechaFutura = (fecha: string | Date): string | null => {
   const fechaObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
   const ahora = new Date();
   ahora.setHours(0, 0, 0, 0);
-  
+
   if (fechaObj < ahora) {
     return 'La fecha no puede ser en el pasado';
   }
-  
+
   return null;
 };
 
@@ -169,12 +176,13 @@ export const calcularPrecioSugeridoArreglo = (
   flores: Array<{ precioUnitario: number; cantidad: number }>,
   accesorios: Array<{ precioUnitario: number; cantidad: number }>
 ): number => {
-  const totalFlores = flores.reduce((sum, f) => sum + (f.precioUnitario * f.cantidad), 0);
-  const totalAccesorios = accesorios.reduce((sum, a) => sum + (a.precioUnitario * a.cantidad), 0);
+  const totalFlores = flores.reduce(
+    (sum, f) => sum + f.precioUnitario * f.cantidad,
+    0
+  );
+  const totalAccesorios = accesorios.reduce(
+    (sum, a) => sum + a.precioUnitario * a.cantidad,
+    0
+  );
   return totalFlores + totalAccesorios;
 };
-
-
-
-
-

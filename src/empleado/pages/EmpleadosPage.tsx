@@ -28,10 +28,21 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { Badge } from '@/shared/components/ui/badge';
-import { MdEdit, MdDelete, MdSearch, MdVisibility, MdVisibilityOff, MdPersonAdd } from 'react-icons/md';
+import {
+  MdEdit,
+  MdDelete,
+  MdSearch,
+  MdVisibility,
+  MdVisibilityOff,
+  MdPersonAdd,
+} from 'react-icons/md';
 import { useEmpleado } from '../hook/useEmpleado';
 import { EmpleadoForm } from '../components/EmpleadoForm';
-import type { Empleado, CreateEmpleadoDto, UpdateEmpleadoDto } from '../types/empleado.interface';
+import type {
+  Empleado,
+  CreateEmpleadoDto,
+  UpdateEmpleadoDto,
+} from '../types/empleado.interface';
 import {
   createEmpleado,
   updateEmpleado,
@@ -40,6 +51,12 @@ import {
 } from '../actions';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import { useAuthStore } from '@/auth/store/auth.store';
+import {
+  sanitizeName,
+  validateName,
+  formatTelefono,
+  validateTelefono,
+} from '@/shared/utils/validation';
 
 export default function EmpleadosPage() {
   const { user } = useAuthStore();
@@ -82,7 +99,8 @@ export default function EmpleadosPage() {
 
     return empleados.filter((empleado) => {
       const search = debouncedSearch.toLowerCase();
-      const nombre = `${empleado.primerNombre} ${empleado.primerApellido}`.toLowerCase();
+      const nombre =
+        `${empleado.primerNombre} ${empleado.primerApellido}`.toLowerCase();
       const telefono = empleado.telefono?.toLowerCase() || '';
       const estado = empleado.estado?.toLowerCase() || '';
       const email = empleado.user?.email?.toLowerCase() || '';
@@ -103,7 +121,11 @@ export default function EmpleadosPage() {
       id: string;
       email: string;
       roles: string[];
-      empleado: { idEmpleado: number; primerNombre: string; primerApellido: string };
+      empleado: {
+        idEmpleado: number;
+        primerNombre: string;
+        primerApellido: string;
+      };
     }> = [];
     empleados.forEach((empleado) => {
       if (empleado.user && empleado.user.id) {
@@ -167,8 +189,7 @@ export default function EmpleadosPage() {
   });
 
   const deleteEmpleadoMutation = useMutation({
-    mutationFn: (id: number) =>
-      updateEmpleado(id, { estado: 'inactivo' }),
+    mutationFn: (id: number) => updateEmpleado(id, { estado: 'inactivo' }),
     onSuccess: () => {
       toast.success('Empleado marcado como inactivo');
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
@@ -225,22 +246,70 @@ export default function EmpleadosPage() {
 
   const handleCreateEmpleado = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !empleadoForm.primerNombre ||
-      !empleadoForm.primerApellido ||
-      !empleadoForm.telefono ||
-      !empleadoForm.fechaNac
-    ) {
-      toast.error('Todos los campos requeridos deben estar completos');
+
+    // Validar nombres usando las funciones de validación
+    const primerNombreError = validateName(
+      empleadoForm.primerNombre,
+      'El primer nombre'
+    );
+    if (primerNombreError) {
+      toast.error(primerNombreError);
       return;
     }
+
+    const primerApellidoError = validateName(
+      empleadoForm.primerApellido,
+      'El primer apellido'
+    );
+    if (primerApellidoError) {
+      toast.error(primerApellidoError);
+      return;
+    }
+
+    if (empleadoForm.segundoNombre && empleadoForm.segundoNombre.trim()) {
+      const segundoNombreError = validateName(
+        empleadoForm.segundoNombre,
+        'El segundo nombre'
+      );
+      if (segundoNombreError) {
+        toast.error(segundoNombreError);
+        return;
+      }
+    }
+
+    if (empleadoForm.segundoApellido && empleadoForm.segundoApellido.trim()) {
+      const segundoApellidoError = validateName(
+        empleadoForm.segundoApellido,
+        'El segundo apellido'
+      );
+      if (segundoApellidoError) {
+        toast.error(segundoApellidoError);
+        return;
+      }
+    }
+
+    // Validar teléfono
+    const telefonoError = validateTelefono(empleadoForm.telefono);
+    if (telefonoError) {
+      toast.error(telefonoError);
+      return;
+    }
+
+    // Validar fecha (no puede ser en el futuro)
+    if (empleadoForm.fechaNac) {
+      const fechaNac = new Date(empleadoForm.fechaNac);
+      const hoy = new Date();
+      if (fechaNac > hoy) {
+        toast.error('La fecha de nacimiento no puede ser en el futuro');
+        return;
+      }
+    }
+
     // Formatear teléfono: agregar 505 si no lo tiene
     const telefonoLimpio = empleadoForm.telefono.replace(/\D/g, '');
-    if (telefonoLimpio.length !== 8) {
-      toast.error('El teléfono debe tener 8 dígitos');
-      return;
-    }
-    const telefonoBackend = `505${telefonoLimpio}`;
+    const telefonoBackend =
+      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+
     createEmpleadoMutation.mutate({
       ...empleadoForm,
       telefono: telefonoBackend,
@@ -261,7 +330,11 @@ export default function EmpleadosPage() {
 
   const handleRegisterUsuario = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usuarioForm.email || !usuarioForm.password || !usuarioForm.empleadoId) {
+    if (
+      !usuarioForm.email ||
+      !usuarioForm.password ||
+      !usuarioForm.empleadoId
+    ) {
       toast.error('Todos los campos son requeridos');
       return;
     }
@@ -277,22 +350,19 @@ export default function EmpleadosPage() {
       toast.error('Selecciona un usuario y al menos un rol');
       return;
     }
+    // Asegurar que todos los roles estén en minúscula
+    const rolesLowercase = selectedRoles.map((r) => r.trim().toLowerCase());
     updateRolesMutation.mutate({
       userId: selectedUserId,
-      roles: selectedRoles.map((r) => r.trim().toLowerCase()),
+      roles: rolesLowercase,
     });
   };
 
-  const formatTelefono = (value: string) => {
-    const cleaned = value.replace(/\D/g, '').slice(0, 8);
-    return cleaned;
-  };
-
   const handleTelefonoChange = (value: string) => {
-    const cleaned = formatTelefono(value);
+    const formatted = formatTelefono(value);
     setEmpleadoForm((prev) => ({
       ...prev,
-      telefono: cleaned,
+      telefono: formatted,
     }));
   };
 
@@ -317,7 +387,9 @@ export default function EmpleadosPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Gestión de Empleados</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Gestión de Empleados
+        </h1>
         <p className="text-sm text-gray-600 mt-1">
           Administra los empleados del sistema
         </p>
@@ -338,49 +410,169 @@ export default function EmpleadosPage() {
           <CardContent>
             <form onSubmit={handleCreateEmpleado} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="primerNombre">Primer Nombre *</Label>
+                <Label htmlFor="primerNombre">
+                  Primer Nombre * (2-30 letras, sin espacios)
+                </Label>
                 <Input
                   id="primerNombre"
                   value={empleadoForm.primerNombre}
-                  onChange={(e) =>
-                    setEmpleadoForm({ ...empleadoForm, primerNombre: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const sanitized = sanitizeName(e.target.value, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      primerNombre: sanitized,
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    // Bloquear espacios y cualquier carácter que no sea letra
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                    if (
+                      e.key.length === 1 &&
+                      !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    const sanitized = sanitizeName(text, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      primerNombre: sanitized,
+                    });
+                  }}
                   placeholder="Juan"
+                  maxLength={30}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="segundoNombre">Segundo Nombre</Label>
+                <Label htmlFor="segundoNombre">
+                  Segundo Nombre (2-30 letras, sin espacios)
+                </Label>
                 <Input
                   id="segundoNombre"
                   value={empleadoForm.segundoNombre || ''}
-                  onChange={(e) =>
-                    setEmpleadoForm({ ...empleadoForm, segundoNombre: e.target.value || undefined })
-                  }
+                  onChange={(e) => {
+                    const sanitized = sanitizeName(e.target.value, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      segundoNombre: sanitized || undefined,
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    // Bloquear espacios y cualquier carácter que no sea letra
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                    if (
+                      e.key.length === 1 &&
+                      !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    const sanitized = sanitizeName(text, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      segundoNombre: sanitized || undefined,
+                    });
+                  }}
                   placeholder="Pedro"
+                  maxLength={30}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="primerApellido">Primer Apellido *</Label>
+                <Label htmlFor="primerApellido">
+                  Primer Apellido * (2-30 letras, sin espacios)
+                </Label>
                 <Input
                   id="primerApellido"
                   value={empleadoForm.primerApellido}
-                  onChange={(e) =>
-                    setEmpleadoForm({ ...empleadoForm, primerApellido: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const sanitized = sanitizeName(e.target.value, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      primerApellido: sanitized,
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    // Bloquear espacios y cualquier carácter que no sea letra
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                    if (
+                      e.key.length === 1 &&
+                      !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    const sanitized = sanitizeName(text, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      primerApellido: sanitized,
+                    });
+                  }}
                   placeholder="Pérez"
+                  maxLength={30}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="segundoApellido">Segundo Apellido</Label>
+                <Label htmlFor="segundoApellido">
+                  Segundo Apellido (2-30 letras, sin espacios)
+                </Label>
                 <Input
                   id="segundoApellido"
                   value={empleadoForm.segundoApellido || ''}
-                  onChange={(e) =>
-                    setEmpleadoForm({ ...empleadoForm, segundoApellido: e.target.value || undefined })
-                  }
+                  onChange={(e) => {
+                    const sanitized = sanitizeName(e.target.value, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      segundoApellido: sanitized || undefined,
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    // Bloquear espacios y cualquier carácter que no sea letra
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                      e.preventDefault();
+                      return;
+                    }
+                    // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                    if (
+                      e.key.length === 1 &&
+                      !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    const sanitized = sanitizeName(text, 30);
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      segundoApellido: sanitized || undefined,
+                    });
+                  }}
                   placeholder="González"
+                  maxLength={30}
                 />
               </div>
               <div className="space-y-2">
@@ -388,7 +580,10 @@ export default function EmpleadosPage() {
                 <Select
                   value={empleadoForm.sexo}
                   onValueChange={(value) =>
-                    setEmpleadoForm({ ...empleadoForm, sexo: value as 'M' | 'F' })
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      sexo: value as 'M' | 'F',
+                    })
                   }
                 >
                   <SelectTrigger>
@@ -401,9 +596,9 @@ export default function EmpleadosPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono *</Label>
+                <Label htmlFor="telefono">Teléfono * (8 dígitos)</Label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-600 pointer-events-none z-10">
                     +505
                   </div>
                   <Input
@@ -411,7 +606,7 @@ export default function EmpleadosPage() {
                     type="tel"
                     value={empleadoForm.telefono}
                     onChange={(e) => handleTelefonoChange(e.target.value)}
-                    className="pl-14"
+                    className="pl-14 h-11 text-base"
                     placeholder="12345678"
                     maxLength={8}
                     required
@@ -425,7 +620,10 @@ export default function EmpleadosPage() {
                   type="date"
                   value={empleadoForm.fechaNac}
                   onChange={(e) =>
-                    setEmpleadoForm({ ...empleadoForm, fechaNac: e.target.value })
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      fechaNac: e.target.value,
+                    })
                   }
                   required
                 />
@@ -474,7 +672,10 @@ export default function EmpleadosPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={usuarioForm.password}
                     onChange={(e) =>
-                      setUsuarioForm({ ...usuarioForm, password: e.target.value })
+                      setUsuarioForm({
+                        ...usuarioForm,
+                        password: e.target.value,
+                      })
                     }
                     placeholder="ClaveTemporal123"
                     required
@@ -542,7 +743,9 @@ export default function EmpleadosPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={registerUsuarioMutation.isPending || !usuarioForm.empleadoId}
+                disabled={
+                  registerUsuarioMutation.isPending || !usuarioForm.empleadoId
+                }
               >
                 {registerUsuarioMutation.isPending
                   ? 'Creando...'
@@ -587,7 +790,18 @@ export default function EmpleadosPage() {
                     users.map((user) => {
                       const empleadoName = `${user.empleado.primerNombre} ${user.empleado.primerApellido}`;
                       const rolesText =
-                        user.roles.length > 0 ? user.roles.join(', ') : 'Sin roles';
+                        user.roles.length > 0
+                          ? user.roles
+                              .map((r) => {
+                                const rLower = r.toLowerCase();
+                                return rLower === 'vendedor'
+                                  ? 'Vendedor'
+                                  : rLower === 'conductor'
+                                  ? 'Conductor'
+                                  : r;
+                              })
+                              .join(', ')
+                          : 'Sin roles';
                       return (
                         <SelectItem key={user.id} value={user.id}>
                           {user.email} - {empleadoName} ({rolesText})
@@ -608,12 +822,26 @@ export default function EmpleadosPage() {
                 <div className="space-y-2">
                   {['vendedor', 'conductor'].map((role) => {
                     const roleLower = role.toLowerCase();
+                    const isVendedor = roleLower === 'vendedor';
+                    const isConductor = roleLower === 'conductor';
+                    const isChecked = selectedRoles.includes(roleLower);
                     return (
-                      <div key={roleLower} className="flex items-center space-x-2">
+                      <div
+                        key={roleLower}
+                        className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-colors ${
+                          isChecked
+                            ? isVendedor
+                              ? 'bg-blue-50 border-blue-300'
+                              : isConductor
+                              ? 'bg-amber-50 border-amber-300'
+                              : 'bg-gray-50 border-gray-300'
+                            : 'bg-white border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
                         <input
                           type="checkbox"
                           id={roleLower}
-                          checked={selectedRoles.includes(roleLower)}
+                          checked={isChecked}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setSelectedRoles([...selectedRoles, roleLower]);
@@ -623,13 +851,31 @@ export default function EmpleadosPage() {
                               );
                             }
                           }}
-                          className="rounded border-gray-300"
+                          className={`w-5 h-5 rounded border-2 cursor-pointer ${
+                            isVendedor
+                              ? 'text-blue-600 border-blue-300 focus:ring-blue-500'
+                              : isConductor
+                              ? 'text-amber-600 border-amber-300 focus:ring-amber-500'
+                              : 'text-gray-600 border-gray-300 focus:ring-gray-500'
+                          }`}
                         />
                         <Label
                           htmlFor={roleLower}
-                          className="font-normal cursor-pointer"
+                          className={`font-semibold cursor-pointer text-base ${
+                            isChecked
+                              ? isVendedor
+                                ? 'text-blue-700'
+                                : isConductor
+                                ? 'text-amber-700'
+                                : 'text-gray-700'
+                              : 'text-gray-600'
+                          }`}
                         >
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                          {roleLower === 'vendedor'
+                            ? 'Vendedor'
+                            : roleLower === 'conductor'
+                            ? 'Conductor'
+                            : role}
                         </Label>
                       </div>
                     );
@@ -714,25 +960,50 @@ export default function EmpleadosPage() {
                         <TableCell>
                           {roles.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {roles.map((role) => (
-                                <Badge key={role} variant="outline" className="text-xs text-gray-900 border-gray-300 bg-white">
-                                  {role}
-                                </Badge>
-                              ))}
+                              {roles.map((role) => {
+                                const roleLower = role.toLowerCase();
+                                const isVendedor = roleLower === 'vendedor';
+                                const isConductor = roleLower === 'conductor';
+                                return (
+                                  <Badge
+                                    key={role}
+                                    variant="outline"
+                                    className={`text-xs font-semibold border-2 ${
+                                      isVendedor
+                                        ? 'bg-blue-50 text-blue-700 border-blue-300'
+                                        : isConductor
+                                        ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                        : 'bg-gray-50 text-gray-700 border-gray-300'
+                                    }`}
+                                  >
+                                    {roleLower === 'vendedor'
+                                      ? 'Vendedor'
+                                      : roleLower === 'conductor'
+                                      ? 'Conductor'
+                                      : role}
+                                  </Badge>
+                                );
+                              })}
                             </div>
                           ) : (
                             <span className="text-gray-500 text-xs">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm">{empleado.telefono}</TableCell>
+                        <TableCell className="text-sm">
+                          {empleado.telefono}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={
-                              empleado.estado === 'activo' ? 'default' : 'secondary'
+                              empleado.estado === 'activo'
+                                ? 'default'
+                                : 'secondary'
                             }
                             className="text-xs"
                           >
-                            {empleado.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                            {empleado.estado === 'activo'
+                              ? 'Activo'
+                              : 'Inactivo'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
