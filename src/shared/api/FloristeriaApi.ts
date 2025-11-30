@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { registerAxiosInstance } from './interceptors';
 
 const getBaseURL = () => {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -11,3 +12,6 @@ const API_BASE_URL = `${BASE_URL}/api`;
 export const floristeriaApi = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Registrar la instancia para aplicar interceptores
+registerAxiosInstance(floristeriaApi);

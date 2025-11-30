@@ -27,6 +27,7 @@ import type { CreatePedidoDto } from '../types/pedido.interface';
 import type { Arreglo } from '@/arreglo/types/arreglo.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
 import { usePedidoCart } from '../hook/usePedidoCart';
+import { useUserIdEmpleado } from '@/shared/utils/getUserId';
 
 interface PedidoFormProps {
   open: boolean;
@@ -67,8 +68,8 @@ export function PedidoForm({
   isLoading = false,
   pedido,
 }: PedidoFormProps) {
-  // Constante
-  const idEmpleado = 1; // Por ahora siempre 1
+  // Obtener el idEmpleado del usuario autenticado
+  const idEmpleado = useUserIdEmpleado();
 
   // Hook del formulario
   const {
@@ -247,6 +248,14 @@ export function PedidoForm({
 
   // Manejar envío del formulario
   const onSubmitForm = async (data: FormValues) => {
+    // Validar que el usuario tenga idEmpleado
+    if (!idEmpleado) {
+      toast.error('Error de autenticación', {
+        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+      });
+      return;
+    }
+
     // Validaciones adicionales
     // Permitir guardar pedido sin arreglos si se está editando y no tenía arreglos
     if (arreglosSeleccionados.length === 0) {

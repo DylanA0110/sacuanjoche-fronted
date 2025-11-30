@@ -58,14 +58,14 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
     <div className="group relative w-full bg-white rounded-[15px] shadow-[0_5px_20px_rgba(0,0,0,0.1)] transition-all duration-300 overflow-hidden hover:-translate-y-[5px] hover:shadow-[0_10px_25px_rgba(0,0,0,0.15)]">
       {/* Badge */}
       {arreglo.estado === 'activo' && (
-        <div className="absolute top-[10px] right-[10px] z-20 bg-gradient-to-r from-[#A90329] via-[#C44848] to-[#AA2238] text-white px-[10px] py-[5px] text-[11px] font-semibold tracking-wider uppercase rounded-[10px] shadow-[0_3px_10px_rgba(0,0,0,0.2)]">
+        <div className="absolute top-[10px] right-[10px] z-20 bg-linear-to-r from-[#A90329] via-[#C44848] to-[#AA2238] text-white px-[10px] py-[5px] text-[11px] font-semibold tracking-wider uppercase rounded-[10px] shadow-[0_3px_10px_rgba(0,0,0,0.2)]">
           Disponible
         </div>
       )}
 
       {/* Carrusel de imágenes */}
       <div className="relative overflow-hidden">
-        <div className="h-[200px] sm:h-[220px] md:h-[240px] lg:h-[260px] overflow-hidden bg-gradient-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
+        <div className="h-[200px] sm:h-[220px] md:h-[240px] lg:h-[260px] overflow-hidden bg-linear-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
           {currentImage ? (
             <>
               <img
@@ -158,7 +158,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
               {precio}
             </span>
           </div>
-          <button className="relative w-full sm:w-auto bg-gradient-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-4 py-2 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-gradient-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] group/btn overflow-hidden">
+          <button className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-4 py-2 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] group/btn overflow-hidden">
             <span className="relative z-10">Añadir al carrito</span>
             <HiShoppingBag className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover/btn:rotate-[-10deg] group-hover/btn:scale-110" />
           </button>

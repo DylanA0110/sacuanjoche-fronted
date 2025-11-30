@@ -5,6 +5,7 @@ export const useQueryParameters = () => {
 
   const page = searchParams.get('page') ?? '1';
   const limit = searchParams.get('limit') ?? '12';
+  const q = searchParams.get('q') ?? '';
   const orden = searchParams.get('orden') ?? '';
   const ordenarPor = searchParams.get('ordenarPor') ?? '';
   const flores = searchParams.get('flores') ?? '';
@@ -15,6 +16,7 @@ export const useQueryParameters = () => {
   return {
     page,
     limit,
+    q,
     orden,
     ordenarPor,
     flores,

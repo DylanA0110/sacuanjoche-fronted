@@ -339,7 +339,7 @@ export default function ReportesPage() {
         </Card>
 
         {/* Reporte Detallado de Pedidos */}
-        <Card className="border-2 border-[#50C878]/30 hover:border-[#50C878] transition-colors bg-gradient-to-br from-[#50C878]/5 to-transparent">
+        <Card className="border-2 border-[#50C878]/30 hover:border-[#50C878] transition-colors bg-linear-to-br from-[#50C878]/5 to-transparent">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-[#50C878]/20 rounded-lg">
@@ -409,7 +409,7 @@ export default function ReportesPage() {
       </div>
 
       {/* Información adicional */}
-      <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200">
+      <Card className="bg-linear-to-r from-gray-50 to-gray-100 border-gray-200">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
             <MdDescription className="h-5 w-5 text-gray-600 mt-0.5" />

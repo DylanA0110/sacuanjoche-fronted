@@ -1,5 +1,6 @@
 import { facturaApi } from '../api/facturaApi';
 import type { Factura } from '../types/factura.interface';
+import { getUserIdEmpleado } from '@/shared/utils/getUserId';
 
 export const createFacturaDesdePedido = async (
   idPedido: number | string
@@ -17,11 +18,16 @@ export const createFacturaDesdePedido = async (
     // Convertir a string numérico limpio (sin espacios, sin decimales)
     const idPedidoStr = String(Math.floor(idPedidoNum));
 
-    // El backend requiere idEmpleado en el body, por ahora siempre será 1
+    // Obtener el idEmpleado del usuario autenticado
+    const idEmpleado = getUserIdEmpleado();
+    if (!idEmpleado) {
+      throw new Error('No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.');
+    }
+
     const response = await facturaApi.post<Factura>(
       `/desde-pedido/${idPedidoStr}`,
       {
-        idEmpleado: 1,
+        idEmpleado,
       }
     );
     return response.data;

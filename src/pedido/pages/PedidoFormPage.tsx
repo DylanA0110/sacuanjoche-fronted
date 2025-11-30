@@ -45,6 +45,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui/card';
+import { useUserIdEmpleado } from '@/shared/utils/getUserId';
 
 interface FormValues {
   idCliente: string;
@@ -63,8 +64,8 @@ export default function PedidoFormPage() {
   const queryClient = useQueryClient();
   const isEdit = !!idPedido;
 
-  // Constante
-  const idEmpleado = 1;
+  // Obtener el idEmpleado del usuario autenticado
+  const idEmpleado = useUserIdEmpleado();
 
   // Hook del formulario
   const {
@@ -458,6 +459,14 @@ export default function PedidoFormPage() {
             coordinates: [lng, lat],
           }),
       };
+    }
+
+    // Validar que el usuario tenga idEmpleado
+    if (!idEmpleado) {
+      toast.error('Error de autenticación', {
+        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+      });
+      return;
     }
 
     // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)

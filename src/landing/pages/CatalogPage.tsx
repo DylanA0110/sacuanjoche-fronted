@@ -10,6 +10,7 @@ const CatalogPage = () => {
   const {
     page,
     limit,
+    q,
     orden,
     ordenarPor,
     flores,
@@ -22,6 +23,7 @@ const CatalogPage = () => {
   const { data: arreglosResponse, isLoading, isError } = usePaginatedArreglos({
     page: +page,
     limit: +limit,
+    q: q || undefined,
     orden: orden || undefined,
     ordenarPor: ordenarPor || undefined,
     flores: flores || undefined,
@@ -96,6 +98,7 @@ const CatalogPage = () => {
 
   const handleFilterChange = useCallback(
     (filters: {
+      q: string;
       orden: string;
       ordenarPor: string;
       flores: string;
@@ -108,6 +111,9 @@ const CatalogPage = () => {
         prev.set('page', '1');
 
         // Actualizar filtros
+        if (filters.q) prev.set('q', filters.q);
+        else prev.delete('q');
+
         if (filters.orden) prev.set('orden', filters.orden);
         else prev.delete('orden');
 
@@ -135,7 +141,7 @@ const CatalogPage = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      <section className="relative bg-gradient-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden">
+      <section className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 sm:w-[500px] h-96 sm:h-[500px] rounded-full blur-xl bg-[#50C878]/5" />
           <div className="absolute bottom-1/4 right-1/4 w-80 sm:w-[450px] h-80 sm:h-[450px] rounded-full blur-xl bg-[#E91E63]/4" />
@@ -157,6 +163,7 @@ const CatalogPage = () => {
 
           {/* Filtros */}
           <CatalogFilters
+            q={q}
             orden={orden}
             ordenarPor={ordenarPor}
             flores={flores}

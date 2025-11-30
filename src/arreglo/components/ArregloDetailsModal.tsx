@@ -222,13 +222,13 @@ export function ArregloDetailsModal({
   // Return condicional DESPUÉS de todos los hooks
   if (!arreglo) return null;
 
-  // Clases CSS para evitar warnings del linter (bg-gradient-to-* son las clases correctas de Tailwind)
+  // Clases CSS para evitar warnings del linter (bg-linear-to-* son las clases correctas de Tailwind)
   const badgeActiveClass =
-    'bg-gradient-to-r from-[#50C878]/20 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/40 rounded-full px-4 py-1.5 text-sm font-medium shadow-sm';
+    'bg-linear-to-r from-[#50C878] to-[#00A87F] text-white border-2 border-[#50C878]/40 rounded-full px-4 py-1.5 text-sm font-medium shadow-sm';
   const florBadgeClass =
-    'px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-[#50C878]/15 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/30 flex items-center gap-2 shadow-sm';
+    'px-4 py-2 rounded-full text-sm font-medium bg-linear-to-r from-[#50C878]/15 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/30 flex items-center gap-2 shadow-sm';
   const precioCardClass =
-    'bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 rounded-xl p-6 border-2 border-[#50C878]/30 shadow-sm';
+    'bg-linear-to-br from-[#50C878]/10 to-[#50C878]/5 rounded-xl p-6 border-2 border-[#50C878]/30 shadow-sm';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

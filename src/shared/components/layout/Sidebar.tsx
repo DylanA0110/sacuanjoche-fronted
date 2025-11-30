@@ -44,7 +44,7 @@ export function AppSidebar({
   return (
     <aside
       className={`
-        fixed top-0 left-0 h-full bg-gradient-to-b from-[#1a1a1a] via-[#0D0D0D] to-[#1a1a1a] text-white z-50
+        fixed top-0 left-0 h-full bg-linear-to-b from-[#1a1a1a] via-[#0D0D0D] to-[#1a1a1a] text-white z-50
         transition-all duration-300 ease-linear
         ${mobile ? 'w-64' : isOpen ? 'w-64' : 'w-16'}
         ${mobile ? '' : 'hidden md:block'}
@@ -69,7 +69,7 @@ export function AppSidebar({
             <div
               className={`${
                 isOpen ? 'w-10 h-10' : 'w-9 h-9'
-              } rounded-xl flex items-center justify-center bg-gradient-to-br from-[#50C878]/20 to-[#00A87F]/20 backdrop-blur-sm border border-[#50C878]/30 shadow-lg`}
+              } rounded-xl flex items-center justify-center bg-linear-to-br from-[#50C878]/20 to-[#00A87F]/20 backdrop-blur-sm border border-[#50C878]/30 shadow-lg`}
             >
               <GiRose
                 className={`${isOpen ? 'h-5 w-5' : 'h-4 w-4'} text-[#50C878]`}
@@ -131,7 +131,7 @@ export function AppSidebar({
                     }
                     ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#50C878]/20 to-[#50C878]/10 text-white font-semibold border-l-4 border-[#50C878] shadow-sm shadow-[#50C878]/20'
+                        ? 'bg-linear-to-r from-[#50C878]/20 to-[#50C878]/10 text-white font-semibold border-l-4 border-[#50C878] shadow-sm shadow-[#50C878]/20'
                         : 'text-white/70 hover:bg-white/5 hover:text-white hover:border-l-4 hover:border-[#50C878]/30'
                     }
                   `}

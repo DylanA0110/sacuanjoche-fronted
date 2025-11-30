@@ -110,7 +110,7 @@ export const Catalog = () => {
   return (
     <section
       id="catalogo"
-      className="relative bg-gradient-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden"
+      className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden"
     >
       {/* Efectos de fondo - simplificados */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

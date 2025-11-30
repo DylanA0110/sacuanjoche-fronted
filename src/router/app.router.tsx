@@ -1,10 +1,13 @@
 import { createBrowserRouter, Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
 import { Layout } from '@/shared/components/layout/Layout';
+import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
 
 // Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
 const CatalogPage = lazy(() => import('../landing/pages/CatalogPage'));
+const LoginPage = lazy(() => import('../auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('../auth/pages/RegisterPage'));
 const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const PedidoFormPage = lazy(() => import('../pedido/pages/PedidoFormPage'));
@@ -16,6 +19,7 @@ const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
 const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
 const RutasPage = lazy(() => import('../rutas/pages/RutasPage'));
+const ProfilePage = lazy(() => import('../auth/pages/ProfilePage'));
 
 // Componente de carga para el router (Landing Page)
 const RouterLoadingFallback = () => (
@@ -37,11 +41,13 @@ const AdminLoadingFallback = () => (
 // Layout wrapper para rutas de admin
 const AdminLayout = () => {
   return (
-    <Layout>
-      <Suspense fallback={<AdminLoadingFallback />}>
-        <Outlet />
-      </Suspense>
-    </Layout>
+    <ProtectedRoute>
+      <Layout>
+        <Suspense fallback={<AdminLoadingFallback />}>
+          <Outlet />
+        </Suspense>
+      </Layout>
+    </ProtectedRoute>
   );
 };
 
@@ -59,6 +65,22 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<RouterLoadingFallback />}>
         <CatalogPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/login',
+    element: (
+      <Suspense fallback={<RouterLoadingFallback />}>
+        <LoginPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <Suspense fallback={<RouterLoadingFallback />}>
+        <RegisterPage />
       </Suspense>
     ),
   },
@@ -113,6 +135,10 @@ export const router = createBrowserRouter([
       {
         path: 'rutas',
         element: <RutasPage />,
+      },
+      {
+        path: 'perfil',
+        element: <ProfilePage />,
       },
     ],
   },

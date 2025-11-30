@@ -2,14 +2,17 @@ import { floristeriaApi } from '@/shared/api/FloristeriaApi';
 import type { AuthResponse } from '../types/Auth.response';
 import { clearTokenCache } from '@/shared/utils/tokenUtils';
 
-export interface LoginDto {
+export interface RegisterDto {
   email: string;
   password: string;
+  clienteId?: number | null;
+  empleadoId?: number | null;
+  estado: 'activo' | 'inactivo';
 }
 
-export const loginAction = async (loginData: LoginDto): Promise<AuthResponse> => {
+export const registerAction = async (registerData: RegisterDto): Promise<AuthResponse> => {
   try {
-    const { data } = await floristeriaApi.post<AuthResponse>('/auth/login', loginData);
+    const { data } = await floristeriaApi.post<AuthResponse>('/auth/register', registerData);
     
     // Guardar token en localStorage
     if (data.token) {
@@ -27,7 +30,7 @@ export const loginAction = async (loginData: LoginDto): Promise<AuthResponse> =>
         errorData.message || 
         errorData.error || 
         (typeof errorData === 'string' ? errorData : null) ||
-        'Error al iniciar sesión';
+        'Error al crear la cuenta';
       
       // Crear un nuevo error con el mensaje del backend
       const customError = new Error(errorMessage);
@@ -41,7 +44,7 @@ export const loginAction = async (loginData: LoginDto): Promise<AuthResponse> =>
       throw error;
     }
     
-    throw new Error('Error al iniciar sesión. Por favor, intenta nuevamente.');
+    throw new Error('Error al crear la cuenta. Por favor, intenta nuevamente.');
   }
 };
 

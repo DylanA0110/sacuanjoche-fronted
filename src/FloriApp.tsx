@@ -3,6 +3,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
 import { RouterProvider } from 'react-router';
 import { router } from './router/app.router';
+import { setupRequestInterceptor, setupResponseInterceptor } from './shared/api/interceptors';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,6 +13,10 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Configurar interceptores de axios
+setupRequestInterceptor();
+setupResponseInterceptor();
 
 function App() {
   return (

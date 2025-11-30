@@ -142,9 +142,9 @@ export function ClienteForm({
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
             {/* Información Básica */}
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
+            <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 border border-gray-200">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-1 h-6 bg-gradient-to-b from-[#50C878] to-[#3aa85c] rounded-full"></span>
+                <span className="w-1 h-6 bg-linear-to-b from-[#50C878] to-[#3aa85c] rounded-full"></span>
                 Información Básica
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -202,9 +202,9 @@ export function ClienteForm({
             </div>
 
             {/* Sección de Dirección */}
-            <div className="bg-gradient-to-br from-blue-50/50 to-green-50/50 rounded-xl p-6 border border-gray-200 space-y-6">
+            <div className="bg-linear-to-br from-blue-50/50 to-green-50/50 rounded-xl p-6 border border-gray-200 space-y-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-[#50C878] to-[#3aa85c] rounded-lg">
+                <div className="p-2 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg">
                   <MdLocationOn className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -317,7 +317,7 @@ export function ClienteForm({
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="bg-gradient-to-r from-[#50C878] to-[#3aa85c] hover:from-[#50C878]/90 hover:to-[#3aa85c]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 h-11 px-6 text-base font-semibold transition-colors duration-150 font-sans rounded-lg"
+                className="bg-linear-to-r from-[#50C878] to-[#3aa85c] hover:from-[#50C878]/90 hover:to-[#3aa85c]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 h-11 px-6 text-base font-semibold transition-colors duration-150 font-sans rounded-lg"
               >
                 <MdSave className="h-5 w-5" />
                 {isLoading

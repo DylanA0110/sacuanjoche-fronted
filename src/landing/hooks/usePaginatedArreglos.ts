@@ -8,6 +8,7 @@ import type {
 interface UsePaginatedArreglosParams {
   page: number;
   limit: number;
+  q?: string;
   orden?: string;
   ordenarPor?: string;
   flores?: string;
@@ -20,6 +21,7 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
   const {
     page,
     limit,
+    q,
     orden,
     ordenarPor,
     flores,
@@ -36,6 +38,7 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         page,
         limit,
         offset,
+        q,
         orden,
         ordenarPor,
         flores,
@@ -51,13 +54,27 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         offset,
       };
 
-      // Validar y agregar parámetros solo si tienen valores válidos
-      if (orden && (orden === 'asc' || orden === 'desc')) {
-        queryParams.orden = orden;
+      // Agregar búsqueda por texto (q)
+      if (q && typeof q === 'string' && q.trim()) {
+        queryParams.q = q.trim();
       }
 
+      // Validar y agregar parámetros solo si tienen valores válidos
+      // El backend espera ASC o DESC en mayúsculas
+      if (orden && (orden.toUpperCase() === 'ASC' || orden.toUpperCase() === 'DESC')) {
+        queryParams.orden = orden.toUpperCase();
+      }
+
+      // El backend espera: nombre, precio, fechaCreacion
+      // Mapear 'precioUnitario' a 'precio' si viene del frontend
       if (ordenarPor && typeof ordenarPor === 'string' && ordenarPor.trim()) {
-        queryParams.ordenarPor = ordenarPor.trim();
+        const ordenarPorValue = ordenarPor.trim();
+        // Mapear precioUnitario a precio para compatibilidad
+        if (ordenarPorValue === 'precioUnitario') {
+          queryParams.ordenarPor = 'precio';
+        } else if (['nombre', 'precio', 'fechaCreacion'].includes(ordenarPorValue)) {
+          queryParams.ordenarPor = ordenarPorValue;
+        }
       }
 
       if (flores && flores.trim()) {

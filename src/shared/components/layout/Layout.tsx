@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppSidebar } from './Sidebar';
 import { AppHeader } from './Header';
 import { Suspense, lazy } from 'react';
+import { useTokenExpirationCheck } from '@/shared/hooks/useTokenExpirationCheck';
 
 // Lazy Breadcrumbs
 const BreadcrumbsLazy = lazy(() =>
@@ -25,6 +26,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   // Detectar si estamos en mobile
   const [isMobile, setIsMobile] = useState(false);
+
+  // Verificar expiración del token periódicamente usando hook optimizado
+  // Nota: La verificación principal está en ProtectedRoute, esto es un backup
+  useTokenExpirationCheck({
+    checkInterval: 60000, // 1 minuto
+    checkImmediately: false, // No verificar inmediatamente (ya se hace en ProtectedRoute)
+  });
 
   useEffect(() => {
     const checkMobile = () => {

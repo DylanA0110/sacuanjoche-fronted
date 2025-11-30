@@ -135,11 +135,11 @@ export function FacturaDetailsModal({
       <DialogContent className="bg-white border-gray-200/60 shadow-2xl max-w-5xl max-h-[90vh] overflow-hidden p-0 rounded-xl sm:rounded-2xl">
         <div className="overflow-y-auto max-h-[90vh]">
           {/* Header Premium */}
-          <div className="bg-gradient-to-r from-[#50C878]/10 via-[#50C878]/5 to-transparent border-b border-gray-200/60 p-6 sm:p-8">
+          <div className="bg-linear-to-r from-[#50C878]/10 via-[#50C878]/5 to-transparent border-b border-gray-200/60 p-6 sm:p-8">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-3 bg-gradient-to-br from-[#50C878]/20 to-[#50C878]/10 rounded-xl border-2 border-[#50C878]/30">
+                  <div className="p-3 bg-linear-to-br from-[#50C878]/20 to-[#50C878]/10 rounded-xl border-2 border-[#50C878]/30">
                     <MdReceipt className="h-6 w-6 text-[#50C878]" />
                   </div>
                   <div>
@@ -176,7 +176,7 @@ export function FacturaDetailsModal({
             {/* Información Principal - Cards Premium */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Card Monto Total */}
-              <Card className="bg-gradient-to-br from-[#50C878]/10 to-[#50C878]/5 border-2 border-[#50C878]/30 shadow-lg">
+              <Card className="bg-linear-to-br from-[#50C878]/10 to-[#50C878]/5 border-2 border-[#50C878]/30 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -196,7 +196,7 @@ export function FacturaDetailsModal({
 
               {/* Card Información del Pedido */}
               {factura.pedido && (
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-50/50 border-2 border-blue-200/50 shadow-lg">
+                <Card className="bg-linear-to-br from-blue-50 to-blue-50/50 border-2 border-blue-200/50 shadow-lg">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 bg-blue-100 rounded-lg">
@@ -375,7 +375,7 @@ export function FacturaDetailsModal({
             </Card>
 
             {/* Resumen Final Premium */}
-            <Card className="bg-gradient-to-r from-gray-50 to-gray-50/50 border-2 border-gray-200/60 shadow-lg">
+            <Card className="bg-linear-to-r from-gray-50 to-gray-50/50 border-2 border-gray-200/60 shadow-lg">
               <CardContent className="p-6">
                 <div className="flex justify-end">
                   <div className="w-full sm:w-80 space-y-3">

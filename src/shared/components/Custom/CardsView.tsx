@@ -99,7 +99,7 @@ export function CardsView({
             className="bg-white rounded-2xl border-2 border-gray-200/60 shadow-lg hover:shadow-2xl hover:border-[#50C878]/30 transition-all duration-300 overflow-hidden group backdrop-blur-sm"
           >
             {/* Imagen */}
-            <div className="relative w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+            <div className="relative w-full h-48 bg-linear-to-br from-gray-50 to-gray-100 overflow-hidden">
               {imageUrl ? (
                 <>
                   <img
@@ -107,10 +107,10 @@ export function CardsView({
                     alt={title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#50C878]/5 to-[#00A87F]/5">
+                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#50C878]/5 to-[#00A87F]/5">
                   <MdImage className="h-12 w-12 text-[#50C878]/40" />
                 </div>
               )}
@@ -120,7 +120,7 @@ export function CardsView({
                   <Badge
                     className={
                       status === 'activo'
-                        ? 'bg-gradient-to-r from-[#50C878]/20 to-[#50C878]/10 text-[#50C878] border-2 border-[#50C878]/40 shadow-sm'
+                        ? 'bg-linear-to-r from-[#50C878] to-[#00A87F] text-white border-2 border-[#50C878]/40 shadow-sm'
                         : 'bg-red-50 text-red-600 border-2 border-red-200'
                     }
                   >
@@ -141,7 +141,7 @@ export function CardsView({
                 </p>
               )}
               {price !== undefined && (
-                <p className="text-xl font-bold bg-gradient-to-r from-[#50C878] to-[#00A87F] bg-clip-text text-transparent mb-4">
+                <p className="text-xl font-bold bg-linear-to-r from-[#50C878] to-[#00A87F] bg-clip-text text-transparent mb-4">
                   C$
                   {typeof price === 'string'
                     ? parseFloat(price).toFixed(2)

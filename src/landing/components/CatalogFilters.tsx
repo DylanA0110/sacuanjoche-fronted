@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { HiFilter } from 'react-icons/hi';
 import { useFormaArreglo } from '@/catalogo/hooks/useFormaArreglo';
-import { useFlor } from '@/catalogo/hooks/useFlor';
+import { useFloresPublic } from '../hooks/useFloresPublic';
 
 interface CatalogFiltersProps {
+  q: string;
   orden: string;
   ordenarPor: string;
   flores: string;
@@ -11,6 +12,7 @@ interface CatalogFiltersProps {
   precioMax: string;
   idFormaArreglo: string;
   onFilterChange: (filters: {
+    q: string;
     orden: string;
     ordenarPor: string;
     flores: string;
@@ -21,6 +23,7 @@ interface CatalogFiltersProps {
 }
 
 export const CatalogFilters = ({
+  q,
   orden,
   ordenarPor,
   flores,
@@ -31,6 +34,7 @@ export const CatalogFilters = ({
 }: CatalogFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState({
+    q: q || '',
     orden: orden || '',
     ordenarPor: ordenarPor || '',
     flores: flores || '',
@@ -40,11 +44,12 @@ export const CatalogFilters = ({
   });
 
   const { formasArreglo } = useFormaArreglo({ activo: true });
-  const { flores: floresList } = useFlor({ estado: 'activo' });
+  const { data: floresList = [], isLoading: isLoadingFlores } = useFloresPublic();
 
   // Sincronizar filtros locales con props cuando cambian desde URL
   useEffect(() => {
     setLocalFilters({
+      q: q || '',
       orden: orden || '',
       ordenarPor: ordenarPor || '',
       flores: flores || '',
@@ -52,7 +57,7 @@ export const CatalogFilters = ({
       precioMax: precioMax || '',
       idFormaArreglo: idFormaArreglo || '',
     });
-  }, [orden, ordenarPor, flores, precioMin, precioMax, idFormaArreglo]);
+  }, [q, orden, ordenarPor, flores, precioMin, precioMax, idFormaArreglo]);
 
   const selectedFloresIds = localFilters.flores
     ? localFilters.flores.split(',').map((id) => id.trim()).filter(Boolean)
@@ -65,6 +70,7 @@ export const CatalogFilters = ({
 
   const handleResetFilters = useCallback(() => {
     const resetFilters = {
+      q: '',
       orden: '',
       ordenarPor: '',
       flores: '',
@@ -78,7 +84,7 @@ export const CatalogFilters = ({
   }, [onFilterChange]);
 
   const hasActiveFilters =
-    orden || ordenarPor || flores || precioMin || precioMax || idFormaArreglo;
+    q || orden || ordenarPor || flores || precioMin || precioMax || idFormaArreglo;
 
   const toggleFlor = useCallback(
     (florId: string) => {
@@ -109,6 +115,7 @@ export const CatalogFilters = ({
           {hasActiveFilters && (
             <span className="ml-1 px-2 py-0.5 bg-[#50C878] text-white text-xs rounded-full">
               {[
+                q && '1',
                 orden && '1',
                 ordenarPor && '1',
                 flores && '1',
@@ -135,6 +142,22 @@ export const CatalogFilters = ({
       {isOpen && (
         <div className="bg-white border border-[#E4E4E7] rounded-[15px] p-4 sm:p-6 shadow-[0_5px_20px_rgba(0,0,0,0.1)]">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Búsqueda por texto */}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="block text-sm font-semibold text-[#171517] mb-2">
+                Buscar
+              </label>
+              <input
+                type="text"
+                value={localFilters.q}
+                onChange={(e) =>
+                  setLocalFilters((prev) => ({ ...prev, q: e.target.value }))
+                }
+                placeholder="Buscar por nombre, descripción o forma..."
+                className="w-full px-3 py-2 border border-[#E4E4E7] rounded-[10px] text-sm text-[#171517] bg-white focus:outline-none focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20"
+              />
+            </div>
+
             {/* Ordenar por */}
             <div>
               <label className="block text-sm font-semibold text-[#171517] mb-2">
@@ -148,7 +171,7 @@ export const CatalogFilters = ({
                 className="w-full px-3 py-2 border border-[#E4E4E7] rounded-[10px] text-sm text-[#171517] bg-white focus:outline-none focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20"
               >
                 <option value="">Seleccionar...</option>
-                <option value="precioUnitario">Precio</option>
+                <option value="precio">Precio</option>
                 <option value="nombre">Nombre</option>
                 <option value="fechaCreacion">Fecha</option>
               </select>
@@ -167,8 +190,8 @@ export const CatalogFilters = ({
                   }
                   className="w-full px-3 py-2 border border-[#E4E4E7] rounded-[10px] text-sm text-[#171517] bg-white focus:outline-none focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20"
                 >
-                  <option value="asc">Ascendente</option>
-                  <option value="desc">Descendente</option>
+                  <option value="ASC">Ascendente</option>
+                  <option value="DESC">Descendente</option>
                 </select>
               </div>
             )}
@@ -238,7 +261,14 @@ export const CatalogFilters = ({
           </div>
 
           {/* Filtro de flores */}
-          {floresList.length > 0 && (
+          {isLoadingFlores ? (
+            <div className="mt-4 sm:mt-6">
+              <label className="block text-sm font-semibold text-[#171517] mb-3">
+                Flores
+              </label>
+              <div className="text-sm text-[#71717A]">Cargando flores...</div>
+            </div>
+          ) : floresList.length > 0 ? (
             <div className="mt-4 sm:mt-6">
               <label className="block text-sm font-semibold text-[#171517] mb-3">
                 Flores
@@ -256,20 +286,26 @@ export const CatalogFilters = ({
                           ? 'bg-[#50C878] text-white'
                           : 'bg-[#F4F4F5] text-[#71717A] hover:bg-[#E4E4E7]'
                       }`}
+                      title={flor.color ? `${flor.nombre} - ${flor.color}` : flor.nombre}
                     >
                       {flor.nombre}
+                      {flor.color && (
+                        <span className="ml-1 text-[10px] opacity-75">
+                          ({flor.color})
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Botones de acción */}
           <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t border-[#E4E4E7]">
             <button
               onClick={handleApplyFilters}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-[#50C878] to-[#00A87F] text-white rounded-[10px] font-semibold text-sm hover:from-[#00A87F] hover:to-[#50C878] transition-all"
+              className="flex-1 px-4 py-2 bg-linear-to-r from-[#50C878] to-[#00A87F] text-white rounded-[10px] font-semibold text-sm hover:from-[#00A87F] hover:to-[#50C878] transition-all"
             >
               Aplicar filtros
             </button>
