@@ -378,7 +378,7 @@ export function EmpleadoForm({
             <div className="space-y-2">
               <Label htmlFor="telefono">Teléfono * (8 dígitos)</Label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-600 pointer-events-none z-10">
+                <div className="absolute left-3 top-0 bottom-0 flex items-center text-muted-foreground text-sm font-medium pointer-events-none z-10">
                   +505
                 </div>
                 <Input

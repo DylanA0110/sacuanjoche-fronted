@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Layout } from '@/shared/components/layout/Layout';
 import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
 import { ClienteRoute } from '@/shared/components/ClienteRoute';
+import { RouteErrorBoundary } from '@/shared/components/RouteErrorBoundary';
 
 // Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
@@ -13,22 +14,34 @@ const CartPage = lazy(() => import('../carrito/pages/CartPage'));
 const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const PedidoFormPage = lazy(() => import('../pedido/pages/PedidoFormPage'));
-const NuevaFacturaPage = lazy(() => import('../facturas/pages/NuevaFacturaPage'));
+const NuevaFacturaPage = lazy(
+  () => import('../facturas/pages/NuevaFacturaPage')
+);
 const FacturasPage = lazy(() => import('../facturas/pages/FacturasPage'));
-const EditarFacturaPage = lazy(() => import('../facturas/pages/EditarFacturaPage'));
+const EditarFacturaPage = lazy(
+  () => import('../facturas/pages/EditarFacturaPage')
+);
 const ClientesPage = lazy(() => import('../cliente/pages/ClientesPage'));
 const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
 const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
 const RutasPage = lazy(() => import('../ruta/pages/RutasPage'));
-const RutasConductorPage = lazy(() => import('../ruta/pages/RutasConductorPage'));
+const RutasConductorPage = lazy(
+  () => import('../ruta/pages/RutasConductorPage')
+);
 const EmpleadosPage = lazy(() => import('../empleado/pages/EmpleadosPage'));
 const ProfilePage = lazy(() => import('../auth/pages/ProfilePage'));
 const CheckoutPage = lazy(() => import('../carrito/pages/CheckoutPage'));
-const CompletarPedidoPage = lazy(() => import('../carrito/pages/CompletarPedidoPage'));
-const PaymentSuccessPage = lazy(() => import('../pago/pages/PaymentSuccessPage'));
+const CompletarPedidoPage = lazy(
+  () => import('../carrito/pages/CompletarPedidoPage')
+);
+const PaymentSuccessPage = lazy(
+  () => import('../pago/pages/PaymentSuccessPage')
+);
 const PaymentCancelPage = lazy(() => import('../pago/pages/PaymentCancelPage'));
-const PedidoConfirmacionPage = lazy(() => import('../pedido/pages/PedidoConfirmacionPage'));
+const PedidoConfirmacionPage = lazy(
+  () => import('../pedido/pages/PedidoConfirmacionPage')
+);
 
 // Componente de carga para el router (Landing Page)
 const RouterLoadingFallback = () => (
@@ -162,54 +175,67 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <DashboardPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'pedidos',
         element: <PedidosPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'pedidos/nuevo',
         element: <PedidoFormPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'pedidos/:idPedido/editar',
         element: <PedidoFormPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'pedidos/:idPedido/nueva-factura',
         element: <NuevaFacturaPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'facturas',
         element: <FacturasPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'facturas/:idFactura/editar',
         element: <EditarFacturaPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'clientes',
         element: <ClientesPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'catalogo',
         element: <CatalogoPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'arreglos',
         element: <ArreglosPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'reportes',
         element: <ReportesPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'rutas',
         element: <RutasPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'mis-rutas',
         element: <RutasConductorPage />,
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'empleados',
@@ -218,10 +244,12 @@ export const router = createBrowserRouter([
             <EmpleadosPage />
           </ProtectedRoute>
         ),
+        errorElement: <RouteErrorBoundary />,
       },
       {
         path: 'perfil',
         element: <ProfilePage />,
+        errorElement: <RouteErrorBoundary />,
       },
     ],
   },

@@ -3,7 +3,11 @@ import type { InternalAxiosRequestConfig, AxiosInstance } from 'axios';
 import { isTokenExpired, clearTokenCache } from '@/shared/utils/tokenUtils';
 
 // Caché de verificación de expiración para el interceptor (evita verificar en cada petición)
-let lastExpirationCheck: { token: string; isExpired: boolean; checkedAt: number } | null = null;
+let lastExpirationCheck: {
+  token: string;
+  isExpired: boolean;
+  checkedAt: number;
+} | null = null;
 const EXPIRATION_CHECK_CACHE_TTL = 5000; // Cachear verificación por 5 segundos
 
 /**
@@ -36,27 +40,27 @@ const createRequestInterceptor = () => {
     // Verificar si es un endpoint público (no requiere token)
     const url = config.url || '';
     const isPublic = isPublicEndpoint(url);
-    
+
     // Si es público, no agregar token
     if (isPublic) {
       return config;
     }
-    
+
     // Para endpoints protegidos, agregar token si existe
     const token = localStorage.getItem('token');
-    
+
     // Solo verificar expiración si es un endpoint protegido y hay token
     if (token && config.url) {
       const now = Date.now();
-      
+
       // Usar caché de verificación para evitar decodificar en cada petición
       let isExpired = false;
-      
+
       // Si el token cambió, limpiar el caché
       if (lastExpirationCheck && lastExpirationCheck.token !== token) {
         lastExpirationCheck = null;
       }
-      
+
       if (
         !lastExpirationCheck ||
         now - lastExpirationCheck.checkedAt > EXPIRATION_CHECK_CACHE_TTL
@@ -72,13 +76,13 @@ const createRequestInterceptor = () => {
         // Usar resultado del caché
         isExpired = lastExpirationCheck.isExpired;
       }
-      
+
       if (isExpired) {
         // Token vencido, limpiar cachés y redirigir
         localStorage.removeItem('token');
         clearTokenCache();
         lastExpirationCheck = null;
-        
+
         // Importar y usar el store de forma dinámica para evitar dependencias circulares
         (async () => {
           try {
@@ -87,17 +91,20 @@ const createRequestInterceptor = () => {
           } catch (err) {
             console.error('Error al limpiar store de autenticación:', err);
           }
-          
+
           // Solo redirigir si no estamos ya en la página de login y estamos en el panel
-          if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/login') {
+          if (
+            window.location.pathname.startsWith('/admin') &&
+            window.location.pathname !== '/login'
+          ) {
             window.location.href = '/login';
           }
         })();
-        
+
         // Rechazar la petición
         return Promise.reject(new Error('Token expirado'));
       }
-      
+
       // Agregar token al header
       config.headers.Authorization = `Bearer ${token}`;
     } else if (!token && !isPublic) {
@@ -105,7 +112,7 @@ const createRequestInterceptor = () => {
       // Pero no rechazamos aquí para permitir que el backend maneje el error
       console.warn('Petición a endpoint protegido sin token:', config.url);
     }
-    
+
     return config;
   };
 };
@@ -115,31 +122,46 @@ const createRequestInterceptor = () => {
  */
 const createResponseInterceptor = () => {
   return async (error: AxiosError) => {
+    // Detectar si la respuesta es HTML en lugar de JSON (error común)
+    if (
+      error.response?.data &&
+      typeof error.response.data === 'string' &&
+      error.response.data.trim().startsWith('<')
+    ) {
+      const htmlError = new Error(
+        'El servidor devolvió una respuesta HTML en lugar de JSON. Esto puede indicar un problema con el servidor o la ruta.'
+      );
+      htmlError.name = 'HTMLResponseError';
+      return Promise.reject(htmlError);
+    }
+
     // Si el error es 401 (No autorizado)
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const publicPaths = ['/login', '/register', '/catalogo', '/'];
-      
+
       // Verificar si estamos en una ruta pública
-      const isPublicPath = publicPaths.includes(currentPath) || 
-                           currentPath.startsWith('/catalogo');
-      
+      const isPublicPath =
+        publicPaths.includes(currentPath) ||
+        currentPath.startsWith('/catalogo');
+
       // Si estamos en una ruta pública, NO limpiar el token ni hacer logout
       // Solo permitir que el error se propague normalmente
       if (isPublicPath) {
         return Promise.reject(error);
       }
-      
+
       // Solo para rutas protegidas: limpiar token y redirigir a login
-      const isProtectedPath = currentPath.startsWith('/admin') || 
-                               currentPath.startsWith('/carrito') ||
-                               currentPath.startsWith('/pedido');
-      
+      const isProtectedPath =
+        currentPath.startsWith('/admin') ||
+        currentPath.startsWith('/carrito') ||
+        currentPath.startsWith('/pedido');
+
       if (isProtectedPath) {
         localStorage.removeItem('token');
         clearTokenCache();
         lastExpirationCheck = null;
-        
+
         // Importar y usar el store de forma dinámica para evitar dependencias circulares
         try {
           const { useAuthStore } = await import('@/auth/store/auth.store');
@@ -148,15 +170,15 @@ const createResponseInterceptor = () => {
           // Si falla la importación, solo limpiar localStorage
           console.error('Error al limpiar store de autenticación:', err);
         }
-        
+
         window.location.href = '/login';
       }
     }
-    
+
     // No mostrar toast automáticamente aquí - dejar que los componentes manejen los errores
     // Solo manejar errores 401 que requieren redirección
     // Los demás errores serán manejados por los componentes que llaman a la API
-    
+
     return Promise.reject(error);
   };
 };
@@ -228,4 +250,3 @@ const isPublicEndpoint = (url: string): boolean => {
 export const hasAdminPanelAccess = (roles: string[]): boolean => {
   return roles.some((role) => ADMIN_PANEL_ROLES.includes(role));
 };
-
