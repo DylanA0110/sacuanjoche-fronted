@@ -38,8 +38,8 @@ export const useTokenExpirationCheck = (options: UseTokenExpirationCheckOptions 
   } = options;
 
   const { logout } = useAuthStore();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const checkTokenExpiration = () => {

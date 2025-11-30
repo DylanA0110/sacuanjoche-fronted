@@ -7,9 +7,10 @@ import { useRutaStore } from '../store/ruta.store';
 interface Props {
   pedidos: PedidoRuta[];
   isLoading?: boolean;
+  onViewDetails?: (idPedido: number) => void;
 }
 
-export const PedidosDisponibles = ({ pedidos, isLoading }: Props) => {
+export const PedidosDisponibles = ({ pedidos, isLoading, onViewDetails }: Props) => {
   const [searchQuery, setSearchQuery] = useState('');
   const asignaciones = useRutaStore((state) => state.asignaciones);
 
@@ -89,7 +90,11 @@ export const PedidosDisponibles = ({ pedidos, isLoading }: Props) => {
           </div>
         ) : (
           pedidosDisponibles.map((pedido) => (
-            <PedidoCard key={pedido.idPedido} pedido={pedido} />
+            <PedidoCard 
+              key={pedido.idPedido} 
+              pedido={pedido} 
+              onViewDetails={onViewDetails}
+            />
           ))
         )}
       </div>

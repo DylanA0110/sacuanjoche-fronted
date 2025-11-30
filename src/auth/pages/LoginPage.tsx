@@ -9,7 +9,6 @@ import { loginAction } from '../actions/login.action';
 import { useAuthStore } from '../store/auth.store';
 import { checkAuthAction } from '../actions/check-status';
 import { hasAdminPanelAccess } from '@/shared/api/interceptors';
-import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 
 interface LoginFormData {
   email: string;
@@ -118,26 +117,116 @@ export default function LoginPage() {
         navigate(from === '/catalogo' ? '/catalogo' : from || '/', { replace: true });
       }
     } catch (error: any) {
-      // Obtener el mensaje del backend directamente de la respuesta
-      // El loginAction ya extrae el mensaje del backend, así que usamos error.message
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : error?.response?.data?.message
-          ? error.response.data.message
-          : error?.response?.data?.error
-          ? error.response.data.error
-          : 'Error al iniciar sesión. Verifica tus credenciales.';
+      // Extraer TODOS los mensajes posibles del backend
+      let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
+      let errorDescription: string | undefined = undefined;
+      let errorDetails: string[] = [];
 
-      console.error('❌ [LoginPage] Error al iniciar sesión:', {
-        message: errorMessage,
-        status: error.status || error.response?.status,
-        responseData: error.response?.data,
-      });
+      // Si hay respuesta del backend
+      if (error?.response?.data) {
+        const errorData = error.response.data;
 
+        // 1. Intentar obtener mensaje principal
+        if (Array.isArray(errorData.message)) {
+          // Si es un array, unir todos los mensajes
+          errorMessage = errorData.message.join('. ');
+          errorDetails = errorData.message;
+        } else if (typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+
+        // 2. Buscar información de bloqueo de intentos
+        if (errorData.intentosRestantes !== undefined) {
+          const intentos = errorData.intentosRestantes;
+          if (intentos > 0) {
+            errorDescription = `Intentos restantes: ${intentos}`;
+          } else {
+            errorDescription = 'Cuenta bloqueada por múltiples intentos fallidos';
+          }
+        }
+
+        // 3. Buscar tiempo de bloqueo
+        if (errorData.tiempoBloqueo) {
+          const tiempo = errorData.tiempoBloqueo;
+          errorDescription = errorDescription 
+            ? `${errorDescription}. Tiempo de bloqueo: ${tiempo}`
+            : `Cuenta bloqueada. Tiempo de bloqueo: ${tiempo}`;
+        }
+
+        // 4. Buscar información adicional en diferentes campos
+        if (errorData.error && typeof errorData.error === 'string') {
+          if (!errorMessage || errorMessage === 'Error al iniciar sesión. Verifica tus credenciales.') {
+            errorMessage = errorData.error;
+          } else {
+            errorDetails.push(errorData.error);
+          }
+        }
+
+        if (errorData.reason) {
+          errorDetails.push(errorData.reason);
+        }
+
+        if (errorData.details) {
+          if (typeof errorData.details === 'string') {
+            errorDetails.push(errorData.details);
+          } else if (Array.isArray(errorData.details)) {
+            errorDetails.push(...errorData.details.map((d: any) => String(d)));
+          }
+        }
+
+        // 5. Buscar mensajes de validación específicos
+        if (errorData.validationErrors) {
+          const validationMessages = Object.values(errorData.validationErrors)
+            .flat()
+            .map((msg: any) => String(msg));
+          errorDetails.push(...validationMessages);
+        }
+
+        // 6. Si hay un objeto con múltiples campos de error
+        if (errorData.errors) {
+          if (Array.isArray(errorData.errors)) {
+            errorDetails.push(...errorData.errors.map((e: any) => String(e)));
+          } else if (typeof errorData.errors === 'object') {
+            Object.values(errorData.errors).forEach((err: any) => {
+              if (Array.isArray(err)) {
+                errorDetails.push(...err.map((e: any) => String(e)));
+              } else {
+                errorDetails.push(String(err));
+              }
+            });
+          }
+        }
+
+        // 7. Si el data completo es un string
+        if (typeof errorData === 'string' && !errorMessage) {
+          errorMessage = errorData;
+        }
+
+        // 8. Mensajes específicos por código de estado
+        const status = error.response?.status;
+        if (status === 401) {
+          if (!errorMessage || errorMessage.includes('Error al iniciar sesión')) {
+            errorMessage = 'Credenciales incorrectas';
+          }
+        } else if (status === 403) {
+          if (!errorMessage || errorMessage.includes('Error al iniciar sesión')) {
+            errorMessage = 'Acceso denegado. Tu cuenta puede estar bloqueada o inactiva';
+          }
+        } else if (status === 429) {
+          errorMessage = errorMessage || 'Demasiados intentos. Por favor, espera un momento';
+        } else if (status === 423) {
+          errorMessage = errorMessage || 'Cuenta bloqueada temporalmente';
+        }
+      } else if (error instanceof Error) {
+        // Si es un Error estándar, usar su mensaje
+        errorMessage = error.message;
+      }
+
+      // Mostrar toast con el mensaje principal
       toast.error(errorMessage, {
         position: 'top-right',
-        duration: 5000,
+        duration: errorDescription ? 8000 : 5000,
+        description: errorDescription || (errorDetails.length > 0 ? errorDetails.join('. ') : undefined),
       });
     } finally {
       setIsLoading(false);

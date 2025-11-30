@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import supabase from '@/shared/utils/supabase';
 import { processImages, formatFileSize } from '@/shared/utils/imageUtils';
-import { cleanErrorMessage, cleanFileName } from '@/shared/utils/toastHelpers';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import {
   createArregloMediaBatch,
   updateArregloMedia,
@@ -244,7 +244,6 @@ export function useArregloImages({
 
             // Mostrar un toast más detallado para errores SSL
             const cleanedError = cleanErrorMessage(error);
-            const fileName = cleanFileName(compressed.file.name);
             
             if (
               errorMessage.includes('certificado SSL') ||
@@ -412,12 +411,7 @@ export function useArregloImages({
             'Imagen marcada como principal (se guardará al registrar)'
           );
         }
-      } catch (error: any) {
-        const errorMessage =
-          error?.response?.data?.message ||
-          error?.response?.data?.error ||
-          error?.message ||
-          'Error desconocido';
+      } catch (error: unknown) {
         toast.error('Error al establecer imagen principal', {
           description: cleanErrorMessage(error),
           duration: 5000,

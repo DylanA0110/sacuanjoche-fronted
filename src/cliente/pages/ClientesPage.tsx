@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -69,15 +70,25 @@ const columns: Column[] = [
 ];
 
 const ClientesPage = () => {
+  const location = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const queryClient = useQueryClient();
+
+  // Abrir formulario automáticamente si viene desde acciones rápidas
+  useEffect(() => {
+    if (location.state && (location.state as { openForm?: boolean }).openForm) {
+      setIsFormOpen(true);
+      // Limpiar el estado para evitar que se abra cada vez que se renderice
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   // Hook de paginación general
   const pagination = useTablePagination(0);
 
   // Obtener clientes con paginación usando valores del hook
-  const { clientes, totalItems, isLoading, isError, error, refetch } =
+  const { clientes, totalItems, isLoading, isError } =
     useCliente({
       usePagination: true,
       limit: pagination.limit,
@@ -322,10 +333,6 @@ const ClientesPage = () => {
       setEditingCliente(null);
     },
     onError: (error: any) => {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Error al actualizar el cliente';
       toast.error('Error al actualizar el cliente', {
         description: cleanErrorMessage(error),
         duration: 5000,
@@ -369,9 +376,6 @@ const ClientesPage = () => {
     },
   });
 
-  const handleSearch = useCallback((value: string) => {
-    setSearchInput(value);
-  }, []);
 
   const handleCreate = useCallback(() => {
     setEditingCliente(null);

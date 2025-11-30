@@ -20,6 +20,9 @@ import {
 } from '@/shared/components/ui/select';
 import type { Flor, CreateFlorDto, UpdateFlorDto } from '../types/flor.interface';
 import { MdSave } from 'react-icons/md';
+import { toast } from 'sonner';
+import { COLORES_FLORES } from '@/shared/types/opciones.types';
+import { validatePrecioFlor } from '@/shared/utils/validation';
 
 interface FlorFormProps {
   open: boolean;
@@ -57,9 +60,9 @@ export function FlorForm({
       precioUnitario: 0,
       tipo: '',
     },
+    mode: 'onChange',
   });
 
-  const precioUnitario = watch('precioUnitario');
   const [precioInput, setPrecioInput] = useState('');
 
   useEffect(() => {
@@ -84,6 +87,19 @@ export function FlorForm({
   }, [flor, open, reset]);
 
   const onSubmitForm = (data: FormValues) => {
+    // Validar color
+    if (!data.color || data.color.trim() === '') {
+      toast.error('Debes seleccionar un color');
+      return;
+    }
+
+    // Validar precio
+    const precioError = validatePrecioFlor(data.precioUnitario);
+    if (precioError) {
+      toast.error(precioError);
+      return;
+    }
+
     const dataToSubmit = flor
       ? data
       : { ...data, estado: 'activo' as const };
@@ -112,6 +128,14 @@ export function FlorForm({
               id="nombre"
               {...register('nombre', {
                 required: 'El nombre es requerido',
+                minLength: {
+                  value: 2,
+                  message: 'El nombre debe tener al menos 2 caracteres',
+                },
+                maxLength: {
+                  value: 50,
+                  message: 'El nombre debe tener máximo 50 caracteres',
+                },
               })}
               placeholder="Rosa"
               className="bg-white border-gray-300 text-gray-900"
@@ -125,14 +149,24 @@ export function FlorForm({
             <Label htmlFor="color" className="text-sm font-semibold text-gray-700">
               Color *
             </Label>
-            <Input
-              id="color"
-              {...register('color', {
-                required: 'El color es requerido',
-              })}
-              placeholder="Rojo"
-              className="bg-white border-gray-300 text-gray-900"
-            />
+            <Select
+              value={watch('color')}
+              onValueChange={(value) => {
+                setValue('color', value, { shouldValidate: true });
+              }}
+              required
+            >
+              <SelectTrigger className={errors.color ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Selecciona un color" />
+              </SelectTrigger>
+              <SelectContent>
+                {COLORES_FLORES.map((color) => (
+                  <SelectItem key={color} value={color}>
+                    {color}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.color && (
               <p className="text-sm text-red-500 mt-1">{errors.color.message}</p>
             )}
@@ -146,6 +180,14 @@ export function FlorForm({
               id="tipo"
               {...register('tipo', {
                 required: 'El tipo es requerido',
+                minLength: {
+                  value: 2,
+                  message: 'El tipo debe tener al menos 2 caracteres',
+                },
+                maxLength: {
+                  value: 50,
+                  message: 'El tipo debe tener máximo 50 caracteres',
+                },
               })}
               placeholder="Tropical"
               className="bg-white border-gray-300 text-gray-900"
@@ -157,7 +199,7 @@ export function FlorForm({
 
           <div className="space-y-2">
             <Label htmlFor="precioUnitario" className="text-sm font-semibold text-gray-700">
-              Precio Unitario *
+              Precio Unitario * (C$100 - C$300)
             </Label>
             <Input
               id="precioUnitario"
@@ -177,9 +219,10 @@ export function FlorForm({
                   }
                 }
               }}
-              placeholder="100.00 C$"
+              placeholder="100.00"
               className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
             />
+            <p className="text-xs text-gray-500">Precio en córdobas (C$100 - C$300)</p>
             {errors.precioUnitario && (
               <p className="text-sm text-red-500 mt-1">{errors.precioUnitario.message}</p>
             )}

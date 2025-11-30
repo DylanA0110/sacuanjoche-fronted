@@ -216,9 +216,17 @@ export function FacturaDetailsModal({
                         Total del Pedido:{' '}
                         <span className="font-semibold text-gray-900">
                           $
-                          {typeof factura.pedido.totalPedido === 'string'
-                            ? parseFloat(factura.pedido.totalPedido).toFixed(2)
-                            : factura.pedido.totalPedido.toFixed(2)}
+                          {(() => {
+                            const total = factura.pedido.totalPedido;
+                            if (typeof total === 'string') {
+                              const numValue = parseFloat(total);
+                              return isNaN(numValue) ? '0.00' : numValue.toFixed(2);
+                            } else if (typeof total === 'number') {
+                              const numTotal = total as number;
+                              return isNaN(numTotal) ? '0.00' : numTotal.toFixed(2);
+                            }
+                            return '0.00';
+                          })()}
                         </span>
                       </p>
                     </div>

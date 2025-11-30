@@ -38,7 +38,7 @@ export function CardsView({
   emptyMessage = 'No se encontraron resultados',
   getImageUrl = (item) => item.imageUrl,
   getTitle = (item) => item.title,
-  getSubtitle = (item) => item.subtitle,
+  getSubtitle = (item) => item.subtitle || '',
   getPrice = (item) => item.price,
 }: CardsViewProps) {
   if (isLoading) {

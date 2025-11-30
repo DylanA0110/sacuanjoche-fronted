@@ -1,9 +1,11 @@
+import type { PagoEstado, MetodoPagoEstado } from '@/shared/types/estados.types';
+
 export interface Pago {
   idPago: number;
   idMetodoPago: number;
   idPedido?: number | null;
   monto: number;
-  estado: 'pendiente' | 'pagado' | 'cancelado' | 'reembolsado';
+  estado: PagoEstado;
   referencia?: string | null;
   gateway?: string | null;
   idGateway?: string | null;
@@ -14,7 +16,7 @@ export interface Pago {
     descripcion: string;
     tipo: string;
     canalesDisponibles: string[];
-    estado: 'activo' | 'inactivo';
+    estado: MetodoPagoEstado;
   };
 }
 
@@ -26,7 +28,7 @@ export interface CreatePagoPayPalDto {
 export interface CreatePagoPayPalResponse {
   idPago: number;
   paypalApprovalUrl: string;
-  estado: 'pendiente';
+  estado: PagoEstado;
   monto: number;
   idGateway: string;
   gateway: 'PAYPAL';
@@ -38,16 +40,22 @@ export interface ConfirmPagoPayPalDto {
 
 export interface ConfirmPagoPayPalResponse {
   idPago: number;
-  estado: 'pagado';
+  estado: PagoEstado;
   monto: number;
   referencia: string;
-  metodoPago?: any;
+  metodoPago?: {
+    idMetodoPago: number;
+    descripcion: string;
+    tipo: string;
+    canalesDisponibles: string[];
+    estado: MetodoPagoEstado;
+  };
 }
 
 export interface CreatePagoDto {
   idMetodoPago: number;
   monto: number;
-  estado?: 'pendiente' | 'pagado' | 'cancelado';
+  estado?: PagoEstado;
   referencia?: string;
   gateway?: string | null;
 }

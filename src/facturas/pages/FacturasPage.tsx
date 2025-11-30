@@ -26,7 +26,7 @@ import { useClienteFromPedido } from '../hooks/useClienteFromPedido';
 import { toast } from 'sonner';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MdReceipt, MdEdit, MdVisibility, MdMoreVert, MdDownload, MdDelete } from 'react-icons/md';
+import { MdEdit, MdVisibility, MdMoreVert, MdDownload, MdDelete } from 'react-icons/md';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
 
 // Componente para renderizar cliente con carga lazy

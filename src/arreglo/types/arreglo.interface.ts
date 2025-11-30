@@ -27,6 +27,8 @@ export interface Media {
   };
 }
 
+import type { ArregloEstado } from '@/shared/types/estados.types';
+
 export interface Arreglo {
   idArreglo: number;
   idFormaArreglo: number;
@@ -34,7 +36,7 @@ export interface Arreglo {
   descripcion: string;
   url?: string;
   precioUnitario: string | number;
-  estado: 'activo' | 'inactivo';
+  estado: ArregloEstado;
   fechaCreacion?: Date | string;
   formaArreglo?: FormaArreglo;
   media?: Media[];
@@ -45,7 +47,7 @@ export interface CreateArregloDto {
   nombre: string;
   descripcion: string;
   precioUnitario: number;
-  estado?: 'activo' | 'inactivo';
+  estado?: ArregloEstado;
 }
 
 export interface UpdateArregloDto {
@@ -53,14 +55,14 @@ export interface UpdateArregloDto {
   nombre?: string;
   descripcion?: string;
   precioUnitario?: number;
-  estado?: 'activo' | 'inactivo';
+  estado?: ArregloEstado;
 }
 
 export interface GetArreglosParams {
   limit?: number;
   offset?: number;
   q?: string;
-  estado?: 'activo' | 'inactivo' | boolean;
+  estado?: ArregloEstado | boolean;
 }
 
 // Tipos para respuestas del backend (raw)
@@ -85,7 +87,7 @@ export interface ArregloResponse {
   descripcion: string;
   url?: string;
   precioUnitario: string | number;
-  estado: 'activo' | 'inactivo';
+  estado: ArregloEstado;
   fechaCreacion: string | Date;
   formaArreglo?: FormaArreglo;
   media?: ArregloMediaResponse[];

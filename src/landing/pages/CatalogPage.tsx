@@ -32,9 +32,10 @@ const CatalogPage = () => {
     idFormaArreglo: idFormaArreglo || undefined,
   });
 
-  const arreglos = arreglosResponse?.arreglos || [];
-  const totalItems = arreglosResponse?.total || 0;
-  const totalPages = arreglosResponse?.pages || Math.ceil(totalItems / (+limit || 12));
+  const arreglosResponseTyped = arreglosResponse as any;
+  const arreglos = arreglosResponseTyped?.arreglos || [];
+  const totalItems = arreglosResponseTyped?.total || 0;
+  const totalPages = arreglosResponseTyped?.pages || Math.ceil(totalItems / (+limit || 12));
 
   // Debug: Log para ver qué está pasando
   useEffect(() => {
@@ -225,7 +226,7 @@ const CatalogPage = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-                {arreglos.map((arreglo) => (
+                {arreglos.map((arreglo: any) => (
                   <ArregloCard key={arreglo.idArreglo} arreglo={arreglo} />
                 ))}
               </div>

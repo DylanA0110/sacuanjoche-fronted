@@ -20,7 +20,6 @@ interface PaginationControlsProps {
 
 export function PaginationControls({
   currentPage,
-  totalPages,
   itemsPerPage,
   totalItems,
   onPageChange,

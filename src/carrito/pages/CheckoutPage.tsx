@@ -24,7 +24,6 @@ export default function CheckoutPage() {
     if (carritoTyped && !carritoTyped.idPago) {
       const paypalPagoId = localStorage.getItem('paypal_pago_id');
       if (paypalPagoId) {
-        console.log('🧹 Limpiando estado de pago anterior del localStorage...');
         localStorage.removeItem('paypal_pago_id');
       }
     }
@@ -36,18 +35,8 @@ export default function CheckoutPage() {
     if (carritoTyped?.idPago && carritoTyped.carritosArreglo && carritoTyped.carritosArreglo.length > 0) {
       // Verificar que el pago esté realmente confirmado
       if (carritoTyped.pago?.estado === 'pagado') {
-        console.log('✅ Pago confirmado, redirigiendo a completar pedido...');
         navigate('/carrito/checkout/completar', { replace: true });
-      } else {
-        // Si tiene idPago pero no está pagado, es un pago anterior o pendiente
-        // Limpiar el idPago del carrito para permitir crear un nuevo pago
-        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Permitir crear nuevo pago.');
-        console.log('📋 Estado del pago:', carritoTyped.pago?.estado || 'sin información');
-        // No redirigir - permitir que el usuario cree un nuevo pago
       }
-    } else if (carritoTyped?.idPago && (!carritoTyped.carritosArreglo || carritoTyped.carritosArreglo.length === 0)) {
-      // Carrito sin productos pero con idPago - no hacer nada, el usuario necesita agregar productos
-      console.log('🔄 Carrito sin productos pero con idPago. Esperando productos...');
     }
   }, [carritoTyped?.idPago, carritoTyped?.pago?.estado, carritoTyped?.carritosArreglo, navigate]);
 
@@ -95,25 +84,9 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      console.log('🔄 Creando pago PayPal...', { 
-        montoNIO: subtotal, 
-        montoUSD: montoUSD,
-        idMetodoPago: ID_METODO_PAGO_PAYPAL,
-        carritoIdPago: carritoTyped?.idPago,
-        pagoEstado: carritoTyped?.pago?.estado,
-      });
-
       // Validar que el carrito exista
       if (!carritoTyped?.idCarrito) {
         throw new Error('No se pudo obtener el carrito. Por favor, intenta nuevamente.');
-      }
-
-      // Si el carrito tiene un idPago pero el pago no está confirmado, limpiar el estado
-      // Esto permite crear un nuevo pago para este carrito
-      if (carritoTyped.idPago && carritoTyped.pago?.estado !== 'pagado') {
-        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Creando nuevo pago...');
-        console.log('📋 Estado del pago anterior:', carritoTyped.pago?.estado || 'sin información');
-        // Continuar con la creación del nuevo pago - el backend manejará la asociación
       }
 
       // Crear pago con PayPal - convertir a USD antes de enviar
@@ -123,8 +96,6 @@ export default function CheckoutPage() {
         monto: montoUSD, // Enviar monto en USD a PayPal
       });
 
-      console.log('✅ Pago PayPal creado:', pagoPayPal);
-
       // Validar respuesta del backend
       if (!pagoPayPal) {
         throw new Error('No se recibió respuesta del servidor al crear el pago');
@@ -132,13 +103,11 @@ export default function CheckoutPage() {
 
       // Validar que idPago exista y sea válido
       if (!pagoPayPal.idPago || pagoPayPal.idPago <= 0) {
-        console.error('❌ idPago inválido en respuesta:', pagoPayPal);
         throw new Error('El servidor no devolvió un ID de pago válido');
       }
 
       // Validar que paypalApprovalUrl exista
       if (!pagoPayPal?.paypalApprovalUrl) {
-        console.error('❌ paypalApprovalUrl no recibida:', pagoPayPal);
         throw new Error('No se recibió la URL de aprobación de PayPal');
       }
 
@@ -148,19 +117,15 @@ export default function CheckoutPage() {
       // Verificar que se guardó correctamente
       const savedId = localStorage.getItem('paypal_pago_id');
       if (savedId !== pagoPayPal.idPago.toString()) {
-        console.error('❌ Error al guardar idPago en localStorage');
         throw new Error('Error al guardar el ID del pago');
       }
-
-      console.log('💾 idPago guardado correctamente:', savedId);
-      console.log('🔗 Redirigiendo a PayPal:', pagoPayPal.paypalApprovalUrl);
 
       // Redirigir a PayPal para que el usuario inicie sesión y pague
       window.location.href = pagoPayPal.paypalApprovalUrl;
 
-    } catch (error: any) {
-      console.error('❌ Error al crear pago PayPal:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Error al procesar el pago';
+    } catch (error: unknown) {
+      const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = errorObj.response?.data?.message || errorObj.message || 'Error al procesar el pago';
       toast.error(errorMessage);
       setIsProcessing(false);
     }
@@ -290,7 +255,7 @@ export default function CheckoutPage() {
                 {/* Lista de productos */}
                 <div className="space-y-2 pt-4 border-t border-gray-200">
                   <p className="text-sm font-medium text-gray-700">Productos:</p>
-                  {carritoTyped?.carritosArreglo?.map((item: any) => {
+                  {carritoTyped?.carritosArreglo?.map((item) => {
                     const precio = Number(item.precioUnitario) || 0;
                     return (
                       <div key={item.idCarritoArreglo} className="text-sm text-gray-600">

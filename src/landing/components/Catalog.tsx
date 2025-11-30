@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArregloCard } from './ArregloCard';
 import { CatalogPagination } from './CatalogPagination';
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
-import { ArregloResponse, ArreglosPaginatedResponse } from '@/arreglo/types/arreglo.interface';
+import type { ArregloResponse, ArreglosPaginatedResponse } from '@/arreglo/types/arreglo.interface';
 
 export const Catalog = () => {
   const [arreglos, setArreglos] = useState<ArregloResponse[]>([]);

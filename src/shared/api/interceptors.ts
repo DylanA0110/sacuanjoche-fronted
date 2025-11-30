@@ -1,5 +1,5 @@
-import { AxiosError, InternalAxiosRequestConfig, AxiosInstance } from 'axios';
-import { toast } from 'sonner';
+import { AxiosError } from 'axios';
+import type { InternalAxiosRequestConfig, AxiosInstance } from 'axios';
 import { isTokenExpired, clearTokenCache } from '@/shared/utils/tokenUtils';
 
 // Caché de verificación de expiración para el interceptor (evita verificar en cada petición)

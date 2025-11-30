@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   Dialog,
@@ -21,10 +21,15 @@ import type {
   CreateArregloDto,
   UpdateArregloDto,
 } from '../types/arreglo.interface';
-import { MdSave, MdImage, MdClose, MdStar, MdStarBorder } from 'react-icons/md';
+import { MdSave, MdImage, MdClose, MdStar, MdStarBorder, MdInfo } from 'react-icons/md';
 import { toast } from 'sonner';
 import { useArregloImages } from '../hook/useArregloImages';
 import { useArregloAssociations } from '../hook/useArregloAssociations';
+import {
+  validatePrecioArreglo,
+  validateDescripcion,
+  calcularPrecioSugeridoArreglo,
+} from '@/shared/utils/validation';
 
 interface ArregloFormProps {
   open: boolean;
@@ -109,6 +114,33 @@ export function ArregloForm({
     flores,
     accesorios,
   });
+
+  // Calcular precio sugerido cuando se edita (después de que associations esté inicializado)
+  const precioSugerido = useMemo(() => {
+    if (!arreglo || associations.flores.list.length === 0) return null;
+    
+    const floresConPrecio = associations.flores.list.map((f) => {
+      const florInfo = flores.find((fl) => fl.idFlor === f.idFlor);
+      return {
+        precioUnitario: typeof florInfo?.precioUnitario === 'string' 
+          ? parseFloat(florInfo.precioUnitario) 
+          : (florInfo?.precioUnitario || 0),
+        cantidad: f.cantidad,
+      };
+    });
+    
+    const accesoriosConPrecio = associations.accesorios.list.map((a) => {
+      const accInfo = accesorios.find((acc) => acc.idAccesorio === a.idAccesorio);
+      return {
+        precioUnitario: typeof accInfo?.precioUnitario === 'string'
+          ? parseFloat(accInfo.precioUnitario)
+          : (accInfo?.precioUnitario || 0),
+        cantidad: a.cantidad,
+      };
+    });
+    
+    return calcularPrecioSugeridoArreglo(floresConPrecio, accesoriosConPrecio);
+  }, [arreglo, associations, flores, accesorios]);
 
   const formaArregloOptions = formasArreglo.map((forma) => ({
     value: String(forma.idFormaArreglo),
@@ -204,8 +236,17 @@ export function ArregloForm({
       return;
     }
 
-    if (data.precioUnitario <= 0) {
-      toast.error('El precio debe ser mayor a 0');
+    // Validar descripción
+    const descripcionError = validateDescripcion(data.descripcion, 500);
+    if (descripcionError) {
+      toast.error(descripcionError);
+      return;
+    }
+
+    // Validar precio
+    const precioError = validatePrecioArreglo(data.precioUnitario);
+    if (precioError) {
+      toast.error(precioError);
       return;
     }
 
@@ -293,8 +334,31 @@ export function ArregloForm({
                   htmlFor="precioUnitario"
                   className="text-sm font-semibold text-gray-700"
                 >
-                  Precio Unitario *
+                  Precio Unitario * (C$150 - C$15,000)
                 </Label>
+                {arreglo && precioSugerido && (
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg mb-2">
+                    <MdInfo className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-blue-800">
+                        Precio sugerido basado en flores y accesorios: <span className="font-semibold">C${precioSugerido.toFixed(2)}</span>
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const precioFinal = Math.max(150, Math.min(15000, precioSugerido));
+                        setPrecioInput(precioFinal.toString());
+                        setValue('precioUnitario', precioFinal);
+                      }}
+                      className="text-xs h-7 px-2"
+                    >
+                      Usar
+                    </Button>
+                  </div>
+                )}
                 <Input
                   id="precioUnitario"
                   type="text"
@@ -312,10 +376,10 @@ export function ArregloForm({
                       }
                     }
                   }}
-                  placeholder="25.99"
+                  placeholder="150.00"
                   className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
                 />
-                <p className="text-xs text-gray-500">Precio en córdobas (C$)</p>
+                <p className="text-xs text-gray-500">Precio en córdobas (C$150 - C$15,000)</p>
                 {errors.precioUnitario && (
                   <p className="text-sm text-red-500 mt-1">
                     {errors.precioUnitario.message}
@@ -335,6 +399,14 @@ export function ArregloForm({
                 id="nombre"
                 {...register('nombre', {
                   required: 'El nombre es requerido',
+                  minLength: {
+                    value: 2,
+                    message: 'El nombre debe tener al menos 2 caracteres',
+                  },
+                  maxLength: {
+                    value: 100,
+                    message: 'El nombre debe tener máximo 100 caracteres',
+                  },
                 })}
                 placeholder="Ramo de Rosas Rojas"
                 className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/20"
@@ -351,21 +423,35 @@ export function ArregloForm({
                 htmlFor="descripcion"
                 className="text-sm font-semibold text-gray-700"
               >
-                Descripción *
+                Descripción * (máximo 500 caracteres)
               </Label>
               <textarea
                 id="descripcion"
                 {...register('descripcion', {
                   required: 'La descripción es requerida',
+                  maxLength: {
+                    value: 500,
+                    message: 'La descripción debe tener máximo 500 caracteres',
+                  },
+                  validate: (value) => {
+                    const error = validateDescripcion(value, 500);
+                    return error || true;
+                  },
                 })}
                 placeholder="Hermoso ramo de rosas rojas para ocasiones especiales..."
                 className="w-full min-h-[100px] px-3 py-2 rounded-lg border-2 border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#50C878]/40 focus:border-[#50C878] transition-all duration-200 resize-y"
+                maxLength={500}
               />
-              {errors.descripcion && (
-                <p className="text-sm text-red-500 mt-1">
-                  {errors.descripcion.message}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  {watch('descripcion')?.length || 0} / 500 caracteres
                 </p>
-              )}
+                {errors.descripcion && (
+                  <p className="text-sm text-red-500">
+                    {errors.descripcion.message}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           {/* Indicador visual del total de flores (no se envía al backend) */}

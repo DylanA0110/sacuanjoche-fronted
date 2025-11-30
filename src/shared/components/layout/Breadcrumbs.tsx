@@ -27,7 +27,7 @@ interface Crumb {
 
 // Mapeo de rutas a nombres amigables (fallback si no hay handle.crumb)
 const routeLabels: Record<string, string> = {
-  '/admin': 'Dashboard',
+  '/admin': 'Home',
   '/admin/pedidos': 'Pedidos',
   '/admin/clientes': 'Clientes',
   '/admin/catalogo': 'Catálogo',

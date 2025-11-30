@@ -1,5 +1,4 @@
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
-import type { CreateAccesorioArregloDto } from '../types/arreglo-insumos.interface';
 
 export interface UpdateAccesorioArregloDto {
   idAccesorio?: number;

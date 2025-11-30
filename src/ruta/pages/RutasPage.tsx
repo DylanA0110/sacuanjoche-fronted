@@ -14,7 +14,8 @@ import { useAuthStore } from '@/auth/store/auth.store';
 import { Navigate } from 'react-router';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import Swal from 'sweetalert2';
-import { IoStatsChartOutline, IoTrashOutline, IoInformationCircleOutline } from 'react-icons/io5';
+import { IoTrashOutline, IoInformationCircleOutline } from 'react-icons/io5';
+import { PedidoDetailsModal } from '@/pedido/components/PedidoDetailsModal';
 
 export default function RutasPage() {
   const { user } = useAuthStore();
@@ -23,6 +24,8 @@ export default function RutasPage() {
   const clearAsignaciones = useRutaStore((state) => state.clearAsignaciones);
   const clearAsignacionesByConductor = useRutaStore((state) => state.clearAsignacionesByConductor);
   const [selectedConductor, setSelectedConductor] = useState<EmpleadoConductor | null>(null);
+  const [selectedPedidoId, setSelectedPedidoId] = useState<number | null>(null);
+  const [isPedidoModalOpen, setIsPedidoModalOpen] = useState(false);
 
   // Verificar permisos (solo admin y vendedor)
   const canAccess = useMemo(() => {
@@ -85,8 +88,10 @@ export default function RutasPage() {
     }));
   }, [pedidosData]);
 
-  // Estadísticas
-  const estadisticas = useMemo(() => {
+  // Estadísticas (no se usan actualmente)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-expect-error - Variable mantenida para referencia futura
+  const _estadisticas = useMemo(() => {
     const totalPedidosAsignados = Object.values(asignaciones).reduce((acc, ids) => acc + ids.length, 0);
     const totalConductores = conductores.length;
     const conductoresConPedidos = Object.keys(asignaciones).filter(id => asignaciones[Number(id)].length > 0).length;
@@ -211,6 +216,11 @@ export default function RutasPage() {
     toast.info('Funcionalidad de edición en desarrollo');
   };
 
+  const handleViewPedidoDetails = (idPedido: number) => {
+    setSelectedPedidoId(idPedido);
+    setIsPedidoModalOpen(true);
+  };
+
   // Si no tiene permisos, redirigir
   if (!canAccess) {
     return <Navigate to="/admin" replace />;
@@ -281,6 +291,7 @@ export default function RutasPage() {
           <PedidosDisponibles
             pedidos={pedidos}
             isLoading={isLoadingPedidos}
+            onViewDetails={handleViewPedidoDetails}
           />
         </div>
 
@@ -311,6 +322,7 @@ export default function RutasPage() {
                     onCrearRuta={handleCrearRuta}
                     onEditarRuta={handleEditarRuta}
                     onVerDetalles={(c) => setSelectedConductor(c)}
+                    onViewPedidoDetails={handleViewPedidoDetails}
                   />
                 ))}
               </div>
@@ -400,6 +412,13 @@ export default function RutasPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de detalles del pedido */}
+      <PedidoDetailsModal
+        open={isPedidoModalOpen}
+        onOpenChange={setIsPedidoModalOpen}
+        pedidoId={selectedPedidoId}
+      />
     </div>
   );
 }

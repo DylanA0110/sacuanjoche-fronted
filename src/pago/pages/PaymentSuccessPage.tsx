@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { confirmPagoPayPal } from '../actions/confirmPagoPayPal';
 import { asociarPagoAlCarrito } from '@/carrito/actions/asociarPago';
 import { useCarrito } from '@/carrito/hooks/useCarrito';
+import type { Carrito } from '@/carrito/types/carrito.interface';
 import { MdCheckCircle, MdError } from 'react-icons/md';
 import { toast } from 'sonner';
 
@@ -22,13 +23,13 @@ export default function PaymentSuccessPage() {
     const procesarPago = async () => {
       // Evitar procesamiento múltiple
       if (procesadoRef.current) {
-        console.log('⏭️ Pago ya procesado, saltando...');
         return;
       }
 
       // Si el carrito ya tiene un pago confirmado, redirigir directamente
-      if (carrito?.idPago && carrito?.pago?.estado === 'pagado') {
-        console.log('✅ Carrito ya tiene pago confirmado, redirigiendo...');
+      const carritoTyped = carrito as Carrito | null;
+      const pagoEstado = (carritoTyped?.pago as { estado?: string } | undefined)?.estado;
+      if (carritoTyped?.idPago && pagoEstado === 'pagado') {
         procesadoRef.current = true;
         setEstado('exitoso');
         setMensaje('¡Pago confirmado exitosamente!');
@@ -40,29 +41,18 @@ export default function PaymentSuccessPage() {
 
       // Esperar a que el carrito se cargue
       if (isLoading) {
-        console.log('⏳ Esperando a que se cargue el carrito...');
         return;
       }
 
       try {
         // Obtener parámetros de PayPal
         const token = searchParams.get('token');
-        const payerId = searchParams.get('PayerID');
-
-        // Log de todos los parámetros de la URL para debugging
-        console.log('🔍 Parámetros de URL de PayPal:', {
-          token,
-          payerId,
-          allParams: Object.fromEntries(searchParams.entries()),
-          fullUrl: window.location.href,
-        });
 
         // Obtener idPago del localStorage
         const idPagoStr = localStorage.getItem('paypal_pago_id');
         
         // Si no hay idPago pero el carrito ya tiene pago, significa que ya se procesó
-        if (!idPagoStr && carrito?.idPago) {
-          console.log('✅ Pago ya procesado (carrito tiene idPago), redirigiendo...');
+        if (!idPagoStr && carritoTyped?.idPago) {
           procesadoRef.current = true;
           setEstado('exitoso');
           setMensaje('¡Pago confirmado exitosamente!');
@@ -74,38 +64,26 @@ export default function PaymentSuccessPage() {
         
         // Validar datos con mensajes específicos
         if (!idPagoStr) {
-          console.error('❌ Falta idPago en localStorage');
-          console.error('📋 Contenido de localStorage:', {
-            paypal_pago_id: localStorage.getItem('paypal_pago_id'),
-            allKeys: Object.keys(localStorage),
-          });
           throw new Error('No se encontró el ID del pago. Por favor, intenta el pago nuevamente.');
         }
 
         if (!token) {
-          console.error('❌ Falta token en la URL');
-          console.error('📋 URL completa:', window.location.href);
-          console.error('📋 Parámetros disponibles:', Object.fromEntries(searchParams.entries()));
           throw new Error('No se recibió el token de PayPal. Por favor, intenta el pago nuevamente.');
         }
 
         const idPago = parseInt(idPagoStr, 10);
         if (isNaN(idPago) || idPago <= 0) {
-          console.error('❌ idPago inválido:', idPagoStr);
           throw new Error('ID de pago inválido');
         }
-
-        console.log('✅ idPago validado:', idPago);
 
         // Marcar como procesando para evitar ejecuciones duplicadas
         procesadoRef.current = true;
 
         // Obtener el carrito (intentar refetch si no está disponible)
-        let carritoActual = carrito;
+        let carritoActual: Carrito | null = carritoTyped;
         if (!carritoActual) {
-          console.log('🔄 Carrito no disponible, intentando obtenerlo...');
           const carritoRefetch = await refetch();
-          carritoActual = carritoRefetch.data || null;
+          carritoActual = (carritoRefetch.data as Carrito | null) || null;
           
           if (!carritoActual) {
             procesadoRef.current = false; // Permitir reintentar
@@ -113,58 +91,29 @@ export default function PaymentSuccessPage() {
           }
         }
 
-        console.log('✅ Datos validados:', {
-          idPago,
-          token,
-          carritoId: carritoActual.idCarrito,
-        });
-
         // 1. Confirmar el pago en PayPal
         setMensaje('Confirmando tu pago con PayPal...');
-        console.log('🔄 Confirmando pago con:', {
-          idPago,
-          orderId: token,
-          endpoint: `/pago/paypal/confirm/${idPago}`,
-        });
 
         const pagoConfirmado = await confirmPagoPayPal(idPago, {
           orderId: token,
         });
-
-        console.log('✅ Respuesta de confirmación:', pagoConfirmado);
 
         if (!pagoConfirmado) {
           throw new Error('No se recibió respuesta al confirmar el pago');
         }
 
         if (pagoConfirmado.estado !== 'pagado') {
-          console.error('❌ Estado del pago no es "pagado":', pagoConfirmado.estado);
           throw new Error(`El pago no pudo ser confirmado. Estado: ${pagoConfirmado.estado}`);
         }
 
         if (!pagoConfirmado.idPago || pagoConfirmado.idPago !== idPago) {
-          console.error('❌ idPago no coincide:', {
-            esperado: idPago,
-            recibido: pagoConfirmado.idPago,
-          });
           throw new Error('El ID del pago confirmado no coincide');
         }
 
         // 2. Asociar el pago al carrito
         setMensaje('Asociando el pago a tu carrito...');
-        console.log('🔄 Asociando pago al carrito:', {
-          idCarrito: carritoActual.idCarrito,
-          idPago: pagoConfirmado.idPago,
-        });
         
         const carritoConPago = await asociarPagoAlCarrito(carritoActual.idCarrito, pagoConfirmado.idPago);
-        
-        console.log('✅ Respuesta de asociar pago:', {
-          idCarrito: carritoConPago.idCarrito,
-          idPago: carritoConPago.idPago,
-          tienePago: !!carritoConPago.pago,
-          estadoPago: carritoConPago.pago?.estado,
-        });
         
         // Verificar que el carrito tenga el pago asociado
         if (!carritoConPago.idPago) {
@@ -187,32 +136,27 @@ export default function PaymentSuccessPage() {
         let carritoActualizado = await refetch();
         
         // Si el refetch no trae la información del pago, usar la respuesta del endpoint
-        if (!carritoActualizado.data?.pago && carritoConPago.pago) {
-          console.log('⚠️ Refetch no trajo información del pago, usando respuesta del endpoint');
+        const carritoData = carritoActualizado.data as Carrito | null | undefined;
+        const pagoData = (carritoConPago.pago as { estado?: string } | undefined);
+        if (!carritoData?.pago && pagoData) {
           // Actualizar el caché manualmente con la respuesta del endpoint
           queryClient.setQueryData(['carrito', 'activo'], carritoConPago);
-          carritoActualizado = { data: carritoConPago };
+          carritoActualizado = { data: carritoConPago } as typeof carritoActualizado;
         }
         
         // Verificar que el carrito tenga la información completa del pago
-        if (!carritoActualizado.data?.pago) {
-          console.log('⚠️ Carrito no tiene información del pago, esperando...');
+        if (!carritoData?.pago) {
           // Esperar un poco más y reintentar
           await new Promise(resolve => setTimeout(resolve, 1000));
           carritoActualizado = await refetch();
           
           // Si aún no tiene, usar la respuesta del endpoint
-          if (!carritoActualizado.data?.pago && carritoConPago.pago) {
+          const carritoDataRetry = carritoActualizado.data as Carrito | null | undefined;
+          if (!carritoDataRetry?.pago && pagoData) {
             queryClient.setQueryData(['carrito', 'activo'], carritoConPago);
-            carritoActualizado = { data: carritoConPago };
+            carritoActualizado = { data: carritoConPago } as typeof carritoActualizado;
           }
         }
-
-        console.log('✅ Carrito actualizado final:', {
-          idPago: carritoActualizado.data?.idPago,
-          estadoPago: carritoActualizado.data?.pago?.estado,
-          tienePago: !!carritoActualizado.data?.pago,
-        });
 
         // 4. Limpiar localStorage del idPago
         localStorage.removeItem('paypal_pago_id');
@@ -227,11 +171,11 @@ export default function PaymentSuccessPage() {
           navigate('/carrito/checkout/completar', { replace: true });
         }, 2000);
 
-      } catch (error: any) {
-        console.error('Error al procesar el pago:', error);
+      } catch (error: unknown) {
         procesadoRef.current = false; // Permitir reintentar en caso de error
         setEstado('error');
-        const errorMessage = error.response?.data?.message || error.message || 'Error al procesar el pago';
+        const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
+        const errorMessage = errorObj.response?.data?.message || errorObj.message || 'Error al procesar el pago';
         setMensaje(errorMessage);
         toast.error(errorMessage);
         

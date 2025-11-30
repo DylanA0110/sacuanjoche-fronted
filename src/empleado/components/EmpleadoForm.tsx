@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   Dialog,
@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import type { Empleado, CreateEmpleadoDto, UpdateEmpleadoDto } from '../types/empleado.interface';
+import { sanitizeName, validateName, formatTelefono, validateTelefono } from '@/shared/utils/validation';
+import { toast } from 'sonner';
 
 interface EmpleadoFormProps {
   open: boolean;
@@ -83,14 +85,11 @@ export function EmpleadoForm({
     }
   }, [empleado, reset, open]);
 
-  const formatTelefono = (value: string) => {
-    // Remover todo excepto números
-    const cleaned = value.replace(/\D/g, '');
-    // Si empieza con 505, removerlo
-    if (cleaned.startsWith('505') && cleaned.length > 3) {
-      return cleaned.slice(3);
-    }
-    return cleaned.slice(0, 8);
+  const handleNombreChange = (field: 'primerNombre' | 'segundoNombre' | 'primerApellido' | 'segundoApellido') => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = sanitizeName(e.target.value, 30);
+      setValue(field, sanitized);
+    };
   };
 
   const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +98,52 @@ export function EmpleadoForm({
   };
 
   const onFormSubmit = (data: CreateEmpleadoDto) => {
+    // Validar nombres
+    const primerNombreError = validateName(data.primerNombre, 'El primer nombre');
+    if (primerNombreError) {
+      toast.error(primerNombreError);
+      return;
+    }
+
+    const primerApellidoError = validateName(data.primerApellido, 'El primer apellido');
+    if (primerApellidoError) {
+      toast.error(primerApellidoError);
+      return;
+    }
+
+    if (data.segundoNombre && data.segundoNombre.trim()) {
+      const segundoNombreError = validateName(data.segundoNombre, 'El segundo nombre');
+      if (segundoNombreError) {
+        toast.error(segundoNombreError);
+        return;
+      }
+    }
+
+    if (data.segundoApellido && data.segundoApellido.trim()) {
+      const segundoApellidoError = validateName(data.segundoApellido, 'El segundo apellido');
+      if (segundoApellidoError) {
+        toast.error(segundoApellidoError);
+        return;
+      }
+    }
+
+    // Validar teléfono
+    const telefonoError = validateTelefono(data.telefono);
+    if (telefonoError) {
+      toast.error(telefonoError);
+      return;
+    }
+
+    // Validar fecha (no puede ser en el futuro)
+    if (data.fechaNac) {
+      const fechaNac = new Date(data.fechaNac);
+      const hoy = new Date();
+      if (fechaNac > hoy) {
+        toast.error('La fecha de nacimiento no puede ser en el futuro');
+        return;
+      }
+    }
+
     // Formatear teléfono: agregar 505 si no lo tiene
     const telefonoLimpio = data.telefono.replace(/\D/g, '');
     const telefonoBackend = telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
@@ -125,7 +170,7 @@ export function EmpleadoForm({
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="primerNombre">Primer Nombre *</Label>
+              <Label htmlFor="primerNombre">Primer Nombre * (2-30 letras, sin espacios)</Label>
               <Input
                 id="primerNombre"
                 {...register('primerNombre', {
@@ -134,8 +179,25 @@ export function EmpleadoForm({
                     value: 2,
                     message: 'El nombre debe tener al menos 2 caracteres',
                   },
+                  maxLength: {
+                    value: 30,
+                    message: 'El nombre debe tener máximo 30 caracteres',
+                  },
                 })}
+                onChange={handleNombreChange('primerNombre')}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text');
+                  const sanitized = sanitizeName(text, 30);
+                  setValue('primerNombre', sanitized);
+                }}
                 placeholder="Juan"
+                maxLength={30}
               />
               {errors.primerNombre && (
                 <p className="text-sm text-red-500">{errors.primerNombre.message}</p>
@@ -143,16 +205,29 @@ export function EmpleadoForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="segundoNombre">Segundo Nombre</Label>
+              <Label htmlFor="segundoNombre">Segundo Nombre (2-30 letras, sin espacios)</Label>
               <Input
                 id="segundoNombre"
                 {...register('segundoNombre')}
+                onChange={handleNombreChange('segundoNombre')}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text');
+                  const sanitized = sanitizeName(text, 30);
+                  setValue('segundoNombre', sanitized);
+                }}
                 placeholder="Pedro"
+                maxLength={30}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="primerApellido">Primer Apellido *</Label>
+              <Label htmlFor="primerApellido">Primer Apellido * (2-30 letras, sin espacios)</Label>
               <Input
                 id="primerApellido"
                 {...register('primerApellido', {
@@ -161,8 +236,25 @@ export function EmpleadoForm({
                     value: 2,
                     message: 'El apellido debe tener al menos 2 caracteres',
                   },
+                  maxLength: {
+                    value: 30,
+                    message: 'El apellido debe tener máximo 30 caracteres',
+                  },
                 })}
+                onChange={handleNombreChange('primerApellido')}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text');
+                  const sanitized = sanitizeName(text, 30);
+                  setValue('primerApellido', sanitized);
+                }}
                 placeholder="Pérez"
+                maxLength={30}
               />
               {errors.primerApellido && (
                 <p className="text-sm text-red-500">{errors.primerApellido.message}</p>
@@ -170,11 +262,24 @@ export function EmpleadoForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="segundoApellido">Segundo Apellido</Label>
+              <Label htmlFor="segundoApellido">Segundo Apellido (2-30 letras, sin espacios)</Label>
               <Input
                 id="segundoApellido"
                 {...register('segundoApellido')}
+                onChange={handleNombreChange('segundoApellido')}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const text = e.clipboardData.getData('text');
+                  const sanitized = sanitizeName(text, 30);
+                  setValue('segundoApellido', sanitized);
+                }}
                 placeholder="González"
+                maxLength={30}
               />
             </div>
 
@@ -228,7 +333,18 @@ export function EmpleadoForm({
                 type="date"
                 {...register('fechaNac', {
                   required: 'La fecha de nacimiento es requerida',
+                  validate: (value) => {
+                    if (!value) return true;
+                    const fecha = new Date(value);
+                    const hoy = new Date();
+                    hoy.setHours(23, 59, 59, 999);
+                    if (fecha > hoy) {
+                      return 'La fecha de nacimiento no puede ser en el futuro';
+                    }
+                    return true;
+                  },
                 })}
+                max={new Date().toISOString().split('T')[0]}
               />
               {errors.fechaNac && (
                 <p className="text-sm text-red-500">{errors.fechaNac.message}</p>

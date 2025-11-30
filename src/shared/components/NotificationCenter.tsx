@@ -11,7 +11,6 @@ import { Separator } from '@/shared/components/ui/separator';
 import { cn } from '@/shared/lib/utils';
 import { useNavigate } from 'react-router';
 import type { Notification, NotificationType } from '../store/notification.store';
-import { toast } from 'sonner';
 
 interface NotificationCenterProps {
   notifications: Notification[];

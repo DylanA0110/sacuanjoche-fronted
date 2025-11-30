@@ -326,7 +326,6 @@ export function PedidoForm({
       idContactoEntrega: 0, // Se asignará después de crear el contacto
       fechaEntregaEstimada: new Date(data.fechaEntregaEstimada).toISOString(),
       direccionTxt: data.direccionTexto, // Usar el texto que el usuario escribió, no el del mapa
-      costoEnvio: costoEnvioNum,
     };
 
     // Preparar detalles

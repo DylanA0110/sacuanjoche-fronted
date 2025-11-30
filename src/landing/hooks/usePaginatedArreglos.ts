@@ -121,7 +121,7 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
       });
       
       // Verificar si la respuesta es HTML (error de ngrok)
-      if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
+      if (typeof response.data === 'string' && (response.data as string).trim().startsWith('<!DOCTYPE')) {
         console.error('❌ [usePaginatedArreglos] Ngrok bloqueó la petición, recibió HTML en lugar de JSON');
         throw new Error('El servidor retornó HTML en lugar de JSON. Verifica la configuración de ngrok.');
       }
@@ -180,14 +180,5 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
-    onError: (error: any) => {
-      console.error('❌ [usePaginatedArreglos] Error al obtener arreglos:', {
-        message: error.message,
-        response: error.response,
-        status: error.response?.status,
-        data: error.response?.data,
-        config: error.config,
-      });
-    },
   });
 };

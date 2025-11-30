@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { Button } from '@/shared/components/ui/button';
 import {
   Card,
@@ -147,9 +148,7 @@ export default function EmpleadosPage() {
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Error al crear empleado';
-      toast.error(message);
+      toast.error(cleanErrorMessage(error));
     },
   });
 
@@ -163,9 +162,7 @@ export default function EmpleadosPage() {
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Error al actualizar empleado';
-      toast.error(message);
+      toast.error(cleanErrorMessage(error));
     },
   });
 
@@ -177,9 +174,7 @@ export default function EmpleadosPage() {
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Error al eliminar empleado';
-      toast.error(message);
+      toast.error(cleanErrorMessage(error));
     },
   });
 
@@ -191,9 +186,7 @@ export default function EmpleadosPage() {
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Error al crear usuario';
-      toast.error(message);
+      toast.error(cleanErrorMessage(error));
     },
   });
 
@@ -207,9 +200,7 @@ export default function EmpleadosPage() {
       queryClient.invalidateQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Error al actualizar roles';
-      toast.error(message);
+      toast.error(cleanErrorMessage(error));
     },
   });
 
@@ -724,13 +715,13 @@ export default function EmpleadosPage() {
                           {roles.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {roles.map((role) => (
-                                <Badge key={role} variant="outline" className="text-xs">
+                                <Badge key={role} variant="outline" className="text-xs text-gray-900 border-gray-300 bg-white">
                                   {role}
                                 </Badge>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
+                            <span className="text-gray-500 text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm">{empleado.telefono}</TableCell>

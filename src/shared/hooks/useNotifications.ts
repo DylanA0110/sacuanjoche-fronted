@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNotificationStore } from '../store/notification.store';
 import { useAuthStore } from '@/auth/store/auth.store';
 
@@ -22,22 +22,32 @@ export const useNotifications = () => {
   } = useNotificationStore();
 
   const { isAuthenticated } = useAuthStore();
+  const hasConnectedRef = useRef(false);
 
   // Conectar cuando el usuario esté autenticado
   useEffect(() => {
-    if (isAuthenticated) {
+    // Solo conectar si está autenticado y no se ha conectado antes
+    if (isAuthenticated && !hasConnectedRef.current) {
       connect();
-    } else {
-      disconnect();
+      hasConnectedRef.current = true;
+    } else if (!isAuthenticated) {
+      // Si se desautentica, desconectar
+      if (hasConnectedRef.current) {
+        disconnect();
+        hasConnectedRef.current = false;
+      }
     }
 
-    // Cleanup al desmontar o cambiar estado de autenticación
+    // Cleanup al desmontar
     return () => {
-      if (!isAuthenticated) {
+      // Solo desconectar si el componente se desmonta y el usuario ya no está autenticado
+      if (!isAuthenticated && hasConnectedRef.current) {
         disconnect();
+        hasConnectedRef.current = false;
       }
     };
-  }, [isAuthenticated, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // Solo depender de isAuthenticated para evitar reconexiones innecesarias
 
   return {
     notifications,
@@ -51,6 +61,9 @@ export const useNotifications = () => {
     removeNotification,
   };
 };
+
+
+
 
 
 

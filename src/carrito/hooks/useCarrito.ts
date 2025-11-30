@@ -9,7 +9,7 @@ import {
   deleteCarritoArreglo,
 } from '../actions';
 import { toast } from 'sonner';
-import type { CreateCarritoArregloDto, UpdateCarritoArregloDto } from '../types/carrito.interface';
+import type { CreateCarritoArregloDto, Carrito, CarritoArreglo } from '../types/carrito.interface';
 
 export const useCarrito = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -33,8 +33,6 @@ export const useCarrito = () => {
   // Pero para las mutaciones, permitir si hay token (puede que el store no esté sincronizado aún)
   const isUserAuthenticated = isAuthenticated && hasToken;
   
-  // Para mutaciones, permitir si hay token (más permisivo)
-  const canUseCarrito = isAuthenticated || hasToken;
 
   // Obtener carrito activo
   const {
@@ -48,17 +46,12 @@ export const useCarrito = () => {
     enabled: isUserAuthenticated,
     staleTime: 30000, // 30 segundos
     retry: false, // No reintentar automáticamente si falla
-    onError: (error: any) => {
-      // Solo mostrar error si no es 403, 404 o 400 (permisos, no encontrado, o sin carrito)
-      // El 400 puede ocurrir cuando el usuario no tiene carrito aún
-      if (error.response?.status !== 403 && error.response?.status !== 404 && error.response?.status !== 400) {
-        console.error('Error al cargar carrito:', error);
-      }
-    },
   });
 
-  // Crear carrito
-  const createCarritoMutation = useMutation({
+  // Crear carrito (no se usa directamente, pero se mantiene para referencia)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // @ts-ignore - Variable mantenida para referencia futura
+  const _createCarritoMutation = useMutation({
     mutationFn: async () => {
       // Obtener el usuario del store directamente para asegurar que esté actualizado
       const storeUser = useAuthStore.getState().user || user;
@@ -69,20 +62,18 @@ export const useCarrito = () => {
       
       // El idUser es el UUID del usuario logueado (user.id), NO el idCliente ni idEmpleado
       if (!storeUser.id) {
-        console.error('❌ [createCarritoMutation] Usuario no tiene id:', storeUser);
         throw new Error('Usuario no tiene ID');
       }
       
       // El idUser es un UUID (string), no necesita conversión
-      console.log('✅ [createCarritoMutation] Creando carrito con idUser (UUID):', storeUser.id);
       return createCarrito({ idUser: storeUser.id });
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['carrito', 'activo'], data);
       toast.success('Carrito creado');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Error al crear el carrito';
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al crear el carrito';
       toast.error(message);
     },
   });
@@ -122,12 +113,10 @@ export const useCarrito = () => {
         
         // El idUser es el UUID del usuario logueado (user.id), NO el idCliente ni idEmpleado
         if (!storeUser.id) {
-          console.error('❌ [getIdUser] Usuario no tiene id:', storeUser);
           throw new Error('Usuario no tiene ID');
         }
         
         // El idUser es un UUID (string), no necesita conversión
-        console.log('✅ [getIdUser] UUID del usuario logueado:', storeUser.id);
         return storeUser.id;
       };
 
@@ -149,11 +138,11 @@ export const useCarrito = () => {
           }
           // Si no hay carrito activo, no crear uno manualmente
           // El backend lo creará automáticamente al agregar el primer producto
-        } catch (error: any) {
+        } catch (error: unknown) {
           // Si falla al obtener (403, 404 o 400), no es crítico
           // El backend puede crear el carrito automáticamente al agregar el producto
-          if (error.response?.status === 403 || error.response?.status === 404 || error.response?.status === 400) {
-            console.log('ℹ️ [addProductoMutation] No hay carrito activo, el backend lo creará al agregar el producto');
+          const errorStatus = (error as { response?: { status?: number } })?.response?.status;
+          if (errorStatus === 403 || errorStatus === 404 || errorStatus === 400) {
             // No crear carrito manualmente, dejar que el backend lo haga
           } else {
             throw error;
@@ -162,19 +151,15 @@ export const useCarrito = () => {
       }
 
       // Si hay carrito, verificar si el producto ya está en el carrito
-      if (carritoId && currentCarrito) {
-        const productoExistente = currentCarrito.carritosArreglo?.find(
+      if (carritoId && currentCarrito && 'carritosArreglo' in currentCarrito) {
+        const carritoConArreglos = currentCarrito as Carrito;
+        const productoExistente = carritoConArreglos.carritosArreglo?.find(
           (item) => item.idArreglo === data.idArreglo
         );
 
         if (productoExistente) {
           // Actualizar cantidad - el backend recalculará totalLinea automáticamente
           const nuevaCantidad = (productoExistente.cantidad || 1) + (data.cantidad || 1);
-          console.log('🔄 [addProductoMutation] Actualizando cantidad del producto existente:', {
-            idCarritoArreglo: productoExistente.idCarritoArreglo,
-            cantidadAnterior: productoExistente.cantidad,
-            cantidadNueva: nuevaCantidad,
-          });
           return updateCarritoArreglo(productoExistente.idCarritoArreglo, {
             cantidad: nuevaCantidad,
           });
@@ -183,14 +168,12 @@ export const useCarrito = () => {
 
       // Si no hay carrito, crear uno primero antes de agregar el producto
       if (!carritoId) {
-        console.log('ℹ️ [addProductoMutation] No hay carrito, creando carrito primero');
         const idUser = getIdUser();
         // Crear carrito con estado 'activo' según la documentación
         const nuevoCarrito = await createCarrito({ idUser, estado: 'activo' });
         carritoId = nuevoCarrito.idCarrito;
         currentCarrito = nuevoCarrito;
         queryClient.setQueryData(['carrito', 'activo'], nuevoCarrito);
-        console.log('✅ [addProductoMutation] Carrito creado con id:', carritoId);
       }
 
       // Validar que tenemos un carritoId válido
@@ -219,7 +202,6 @@ export const useCarrito = () => {
         totalLinea: totalLinea, // Calcular totalLinea antes de enviar
       };
       
-      console.log('🛒 [addProductoMutation] Agregando nuevo producto al carrito:', createDto);
       return createCarritoArreglo(createDto);
     },
     onSuccess: () => {
@@ -231,17 +213,17 @@ export const useCarrito = () => {
         description: 'Puedes seguir agregando más productos',
       });
     },
-    onError: (error: any) => {
-      console.error('Error al agregar producto al carrito:', error);
+    onError: (error: unknown) => {
+      const errorObj = error as { message?: string; response?: { data?: { message?: string } } };
       
       // Si el error es de autenticación, no mostrar toast (ya se maneja en ArregloCard)
-      if (error.message?.includes('Debes iniciar sesión')) {
+      if (errorObj.message?.includes('Debes iniciar sesión')) {
         return;
       }
       
       const message = 
-        error.response?.data?.message || 
-        error.message || 
+        errorObj.response?.data?.message || 
+        errorObj.message || 
         'Error al agregar el producto al carrito';
       
       toast.error(message, {
@@ -257,8 +239,8 @@ export const useCarrito = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['carrito', 'activo'] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Error al actualizar la cantidad';
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al actualizar la cantidad';
       toast.error(message);
     },
   });
@@ -270,8 +252,8 @@ export const useCarrito = () => {
       queryClient.invalidateQueries({ queryKey: ['carrito', 'activo'] });
       toast.success('Producto eliminado del carrito');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Error al eliminar el producto';
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al eliminar el producto';
       toast.error(message);
     },
   });
@@ -279,7 +261,7 @@ export const useCarrito = () => {
   // Calcular totales
   // Calcular subtotal asegurando que todos los valores sean números
   const subtotal = Number(
-    carrito?.carritosArreglo?.reduce((sum, item) => {
+    (carrito as Carrito)?.carritosArreglo?.reduce((sum: number, item: CarritoArreglo) => {
       // Asegurar que totalLinea sea un número
       const totalLinea = typeof item.totalLinea === 'string'
         ? parseFloat(item.totalLinea)
@@ -300,7 +282,7 @@ export const useCarrito = () => {
     }, 0) || 0
   );
 
-  const itemCount = carrito?.carritosArreglo?.reduce((sum, item) => sum + item.cantidad, 0) || 0;
+  const itemCount = (carrito as Carrito)?.carritosArreglo?.reduce((sum: number, item: CarritoArreglo) => sum + item.cantidad, 0) || 0;
 
   return {
     carrito: carrito || null,

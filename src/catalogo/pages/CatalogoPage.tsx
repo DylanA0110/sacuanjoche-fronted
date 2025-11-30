@@ -106,7 +106,6 @@ const CatalogoPage = () => {
     totalItems: totalFlores,
     isLoading: isLoadingFlores,
     isError: isErrorFlores,
-    refetch: refetchFlores,
   } = useFlor({
     usePagination: true,
     limit: pagination.limit,
@@ -120,7 +119,6 @@ const CatalogoPage = () => {
     totalItems: totalAccesorios,
     isLoading: isLoadingAccesorios,
     isError: isErrorAccesorios,
-    refetch: refetchAccesorios,
   } = useAccesorio({
     usePagination: true,
     limit: pagination.limit,
@@ -134,7 +132,6 @@ const CatalogoPage = () => {
     totalItems: totalFormas,
     isLoading: isLoadingFormas,
     isError: isErrorFormas,
-    refetch: refetchFormas,
   } = useFormaArreglo({
     usePagination: true,
     limit: pagination.limit,
@@ -148,7 +145,6 @@ const CatalogoPage = () => {
     totalItems: totalMetodos,
     isLoading: isLoadingMetodos,
     isError: isErrorMetodos,
-    refetch: refetchMetodos,
   } = useMetodoPago({
     usePagination: true,
     limit: pagination.limit,
@@ -402,7 +398,7 @@ const CatalogoPage = () => {
 
   const handleSubmit = (data: any) => {
     if (activeTab === 'flores') {
-      if (editingItem) {
+      if (editingItem && 'idFlor' in editingItem) {
         updateFlorMutation.mutate({
           id: editingItem.idFlor,
           data: data as UpdateFlorDto,
@@ -411,7 +407,7 @@ const CatalogoPage = () => {
         createFlorMutation.mutate(data as CreateFlorDto);
       }
     } else if (activeTab === 'accesorios') {
-      if (editingItem) {
+      if (editingItem && 'idAccesorio' in editingItem) {
         updateAccesorioMutation.mutate({
           id: editingItem.idAccesorio,
           data: data as UpdateAccesorioDto,
@@ -420,7 +416,7 @@ const CatalogoPage = () => {
         createAccesorioMutation.mutate(data as CreateAccesorioDto);
       }
     } else if (activeTab === 'formas') {
-      if (editingItem) {
+      if (editingItem && 'idFormaArreglo' in editingItem) {
         updateFormaArregloMutation.mutate({
           id: editingItem.idFormaArreglo,
           data: data as UpdateFormaArregloDto,
@@ -429,7 +425,7 @@ const CatalogoPage = () => {
         createFormaArregloMutation.mutate(data as CreateFormaArregloDto);
       }
     } else {
-      if (editingItem) {
+      if (editingItem && 'idMetodoPago' in editingItem) {
         updateMetodoPagoMutation.mutate({
           id: editingItem.idMetodoPago,
           data: data as UpdateMetodoPagoDto,
@@ -767,7 +763,7 @@ const CatalogoPage = () => {
         <FlorForm
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          flor={editingItem}
+          flor={editingItem && 'idFlor' in editingItem ? editingItem as Flor : null}
           onSubmit={handleSubmit}
           isLoading={
             createFlorMutation.isPending || updateFlorMutation.isPending
@@ -778,7 +774,7 @@ const CatalogoPage = () => {
         <AccesorioForm
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          accesorio={editingItem}
+          accesorio={editingItem && 'idAccesorio' in editingItem ? editingItem as Accesorio : null}
           onSubmit={handleSubmit}
           isLoading={
             createAccesorioMutation.isPending ||
@@ -790,7 +786,7 @@ const CatalogoPage = () => {
         <FormaArregloForm
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          formaArreglo={editingItem}
+          formaArreglo={editingItem && 'idFormaArreglo' in editingItem ? editingItem as FormaArreglo : null}
           onSubmit={handleSubmit}
           isLoading={
             createFormaArregloMutation.isPending ||
@@ -802,7 +798,7 @@ const CatalogoPage = () => {
         <MetodoPagoForm
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          metodoPago={editingItem}
+          metodoPago={editingItem && 'idMetodoPago' in editingItem ? editingItem as MetodoPago : null}
           onSubmit={handleSubmit}
           isLoading={
             createMetodoPagoMutation.isPending ||

@@ -1,9 +1,11 @@
+import type { EmpleadoEstado, UserEstado } from '@/shared/types/estados.types';
+
 export interface EmpleadoUser {
   id: string;
   email: string;
   loginAttempts: number;
   blockedUntil: string | null;
-  estado: 'activo' | 'inactivo';
+  estado: UserEstado;
   roles: string[];
 }
 
@@ -16,7 +18,7 @@ export interface Empleado {
   sexo: string;
   telefono: string;
   fechaNac: string;
-  estado: 'activo' | 'inactivo';
+  estado: EmpleadoEstado;
   fechaCreacion: string;
   user?: EmpleadoUser | null;
 }
@@ -29,7 +31,7 @@ export interface CreateEmpleadoDto {
   sexo: 'M' | 'F';
   telefono: string;
   fechaNac: string;
-  estado: 'activo' | 'inactivo';
+  estado: EmpleadoEstado;
 }
 
 export interface UpdateEmpleadoDto {
@@ -40,7 +42,7 @@ export interface UpdateEmpleadoDto {
   sexo?: 'M' | 'F';
   telefono?: string;
   fechaNac?: string;
-  estado?: 'activo' | 'inactivo';
+  estado?: EmpleadoEstado;
 }
 
 export interface PaginatedEmpleadoResponse {

@@ -9,93 +9,143 @@ export interface LoginDto {
 }
 
 export const loginAction = async (loginData: LoginDto): Promise<AuthResponse> => {
-  console.log('🔐 [loginAction] Iniciando login...', { ...loginData, password: '***' });
   try {
-    console.log('📤 [loginAction] Enviando request a /auth/login');
     const { data } = await floristeriaApi.post<AuthResponse>('/auth/login', loginData);
-    console.log('✅ [loginAction] Respuesta recibida:', { 
-      hasToken: !!data.token,
-      id: data.id,
-      email: data.email,
-      roles: data.roles,
-      hasCliente: !!data.cliente,
-      hasEmpleado: !!data.empleado,
-    });
     
     // Guardar token en localStorage
     if (data.token) {
       localStorage.setItem('token', data.token);
-      console.log('✅ [loginAction] Token guardado en localStorage');
       // Limpiar caché del token anterior y del interceptor
       clearTokenCache();
       clearExpirationCache();
-    } else {
-      console.warn('⚠️ [loginAction] No se recibió token en la respuesta');
     }
     
     return data;
   } catch (error: any) {
-    console.error('❌ [loginAction] Error al hacer login:', error);
-    
-    // Mostrar TODOS los detalles del error del backend
-    const errorDetails = {
-      message: error.message,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      responseData: error.response?.data,
-      responseHeaders: error.response?.headers,
-      requestUrl: error.config?.url,
-      requestMethod: error.config?.method,
-      requestData: error.config?.data ? { ...JSON.parse(error.config.data), password: '***' } : null,
-    };
-    
-    console.error('❌ [loginAction] Detalles completos del error:', errorDetails);
-    console.error('❌ [loginAction] Response data completo:', JSON.stringify(error.response?.data, null, 2));
     
     // Extraer el mensaje de error del backend de forma consistente
+    // Incluyendo TODOS los campos posibles: message, error, details, reason, intentosRestantes, etc.
     if (error.response?.data) {
       const errorData = error.response.data;
-      let errorMessage: string;
+      let errorMessage: string = '';
+      const allMessages: string[] = [];
       
-      // Si es un array de mensajes (validaciones de NestJS)
+      // 1. Extraer mensaje principal (puede ser string o array)
       if (Array.isArray(errorData.message)) {
-        errorMessage = errorData.message.join(', ');
-      }
-      // Si es un string
-      else if (typeof errorData.message === 'string') {
+        errorMessage = errorData.message.join('. ');
+        allMessages.push(...errorData.message);
+      } else if (typeof errorData.message === 'string') {
         errorMessage = errorData.message;
-      }
-      // Si hay un campo 'error'
-      else if (typeof errorData.error === 'string') {
-        errorMessage = errorData.error;
-      }
-      // Si el data completo es un string
-      else if (typeof errorData === 'string') {
-        errorMessage = errorData;
-      }
-      // Si hay un objeto con detalles
-      else if (errorData.details || errorData.reason) {
-        errorMessage = errorData.details || errorData.reason || 'Error al iniciar sesión';
-      }
-      // Mensaje por defecto
-      else {
-        errorMessage = `Error ${error.response.status}: ${error.response.statusText || 'Error al iniciar sesión'}`;
+        allMessages.push(errorData.message);
       }
       
-      console.error('❌ [loginAction] Mensaje de error extraído:', errorMessage);
-      console.error('❌ [loginAction] Status code:', error.response.status);
+      // 2. Extraer campo 'error' si existe
+      if (typeof errorData.error === 'string') {
+        if (!errorMessage) {
+          errorMessage = errorData.error;
+        }
+        allMessages.push(errorData.error);
+      }
+      
+      // 3. Extraer 'details' o 'reason'
+      if (errorData.details) {
+        const details = typeof errorData.details === 'string' 
+          ? errorData.details 
+          : Array.isArray(errorData.details)
+          ? errorData.details.join('. ')
+          : String(errorData.details);
+        if (!errorMessage) {
+          errorMessage = details;
+        }
+        allMessages.push(details);
+      }
+      
+      if (errorData.reason) {
+        const reason = String(errorData.reason);
+        if (!errorMessage) {
+          errorMessage = reason;
+        }
+        allMessages.push(reason);
+      }
+      
+      // 4. Extraer información de bloqueo de intentos
+      if (errorData.intentosRestantes !== undefined) {
+        const intentos = errorData.intentosRestantes;
+        const intentosMsg = intentos > 0 
+          ? `Intentos restantes: ${intentos}`
+          : 'Cuenta bloqueada por múltiples intentos fallidos';
+        allMessages.push(intentosMsg);
+      }
+      
+      if (errorData.tiempoBloqueo) {
+        allMessages.push(`Tiempo de bloqueo: ${errorData.tiempoBloqueo}`);
+      }
+      
+      // 5. Extraer validaciones
+      if (errorData.validationErrors) {
+        Object.values(errorData.validationErrors).forEach((validationErrors: any) => {
+          if (Array.isArray(validationErrors)) {
+            allMessages.push(...validationErrors.map((v: any) => String(v)));
+          } else {
+            allMessages.push(String(validationErrors));
+          }
+        });
+      }
+      
+      // 6. Extraer errores anidados
+      if (errorData.errors) {
+        if (Array.isArray(errorData.errors)) {
+          allMessages.push(...errorData.errors.map((e: any) => String(e)));
+        } else if (typeof errorData.errors === 'object') {
+          Object.values(errorData.errors).forEach((err: any) => {
+            if (Array.isArray(err)) {
+              allMessages.push(...err.map((e: any) => String(e)));
+            } else {
+              allMessages.push(String(err));
+            }
+          });
+        }
+      }
+      
+      // 7. Si el data completo es un string
+      if (typeof errorData === 'string' && !errorMessage) {
+        errorMessage = errorData;
+        allMessages.push(errorData);
+      }
+      
+      // 8. Si no hay mensaje, usar uno por defecto basado en el status
+      if (!errorMessage) {
+        const status = error.response.status;
+        if (status === 401) {
+          errorMessage = 'Credenciales incorrectas';
+        } else if (status === 403) {
+          errorMessage = 'Acceso denegado';
+        } else if (status === 429) {
+          errorMessage = 'Demasiados intentos. Por favor, espera un momento';
+        } else if (status === 423) {
+          errorMessage = 'Cuenta bloqueada temporalmente';
+        } else {
+          errorMessage = `Error ${status}: ${error.response.statusText || 'Error al iniciar sesión'}`;
+        }
+      }
+      
+      // 9. Si hay múltiples mensajes, unirlos
+      if (allMessages.length > 1) {
+        const uniqueMessages = [...new Set(allMessages)];
+        errorMessage = uniqueMessages.join('. ');
+      }
       
       // Crear un nuevo error con el mensaje del backend y toda la información
       const customError = new Error(errorMessage);
       (customError as any).response = error.response;
       (customError as any).status = error.response.status;
-      (customError as any).errorDetails = errorDetails;
+      (customError as any).allMessages = allMessages;
+      (customError as any).errorData = errorData; // Incluir todos los datos del error
       throw customError;
     }
     
     // Si no hay response, es un error de red
     if (error instanceof Error) {
-      console.error('❌ [loginAction] Error de red o sin respuesta del servidor');
       throw error;
     }
     

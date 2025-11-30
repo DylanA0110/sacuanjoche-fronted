@@ -100,7 +100,7 @@ export function DataTable({
           <Table className="w-full table-auto min-w-[320px] sm:min-w-[500px] md:min-w-[600px] max-w-full">
             <TableHeader>
               <TableRow className="bg-gray-50 border-b border-gray-200">
-                {columns.map((col, index) => (
+                {columns.map((col) => (
                   <TableHead
                     key={col.key}
                     className={`text-xs sm:text-sm font-semibold text-gray-900 ${

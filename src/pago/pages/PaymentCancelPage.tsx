@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { Link } from 'react-router';
 import { MdCancel } from 'react-icons/md';
 import { toast } from 'sonner';
 
 export default function PaymentCancelPage() {
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Limpiar localStorage

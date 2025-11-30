@@ -69,7 +69,7 @@ function ArregloImage({
   }
 
   // Debug en desarrollo
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.log('🖼️ [ArregloImage] Estado:', {
       idArreglo,
       hasDirectUrl,
@@ -161,7 +161,7 @@ export default function CartPage() {
   const isEmpty = productos.length === 0;
 
   // Debug: Log de los productos para verificar estructura
-  if (process.env.NODE_ENV === 'development' && productos.length > 0) {
+  if (import.meta.env.DEV && productos.length > 0) {
     console.log('🛒 [CartPage] Productos en carrito:', productos);
     productos.forEach((item: any, index: number) => {
       console.log(`📦 [CartPage] Producto ${index + 1}:`, {

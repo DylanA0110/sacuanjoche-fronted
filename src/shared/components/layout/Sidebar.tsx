@@ -1,6 +1,5 @@
 import { NavLink } from '@/shared/components/layout/NavLink';
 import { useLocation } from 'react-router';
-import { Button } from '@/shared/components/ui/button';
 import { MdClose } from 'react-icons/md';
 import {
   MdDashboard,
@@ -11,7 +10,6 @@ import {
   MdCategory,
   MdDescription,
   MdReceipt,
-  MdPerson,
   MdRoute,
   MdBusiness,
 } from 'react-icons/md';
@@ -19,7 +17,7 @@ import { GiRose } from 'react-icons/gi';
 import { useAuthStore } from '@/auth/store/auth.store';
 
 const menuItemsAdmin = [
-  { title: 'Dashboard', url: '/admin', icon: MdDashboard },
+  { title: 'Home', url: '/admin', icon: MdDashboard },
   { title: 'Arreglos', url: '/admin/arreglos', icon: MdLocalFlorist },
   { title: 'Catálogo', url: '/admin/catalogo', icon: MdCategory },
   { title: 'Clientes', url: '/admin/clientes', icon: MdPeople },
@@ -44,7 +42,6 @@ interface AppSidebarProps {
 export function AppSidebar({
   isOpen,
   mobile,
-  onToggle,
   onClose,
 }: AppSidebarProps) {
   const location = useLocation();

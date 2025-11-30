@@ -52,7 +52,8 @@ export const getFacturas = async (
           
           // Si el total sigue siendo 10 (igual al limit actual), podría ser que el backend tenga un límite máximo
           if (total === 10 && currentData.length === 10 && limit === 10) {
-            total = offset + currentData.length + 1; // +1 para indicar que hay más
+            const currentOffset = params.offset || 0;
+            total = currentOffset + currentData.length + 1; // +1 para indicar que hay más
           }
           
           return {

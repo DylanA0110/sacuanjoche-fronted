@@ -1,9 +1,10 @@
 import { clsx } from 'clsx';
-import { IoAddOutline, IoPersonCircleOutline, IoInformationCircleOutline } from 'react-icons/io5';
+import { IoAddOutline, IoInformationCircleOutline, IoCloseOutline } from 'react-icons/io5';
 import { useRutaDragDrop } from '../hooks/useRutaDragDrop';
 import { PedidoCard } from './PedidoCard';
 import type { EmpleadoConductor, PedidoRuta } from '../types/ruta.interface';
 import { Badge } from '@/shared/components/ui/badge';
+import { useRutaStore } from '../store/ruta.store';
 
 interface Props {
   conductor: EmpleadoConductor;
@@ -12,15 +13,15 @@ interface Props {
   onCrearRuta: (idEmpleado: number) => void;
   onEditarRuta?: (idEmpleado: number) => void;
   onVerDetalles?: (conductor: EmpleadoConductor) => void;
+  onViewPedidoDetails?: (idPedido: number) => void;
 }
 
 export const ConductorColumn = ({
   conductor,
-  pedidos,
   allPedidos,
   onCrearRuta,
-  onEditarRuta,
   onVerDetalles,
+  onViewPedidoDetails,
 }: Props) => {
   const {
     isDragging,
@@ -30,6 +31,8 @@ export const ConductorColumn = ({
     handleDrop,
     pedidosAsignados,
   } = useRutaDragDrop({ idEmpleado: conductor.idEmpleado });
+
+  const removePedidoFromConductor = useRutaStore((state) => state.removePedidoFromConductor);
 
   // Obtener los pedidos asignados a este conductor
   const pedidosEnColumna = pedidosAsignados
@@ -107,35 +110,39 @@ export const ConductorColumn = ({
           </div>
         ) : (
           pedidosEnColumna.map((pedido) => (
-            <PedidoCard
-              key={pedido.idPedido}
-              pedido={pedido}
-              conductorId={conductor.idEmpleado}
-            />
+            <div key={pedido.idPedido} className="relative group">
+              <PedidoCard
+                pedido={pedido}
+                conductorId={conductor.idEmpleado}
+                onViewDetails={onViewPedidoDetails}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  removePedidoFromConductor(conductor.idEmpleado, pedido.idPedido);
+                }}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg z-10"
+                title="Eliminar pedido de esta asignación"
+              >
+                <IoCloseOutline className="w-4 h-4" />
+              </button>
+            </div>
           ))
         )}
       </div>
 
-      {/* Botón para crear/editar ruta */}
+      {/* Botón para crear ruta */}
       <div className="mt-3 pt-3 border-t border-gray-200">
         {pedidosAsignados.length > 0 ? (
-          <div className="flex gap-2">
-            <button
-              onClick={() => onCrearRuta(conductor.idEmpleado)}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#50C878] text-white rounded-lg hover:bg-[#45B869] transition-colors shadow-sm text-xs font-semibold"
-            >
-              <IoAddOutline className="w-3.5 h-3.5" />
-              Crear Ruta
-            </button>
-            {onEditarRuta && (
-              <button
-                onClick={() => onEditarRuta(conductor.idEmpleado)}
-                className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-medium"
-              >
-                Editar
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => onCrearRuta(conductor.idEmpleado)}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-[#50C878] text-white rounded-lg hover:bg-[#45B869] transition-colors shadow-sm text-xs font-semibold"
+          >
+            <IoAddOutline className="w-3.5 h-3.5" />
+            Crear Ruta
+          </button>
         ) : (
           <p className="text-xs text-gray-400 text-center py-1">
             Arrastra pedidos aquí

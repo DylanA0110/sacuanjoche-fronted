@@ -11,8 +11,18 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import type { Accesorio, CreateAccesorioDto, UpdateAccesorioDto } from '../types/accesorio.interface';
 import { MdSave } from 'react-icons/md';
+import { toast } from 'sonner';
+import { CATEGORIAS_ACCESORIOS } from '@/shared/types/opciones.types';
+import { validatePrecioAccesorio } from '@/shared/utils/validation';
 
 interface AccesorioFormProps {
   open: boolean;
@@ -39,6 +49,7 @@ export function AccesorioForm({
     register,
     handleSubmit,
     reset,
+    watch,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
@@ -47,6 +58,7 @@ export function AccesorioForm({
       precioUnitario: 0,
       categoria: '',
     },
+    mode: 'onChange',
   });
 
   const [precioInput, setPrecioInput] = useState('');
@@ -71,6 +83,19 @@ export function AccesorioForm({
   }, [accesorio, open, reset]);
 
   const onSubmitForm = (data: FormValues) => {
+    // Validar categoría
+    if (!data.categoria || data.categoria.trim() === '') {
+      toast.error('Debes seleccionar una categoría');
+      return;
+    }
+
+    // Validar precio
+    const precioError = validatePrecioAccesorio(data.precioUnitario);
+    if (precioError) {
+      toast.error(precioError);
+      return;
+    }
+
     const dataToSubmit = accesorio
       ? data
       : { ...data, estado: 'activo' as const };
@@ -93,16 +118,28 @@ export function AccesorioForm({
         <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="descripcion" className="text-sm font-semibold text-gray-700">
-              Descripción *
+              Descripción * (máximo 100 caracteres)
             </Label>
             <Input
               id="descripcion"
               {...register('descripcion', {
                 required: 'La descripción es requerida',
+                minLength: {
+                  value: 2,
+                  message: 'La descripción debe tener al menos 2 caracteres',
+                },
+                maxLength: {
+                  value: 100,
+                  message: 'La descripción debe tener máximo 100 caracteres',
+                },
               })}
               placeholder="Cinta decorativa dorada"
               className="bg-white border-gray-300 text-gray-900"
+              maxLength={100}
             />
+            <p className="text-xs text-gray-500">
+              {watch('descripcion')?.length || 0} / 100 caracteres
+            </p>
             {errors.descripcion && (
               <p className="text-sm text-red-500 mt-1">{errors.descripcion.message}</p>
             )}
@@ -112,14 +149,24 @@ export function AccesorioForm({
             <Label htmlFor="categoria" className="text-sm font-semibold text-gray-700">
               Categoría *
             </Label>
-            <Input
-              id="categoria"
-              {...register('categoria', {
-                required: 'La categoría es requerida',
-              })}
-              placeholder="Decoración"
-              className="bg-white border-gray-300 text-gray-900"
-            />
+            <Select
+              value={watch('categoria')}
+              onValueChange={(value) => {
+                setValue('categoria', value, { shouldValidate: true });
+              }}
+              required
+            >
+              <SelectTrigger className={errors.categoria ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Selecciona una categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS_ACCESORIOS.map((categoria) => (
+                  <SelectItem key={categoria} value={categoria}>
+                    {categoria}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.categoria && (
               <p className="text-sm text-red-500 mt-1">{errors.categoria.message}</p>
             )}
@@ -127,7 +174,7 @@ export function AccesorioForm({
 
           <div className="space-y-2">
             <Label htmlFor="precioUnitario" className="text-sm font-semibold text-gray-700">
-              Precio Unitario *
+              Precio Unitario * (C$100 - C$300)
             </Label>
             <Input
               id="precioUnitario"
@@ -147,9 +194,10 @@ export function AccesorioForm({
                   }
                 }
               }}
-              placeholder="2.50 C$"
+              placeholder="100.00"
               className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
             />
+            <p className="text-xs text-gray-500">Precio en córdobas (C$100 - C$300)</p>
             {errors.precioUnitario && (
               <p className="text-sm text-red-500 mt-1">{errors.precioUnitario.message}</p>
             )}
@@ -184,4 +232,3 @@ export function AccesorioForm({
     </Dialog>
   );
 }
-

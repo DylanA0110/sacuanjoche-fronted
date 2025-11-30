@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { io, Socket } from 'socket.io-client';
 import { SOCKET_URL } from '../config/socket.config';
-import { useAuthStore } from '@/auth/store/auth.store';
 import type { AdminNotificationPayload } from '../types/notifications';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error';
@@ -158,29 +157,41 @@ export const useNotificationStore = create<NotificationState>()(
 
         // Conectar socket
         connect: () => {
-          // Si ya hay una conexión, no crear otra
+          // Si ya hay una conexión activa, no crear otra
           if (socketInstance?.connected) {
             return;
           }
 
-          // Si hay una instancia desconectada, limpiarla
+          // Si hay una instancia desconectada, limpiarla primero
           if (socketInstance) {
             socketInstance.disconnect();
             socketInstance.removeAllListeners();
+            socketInstance = null;
           }
 
-          // Obtener token del auth store
+          // Obtener token del localStorage (el auth store puede no estar inicializado aún)
           const token = localStorage.getItem('token');
+          
+          if (!token) {
+            set({ 
+              connectionError: 'No hay token de autenticación disponible',
+              connected: false 
+            });
+            return;
+          }
 
           // Crear nueva conexión
           const socket = io(SOCKET_URL, {
-            auth: token ? { token } : undefined,
-            transports: ['websocket', 'polling'],
+            auth: {
+              token: token,
+            },
+            transports: ['websocket', 'polling'], // Intentar websocket primero, luego polling como fallback
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             reconnectionAttempts: Infinity,
             timeout: 20000,
+            forceNew: true, // Forzar nueva conexión en lugar de reutilizar
           });
 
           socketInstance = socket;
@@ -195,16 +206,33 @@ export const useNotificationStore = create<NotificationState>()(
             });
           });
 
-          socket.on('disconnect', () => {
+          socket.on('disconnect', (reason) => {
             set({
               connected: false,
               socketId: null,
             });
+            
+            // Si fue desconectado por el servidor (ej: token inválido), no intentar reconectar
+            if (reason === 'io server disconnect') {
+              set({ connectionError: 'Desconectado por el servidor. Verifica tu autenticación.' });
+            }
           });
 
           socket.on('connect_error', (error) => {
             const errorMessage = error?.message ?? String(error);
-            set({ connectionError: errorMessage, connected: false });
+            set({ 
+              connectionError: errorMessage, 
+              connected: false 
+            });
+          });
+
+          // Escuchar errores de autenticación
+          socket.on('unauthorized', () => {
+            set({ 
+              connectionError: 'No autorizado. Token inválido o expirado.',
+              connected: false 
+            });
+            socket.disconnect();
           });
 
           // Escuchar notificaciones del admin (namespace /admin)
@@ -331,6 +359,9 @@ export const useNotificationStore = create<NotificationState>()(
     }
   )
 );
+
+
+
 
 
 

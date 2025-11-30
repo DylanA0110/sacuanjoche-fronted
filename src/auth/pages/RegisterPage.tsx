@@ -80,11 +80,6 @@ export default function RegisterPage() {
   }, [isAuthenticated, navigate, location]);
 
   const onSubmit = async (data: RegisterFormData) => {
-    // Logs persistentes que NO se borran
-    console.error('%c🚀🚀🚀 REGISTRO INICIADO 🚀🚀🚀', 'background: #ff0000; color: #ffffff; font-size: 20px; padding: 10px;');
-    console.warn('🚀 [RegisterPage] Iniciando registro...', { email: data.email });
-    console.warn('🚀 [RegisterPage] Datos completos del formulario:', data);
-    
     // Guardar en localStorage para que no se pierda
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -107,8 +102,6 @@ export default function RegisterPage() {
         telefono: data.telefono.trim(), // Enviar exactamente lo que escribió el usuario
       };
 
-      console.warn('📝 [RegisterPage] Datos del cliente para registro:', clienteData);
-
       // 1. Registrar al usuario con clienteData (el backend crea el cliente automáticamente)
       // Solo enviar email, password y clienteData (sin clienteId ni empleadoId)
       const registerData = {
@@ -117,13 +110,8 @@ export default function RegisterPage() {
         clienteData: clienteData, // Enviar clienteData directamente
       };
 
-      console.log('📝 [RegisterPage] Datos del registro:', { ...registerData, password: '***', clienteData });
-
       try {
-        console.log('⏳ [RegisterPage] Llamando a registerAction con clienteData...');
         await registerAction(registerData);
-        console.error('%c✅ USUARIO REGISTRADO EXITOSAMENTE ✅', 'background: #00ff00; color: #000000; font-size: 16px; padding: 5px;');
-        console.log('✅ [RegisterPage] Usuario registrado exitosamente');
         
         // Guardar en localStorage
         const logEntry = {
@@ -134,13 +122,6 @@ export default function RegisterPage() {
         existingLogs.push(logEntry);
         localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
       } catch (error: any) {
-        console.error('%c❌❌❌ ERROR AL REGISTRAR USUARIO ❌❌❌', 'background: #ff0000; color: #ffffff; font-size: 16px; padding: 5px;');
-        console.error('❌ [RegisterPage] Error al registrar usuario:', error);
-        console.error('❌ [RegisterPage] Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
         
         // Guardar error en localStorage
         const logEntry = {
@@ -188,26 +169,10 @@ export default function RegisterPage() {
         password: data.password,
       };
 
-      console.log('📝 [RegisterPage] Datos del login:', { ...loginData, password: '***' });
-
       let loginResponse;
       try {
-        console.log('⏳ [RegisterPage] Llamando a loginAction...');
         loginResponse = await loginAction(loginData);
-        console.log('✅ [RegisterPage] Login exitoso:', {
-          token: loginResponse.token ? '✅' : '❌',
-          id: loginResponse.id,
-          email: loginResponse.email,
-          roles: loginResponse.roles,
-          cliente: loginResponse.cliente ? '✅' : '❌',
-        });
       } catch (error: any) {
-        console.error('❌ [RegisterPage] Error al hacer login:', error);
-        console.error('❌ [RegisterPage] Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
         
         // Extraer mensaje del backend de forma más específica
         let errorMessage = 'Error al iniciar sesión';
@@ -237,16 +202,8 @@ export default function RegisterPage() {
       // 4. El login devuelve { token, id, email, roles, cliente: {...}, empleado: {...} }
       const { token, id, roles, cliente } = loginResponse;
 
-      console.log('🔍 [RegisterPage] Verificando respuesta del login:', {
-        hasToken: !!token,
-        hasCliente: !!cliente,
-        id,
-        clienteId: cliente?.idCliente,
-      });
-
       if (token && cliente) {
         // Obtener datos del cliente
-        const clienteId = cliente.idCliente || 0;
         const clienteNombre =
           cliente.nombreCompleto ||
           [cliente.primerNombre, cliente.primerApellido]
@@ -254,25 +211,13 @@ export default function RegisterPage() {
             .join(' ') ||
           `${data.primerNombre} ${data.primerApellido}`;
 
-        // El id del usuario puede ser string (UUID) o number
-        const userId = typeof id === 'string' ? id : Number(id) || 0;
-
-        console.log('💾 [RegisterPage] Guardando datos en localStorage y store...', {
-          token: token ? '✅' : '❌',
-          userId,
-          clienteId,
-          clienteNombre,
-        });
-
         // Guardar token en localStorage (ya lo hace loginAction, pero nos aseguramos)
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', token);
-          console.log('✅ [RegisterPage] Token guardado en localStorage');
         }
 
         // Establecer el usuario en el store con los datos del login
         setUser(loginResponse);
-        console.log('✅ [RegisterPage] Usuario establecido en el store');
 
         // También guardar datos adicionales en localStorage para compatibilidad
         try {
@@ -286,24 +231,16 @@ export default function RegisterPage() {
                 roles: roles || [],
               })
             );
-            console.log('✅ [RegisterPage] Datos adicionales guardados en localStorage');
           }
         } catch (error) {
           // Error al guardar - continuar de todas formas
-          console.error('❌ [RegisterPage] Error al guardar datos adicionales:', error);
         }
 
         toast.success(`¡Bienvenido, ${clienteNombre}! Tu cuenta ha sido creada exitosamente.`);
 
-        console.log('🎉 [RegisterPage] Registro completo. Redirigiendo a /...');
         // Redirigir a la landing page (ya está autenticado)
         navigate('/', { replace: true });
       } else {
-        console.error('❌ [RegisterPage] Login response incompleta:', {
-          hasToken: !!token,
-          hasCliente: !!cliente,
-          loginResponse,
-        });
         // Si no viene el token o cliente, mostrar error pero NO redirigir
         toast.error(
           'Error: No se pudo completar el inicio de sesión automático. Por favor, intenta iniciar sesión manualmente.',
@@ -316,14 +253,6 @@ export default function RegisterPage() {
         return;
       }
     } catch (error: any) {
-      console.error('%c❌❌❌ ERROR GENERAL EN REGISTRO ❌❌❌', 'background: #ff0000; color: #ffffff; font-size: 16px; padding: 5px;');
-      console.error('❌ [RegisterPage] Error general:', error);
-      console.error('❌ [RegisterPage] Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        stack: error.stack,
-      });
       
       // Guardar error en localStorage
       const logEntry = {
@@ -365,7 +294,6 @@ export default function RegisterPage() {
       // NO hacer return aquí, dejar que el finally se ejecute
     } finally {
       setIsLoading(false);
-      console.log('🏁 [RegisterPage] Proceso de registro finalizado');
     }
   };
 
@@ -420,9 +348,6 @@ export default function RegisterPage() {
                 // PREVENIR RECARGA DE PÁGINA
                 e.preventDefault();
                 e.stopPropagation();
-                
-                console.error('%c🟢🟢🟢 FORMULARIO ENVIADO 🟢🟢🟢', 'background: #00ff00; color: #000000; font-size: 20px; padding: 10px;');
-                console.warn('🟢 [RegisterPage] Formulario enviado!', e);
                 
                 // Guardar en localStorage
                 const logEntry = {

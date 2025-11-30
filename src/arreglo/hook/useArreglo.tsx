@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getArreglos } from '../actions/getArreglos';
 import type { Arreglo } from '../types/arreglo.interface';

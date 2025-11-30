@@ -122,7 +122,6 @@ export default function CompletarPedidoPage() {
 
     // Si el carrito no tiene productos, es un carrito nuevo - redirigir al checkout para agregar productos
     if (!carritoTyped.carritosArreglo || carritoTyped.carritosArreglo.length === 0) {
-      console.log('🔄 Carrito sin productos. Redirigiendo al checkout...');
       toast.error('Tu carrito está vacío. Agrega productos antes de pagar.');
       navigate('/carrito/checkout', { replace: true });
       return;
@@ -134,7 +133,6 @@ export default function CompletarPedidoPage() {
       
       // Si no hay idPago, redirigir al checkout para crear un nuevo pago
       if (!carritoTyped.idPago) {
-        console.log('🔄 Carrito sin pago. Redirigiendo al checkout para crear pago...');
         toast.error('Debes completar el pago primero');
         navigate('/carrito/checkout', { replace: true });
         verificandoRef.current = false;
@@ -143,17 +141,15 @@ export default function CompletarPedidoPage() {
       
       // Verificar que el pago esté REALMENTE confirmado (estado "pagado")
       // Si tiene idPago pero no está pagado, es un pago anterior o pendiente - redirigir a checkout
-      if (carritoTyped.pago?.estado === 'pagado') {
-        console.log('✅ Pago confirmado correctamente');
+      const pagoEstado = carritoTyped.pago?.estado as string | undefined;
+      if (pagoEstado === 'pagado') {
         setIsVerifying(false);
         verificandoRef.current = false;
         return;
       }
       
       // Si tiene idPago pero el pago no está confirmado, redirigir a checkout para crear nuevo pago
-      if (carritoTyped.idPago && carritoTyped.pago && carritoTyped.pago.estado !== 'pagado') {
-        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Estado:', carritoTyped.pago.estado);
-        console.log('🔄 Redirigiendo a checkout para crear nuevo pago...');
+      if (carritoTyped.idPago && carritoTyped.pago && pagoEstado !== 'pagado') {
         toast.error('El pago anterior no está confirmado. Debes crear un nuevo pago.');
         navigate('/carrito/checkout', { replace: true });
         verificandoRef.current = false;
@@ -162,8 +158,6 @@ export default function CompletarPedidoPage() {
       
       // Si no tenemos información del pago pero sí tenemos idPago, intentar obtenerla (solo una vez)
       if (!carritoTyped.pago && carritoTyped.idPago) {
-        console.log('🔄 Carrito tiene idPago pero no información del pago. Obteniendo información...');
-        
         let intentos = 0;
         const maxIntentos = 3;
         
@@ -174,12 +168,8 @@ export default function CompletarPedidoPage() {
           const carritoRefetchTyped = carritoRefetch.data as Carrito | undefined;
           
           if (carritoRefetchTyped?.pago) {
-            console.log('✅ Información del pago obtenida:', {
-              estado: carritoRefetchTyped.pago.estado,
-              intento: intentos + 1,
-            });
-            
-            if (carritoRefetchTyped.pago.estado === 'pagado') {
+            const refetchPagoEstado = carritoRefetchTyped.pago.estado as string;
+            if (refetchPagoEstado === 'pagado') {
               setIsVerifying(false);
               verificandoRef.current = false;
               return;
@@ -188,13 +178,8 @@ export default function CompletarPedidoPage() {
           }
           
           intentos++;
-          console.log(`⏳ Intento ${intentos}/${maxIntentos}: Esperando información del pago...`);
         }
-        
-        console.log('⚠️ Carrito tiene idPago pero no se pudo obtener información completa del pago. Continuando...');
-        console.log('ℹ️ El backend validará el estado del pago al crear el pedido.');
-      } else if (carritoTyped.pago && carritoTyped.pago.estado !== 'pagado') {
-        console.error('❌ Estado del pago no es "pagado":', carritoTyped.pago.estado);
+      } else if (carritoTyped.pago && pagoEstado !== 'pagado') {
         toast.error('El pago debe estar confirmado antes de completar el pedido');
         navigate('/carrito/checkout', { replace: true });
         verificandoRef.current = false;
@@ -242,7 +227,6 @@ export default function CompletarPedidoPage() {
     
     // Si tenemos idPago pero no información del pago, hacer un último refetch antes de continuar
     if (carritoTyped.idPago && !carritoTyped.pago) {
-      console.log('🔄 Último intento: Obteniendo información del pago antes de crear el pedido...');
       const carritoActualizado = await refetch();
       
       const carritoActualizadoTyped = carritoActualizado.data as Carrito | undefined;
@@ -252,9 +236,6 @@ export default function CompletarPedidoPage() {
         navigate('/carrito/checkout', { replace: true });
         return;
       }
-      
-      // Si aún no tenemos información, confiar en que el backend validará
-      console.log('ℹ️ Continuando sin información completa del pago. El backend validará el estado.');
     }
 
     setIsProcessing(true);
@@ -264,8 +245,6 @@ export default function CompletarPedidoPage() {
 
       // Si se seleccionó una dirección desde el mapa (nueva dirección)
       if (direccionData && !usarDireccionGuardada) {
-        console.log('📍 Creando nueva dirección desde Mapbox...');
-        
         // Convertir coordenadas
         const lat = parseFloat(direccionData.lat);
         const lng = parseFloat(direccionData.lng);
@@ -304,12 +283,9 @@ export default function CompletarPedidoPage() {
           }),
           activo: true,
         };
-
-        console.log('📤 Enviando dirección al backend:', JSON.stringify(direccionDto, null, 2));
         
         try {
           const nuevaDireccion = await createDireccion(direccionDto);
-          console.log('✅ Dirección creada exitosamente:', nuevaDireccion);
           
           // Asociar la dirección al cliente
           if (idCliente && nuevaDireccion.idDireccion) {
@@ -322,17 +298,12 @@ export default function CompletarPedidoPage() {
           }
 
           idDireccionFinal = nuevaDireccion.idDireccion!;
-          console.log('✅ Dirección creada:', idDireccionFinal);
-        } catch (error: any) {
-          console.error('❌ Error al crear dirección:', error);
-          console.error('📋 Datos enviados:', JSON.stringify(direccionDto, null, 2));
-          console.error('📋 Respuesta del error completa:', error.response?.data);
-          console.error('📋 Status code:', error.response?.status);
-          
+        } catch (error: unknown) {
           // Obtener el mensaje de error del backend
+          const errorObj = error as { response?: { data?: { message?: string | string[]; error?: string } }; message?: string };
           let errorMessage = 'Error al crear la dirección';
-          if (error.response?.data) {
-            const errorData = error.response.data;
+          if (errorObj.response?.data) {
+            const errorData = errorObj.response.data;
             if (Array.isArray(errorData.message)) {
               errorMessage = errorData.message.join('. ');
             } else if (typeof errorData.message === 'string') {
@@ -340,8 +311,8 @@ export default function CompletarPedidoPage() {
             } else if (errorData.error) {
               errorMessage = errorData.error;
             }
-          } else if (error.message) {
-            errorMessage = error.message;
+          } else if (errorObj.message) {
+            errorMessage = errorObj.message;
           }
           
           // Mostrar el error completo al usuario
@@ -358,7 +329,6 @@ export default function CompletarPedidoPage() {
         if (isNaN(idDireccionFinal)) {
           throw new Error('ID de dirección inválido');
         }
-        console.log('✅ Usando dirección guardada:', idDireccionFinal);
       } else {
         throw new Error('Debes seleccionar o crear una dirección de entrega');
       }
@@ -390,14 +360,11 @@ export default function CompletarPedidoPage() {
 
       toast.success('¡Pedido creado exitosamente!');
       navigate(`/pedido/${pedido.idPedido}/confirmacion`);
-    } catch (error: any) {
-      console.error('❌ Error al crear pedido:', error);
-      console.error('📋 Detalles del error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      const errorMessage = error.response?.data?.message || error.message || 'Error al crear el pedido';
+    } catch (error: unknown) {
+      const errorObj = error as { response?: { data?: { message?: string | string[] } }; message?: string };
+      const errorMessage = Array.isArray(errorObj.response?.data?.message) 
+        ? errorObj.response.data.message.join('. ')
+        : errorObj.response?.data?.message || errorObj.message || 'Error al crear el pedido';
       toast.error(errorMessage);
       setIsProcessing(false);
     }

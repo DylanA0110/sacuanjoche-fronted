@@ -13,7 +13,6 @@ import {
   MdAdminPanelSettings,
   MdLocalShipping,
   MdAccountCircle,
-  MdPhone,
   MdCalendarToday
 } from 'react-icons/md';
 import { getTokenExpiration } from '@/shared/utils/tokenUtils';

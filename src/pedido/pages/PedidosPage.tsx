@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { DataTable } from '@/shared/components/Custom/DataTable';

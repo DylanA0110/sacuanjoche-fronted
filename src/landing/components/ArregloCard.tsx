@@ -3,7 +3,7 @@ import { HiShoppingBag, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '@/auth/store/auth.store';
 import { useCarrito } from '@/carrito/hooks/useCarrito';
-import { ArregloResponse } from '@/arreglo/types/arreglo.interface';
+import type { ArregloResponse } from '@/arreglo/types/arreglo.interface';
 import { toast } from 'sonner';
 import { checkAuthAction } from '@/auth/actions/check-status';
 
@@ -18,10 +18,6 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
   const { isAuthenticated, user, setUser } = useAuthStore();
   const { addProducto, isAdding } = useCarrito();
   
-  // Verificar autenticación adicional basada en token
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
-  // Verificar autenticación de forma más robusta
-  const isUserAuthenticated = isAuthenticated || (hasToken && user);
 
   // Verificar y sincronizar estado de autenticación si hay token pero no está autenticado
   useEffect(() => {

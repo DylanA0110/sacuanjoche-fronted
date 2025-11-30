@@ -19,11 +19,10 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import type { Cliente, CreateClienteDto, UpdateClienteDto } from '../types/cliente.interface';
-import type { CreateDireccionDto, CreateClienteDireccionDto } from '../types/direccion.interface';
-import { createDireccion, createClienteDireccion } from '../actions';
 import { MapboxAddressSearch, type MapboxAddressData as MapboxData } from '@/shared/components/Custom/MapboxAddressSearch';
 import { MdSave, MdLocationOn } from 'react-icons/md';
 import { toast } from 'sonner';
+import { sanitizeName, validateName, formatTelefono, validateTelefono } from '@/shared/utils/validation';
 
 interface ClienteFormProps {
   open: boolean;
@@ -77,6 +76,18 @@ export function ClienteForm({
   // Estado para la dirección (Mapbox data)
   const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(null);
 
+  const handleNombreChange = (field: 'primerNombre' | 'primerApellido') => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = sanitizeName(e.target.value, 30);
+      setValue(field, sanitized);
+    };
+  };
+
+  const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatTelefono(e.target.value);
+    setValue('telefono', formatted);
+  };
+
   useEffect(() => {
     if (cliente) {
       reset({
@@ -103,9 +114,33 @@ export function ClienteForm({
   }, [cliente, open, reset]);
 
   const onSubmitForm = async (data: FormValues) => {
+    // Validar nombres
+    const primerNombreError = validateName(data.primerNombre, 'El primer nombre');
+    if (primerNombreError) {
+      toast.error(primerNombreError);
+      return;
+    }
+
+    const primerApellidoError = validateName(data.primerApellido, 'El primer apellido');
+    if (primerApellidoError) {
+      toast.error(primerApellidoError);
+      return;
+    }
+
+    // Validar teléfono
+    const telefonoError = validateTelefono(data.telefono);
+    if (telefonoError) {
+      toast.error(telefonoError);
+      return;
+    }
+
+    // Formatear teléfono: agregar 505 si no lo tiene
+    const telefonoLimpio = data.telefono.replace(/\D/g, '');
+    const telefonoBackend = telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+
     const dataToSubmit = cliente
-      ? { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: data.telefono }
-      : { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: data.telefono, estado: 'activo' as const };
+      ? { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: telefonoBackend }
+      : { primerNombre: data.primerNombre, primerApellido: data.primerApellido, telefono: telefonoBackend, estado: 'activo' as const };
 
     // Si hay datos de dirección (crear o editar), pasar también los datos de dirección
     if (direccionData) {
@@ -150,15 +185,36 @@ export function ClienteForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="primerNombre" className="text-sm font-semibold text-gray-700">
-                    Primer Nombre *
+                    Primer Nombre * (2-30 letras, sin espacios)
                   </Label>
                   <Input
                     id="primerNombre"
                     {...register('primerNombre', {
                       required: 'El primer nombre es requerido',
+                      minLength: {
+                        value: 2,
+                        message: 'El nombre debe tener al menos 2 caracteres',
+                      },
+                      maxLength: {
+                        value: 30,
+                        message: 'El nombre debe tener máximo 30 caracteres',
+                      },
                     })}
+                    onChange={handleNombreChange('primerNombre')}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text');
+                      const sanitized = sanitizeName(text, 30);
+                      setValue('primerNombre', sanitized);
+                    }}
                     placeholder="Juan"
                     className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                    maxLength={30}
                   />
                   {errors.primerNombre && (
                     <p className="text-sm text-red-500 mt-1">{errors.primerNombre.message}</p>
@@ -167,15 +223,36 @@ export function ClienteForm({
 
                 <div className="space-y-2">
                   <Label htmlFor="primerApellido" className="text-sm font-semibold text-gray-700">
-                    Primer Apellido *
+                    Primer Apellido * (2-30 letras, sin espacios)
                   </Label>
                   <Input
                     id="primerApellido"
                     {...register('primerApellido', {
                       required: 'El primer apellido es requerido',
+                      minLength: {
+                        value: 2,
+                        message: 'El apellido debe tener al menos 2 caracteres',
+                      },
+                      maxLength: {
+                        value: 30,
+                        message: 'El apellido debe tener máximo 30 caracteres',
+                      },
                     })}
+                    onChange={handleNombreChange('primerApellido')}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text');
+                      const sanitized = sanitizeName(text, 30);
+                      setValue('primerApellido', sanitized);
+                    }}
                     placeholder="Pérez"
                     className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                    maxLength={30}
                   />
                   {errors.primerApellido && (
                     <p className="text-sm text-red-500 mt-1">{errors.primerApellido.message}</p>
@@ -184,16 +261,28 @@ export function ClienteForm({
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="telefono" className="text-sm font-semibold text-gray-700">
-                    Teléfono *
+                    Teléfono * (8 dígitos)
                   </Label>
-                  <Input
-                    id="telefono"
-                    {...register('telefono', {
-                      required: 'El teléfono es requerido',
-                    })}
-                    placeholder="+505 1234 5678"
-                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
-                  />
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                      +505
+                    </div>
+                    <Input
+                      id="telefono"
+                      type="tel"
+                      {...register('telefono', {
+                        required: 'El teléfono es requerido',
+                        pattern: {
+                          value: /^\d{8}$/,
+                          message: 'El teléfono debe tener 8 dígitos',
+                        },
+                      })}
+                      onChange={handleTelefonoChange}
+                      className="bg-white border-gray-300 text-gray-900 h-11 text-base pl-14"
+                      placeholder="12345678"
+                      maxLength={8}
+                    />
+                  </div>
                   {errors.telefono && (
                     <p className="text-sm text-red-500 mt-1">{errors.telefono.message}</p>
                   )}

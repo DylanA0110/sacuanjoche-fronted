@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -30,11 +31,21 @@ import { useDebounce } from '@/shared/hooks/useDebounce';
 import { PaginationControls } from '@/shared/components/Custom/PaginationControls';
 
 const ArreglosPage = () => {
+  const location = useLocation();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedArreglo, setSelectedArreglo] = useState<Arreglo | null>(null);
   const [editingArreglo, setEditingArreglo] = useState<Arreglo | null>(null);
   const queryClient = useQueryClient();
+
+  // Abrir formulario automáticamente si viene desde acciones rápidas
+  useEffect(() => {
+    if (location.state && (location.state as { openForm?: boolean }).openForm) {
+      setIsFormOpen(true);
+      // Limpiar el estado para evitar que se abra cada vez que se renderice
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   // Hook de paginación general
   const pagination = useTablePagination(0);

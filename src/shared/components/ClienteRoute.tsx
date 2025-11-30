@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router';
+import { Navigate } from 'react-router';
 import { useAuthStore } from '@/auth/store/auth.store';
 import { hasAdminPanelAccess } from '@/shared/api/interceptors';
 import { useEffect, useState } from 'react';
@@ -17,7 +17,6 @@ interface ClienteRouteProps {
  * Los usuarios no autenticados pueden acceder (la landing es pública)
  */
 export function ClienteRoute({ children }: ClienteRouteProps) {
-  const location = useLocation();
   const { user, isAuthenticated, setUser, logout } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 

@@ -10,7 +10,7 @@ export interface UseEmpleadoOptions {
 }
 
 export const useEmpleado = (options: UseEmpleadoOptions = {}) => {
-  const { usePagination = false, limit, offset, q } = options;
+  const { limit, offset, q } = options;
 
   const {
     data: empleados = [],

@@ -1,9 +1,11 @@
+import type { ClienteEstado } from '@/shared/types/estados.types';
+
 export interface Cliente {
   idCliente: number;
   primerNombre: string;
   primerApellido: string;
   telefono: string;
-  estado: 'activo' | 'inactivo'; // El campo del backend es 'estado'
+  estado: ClienteEstado; // El campo del backend es 'estado'
   fechaCreacion: Date | string;
 }
 
@@ -11,14 +13,14 @@ export interface CreateClienteDto {
   primerNombre: string;
   primerApellido: string;
   telefono: string;
-  estado: 'activo' | 'inactivo'; // Requerido, siempre 'activo' para registro
+  estado: ClienteEstado; // Requerido, siempre 'activo' para registro
 }
 
 export interface UpdateClienteDto {
   primerNombre?: string;
   primerApellido?: string;
   telefono?: string;
-  estado?: 'activo' | 'inactivo';
+  estado?: ClienteEstado;
 }
 
 export interface ClientesResponse {
@@ -30,5 +32,5 @@ export interface GetClientesParams {
   limit?: number;
   offset?: number;
   q?: string;
-  activo?: 'activo' | 'inactivo' | boolean; // Para query params, puede ser boolean (se convierte a 1/0)
+  activo?: ClienteEstado | boolean; // Para query params, puede ser boolean (se convierte a 1/0)
 }

@@ -1,4 +1,5 @@
-import { DragEvent, useState } from 'react';
+import { useState } from 'react';
+import type { DragEvent } from 'react';
 import { useRutaStore } from '../store/ruta.store';
 
 interface Options {
@@ -8,7 +9,6 @@ interface Options {
 export const useRutaDragDrop = ({ idEmpleado }: Options) => {
   const isDragging = useRutaStore((state) => !!state.draggingPedidoId);
   const addPedidoToConductor = useRutaStore((state) => state.addPedidoToConductor);
-  const removePedidoFromConductor = useRutaStore((state) => state.removePedidoFromConductor);
   const movePedidoBetweenConductors = useRutaStore((state) => state.movePedidoBetweenConductors);
   const getPedidosByConductor = useRutaStore((state) => state.getPedidosByConductor);
   

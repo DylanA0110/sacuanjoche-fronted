@@ -2,6 +2,7 @@ import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer } from '@pa
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
 import { asociarPagoAlCarrito } from '@/carrito/actions/asociarPago';
 import { useCarrito } from '@/carrito/hooks/useCarrito';
+import type { Carrito } from '@/carrito/types/carrito.interface';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
@@ -103,8 +104,9 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
       console.log('✅ [PayPal] Pago capturado y confirmado:', pagoConfirmado);
 
       // Asociar el pago al carrito si existe
-      if (carrito) {
-        await asociarPagoAlCarrito(carrito.idCarrito, pagoConfirmado.idPago);
+      const carritoTyped = carrito as Carrito | null;
+      if (carritoTyped?.idCarrito) {
+        await asociarPagoAlCarrito(carritoTyped.idCarrito, pagoConfirmado.idPago);
         await refetch();
       }
 
@@ -194,7 +196,7 @@ export function PayPalButton({ monto, idMetodoPago, onSuccess, onError, disabled
   return (
     <PayPalScriptProvider
       options={{
-        'client-id': clientId,
+        clientId: clientId,
         currency: 'USD',
         intent: 'capture',
       }}

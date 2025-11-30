@@ -11,7 +11,6 @@ export const AdminNotifications: React.FC = () => {
     connected,
     markAsRead,
     markAllAsRead,
-    clearAll,
     removeNotification,
   } = useNotifications();
 

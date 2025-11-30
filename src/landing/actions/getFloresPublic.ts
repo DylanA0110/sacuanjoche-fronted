@@ -14,7 +14,7 @@ export const getFloresPublic = async (): Promise<FlorPublic[]> => {
     });
     
     // Verificar si la respuesta es HTML (error de ngrok)
-    if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
+    if (typeof response.data === 'string' && (response.data as string).trim().startsWith('<!DOCTYPE')) {
       console.error('❌ [getFloresPublic] Ngrok bloqueó la petición, recibió HTML en lugar de JSON');
       return [];
     }
