@@ -72,6 +72,12 @@ export default function LoginPage() {
     try {
       const userData = await loginAction({ email: data.email, password: data.password });
 
+      // Asegurar que el token esté guardado antes de actualizar el store
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+      }
+
+      // Actualizar el store de Zustand
       setUser(userData);
       
       let welcomeMessage = '¡Bienvenido de nuevo!';
@@ -89,12 +95,16 @@ export default function LoginPage() {
       
       toast.success(welcomeMessage);
 
+      // Pequeño delay para asegurar que el store se actualice
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const from = (location.state as any)?.from?.pathname;
       
       if (hasAdminPanelAccess(userData.roles)) {
         navigate(from || '/admin', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        // Si venía del catálogo, redirigir al catálogo
+        navigate(from === '/catalogo' ? '/catalogo' : from || '/', { replace: true });
       }
     } catch (error: any) {
       const message = cleanErrorMessage(error);

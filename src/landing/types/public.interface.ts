@@ -12,3 +12,8 @@ export interface AccesorioPublic {
   categoria: string;
 }
 
+export interface FormaArregloPublic {
+  idFormaArreglo: number;
+  descripcion: string;
+}
+

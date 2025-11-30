@@ -11,7 +11,7 @@ export interface CreateClienteDto {
   primerNombre: string;
   primerApellido: string;
   telefono: string;
-  estado?: 'activo' | 'inactivo';
+  estado: 'activo' | 'inactivo'; // Requerido, siempre 'activo' para registro
 }
 
 export interface UpdateClienteDto {

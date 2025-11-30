@@ -12,6 +12,15 @@ export const useFloresPublic = () => {
     queryFn: getFloresPublic,
     staleTime: 1000 * 60 * 10, // 10 minutos - las flores cambian poco
     retry: 1,
+    // Asegurar que siempre retorne un array, incluso en caso de error
+    select: (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      console.warn('⚠️ [useFloresPublic] Data no es un array:', data);
+      return [];
+    },
+    // Valor por defecto mientras carga o en caso de error
+    initialData: [],
   });
 };
 

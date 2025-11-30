@@ -36,6 +36,19 @@ const CatalogPage = () => {
   const totalItems = arreglosResponse?.total || 0;
   const totalPages = arreglosResponse?.pages || Math.ceil(totalItems / (+limit || 12));
 
+  // Debug: Log para ver qué está pasando
+  useEffect(() => {
+    console.log('🔍 [CatalogPage] Estado actual:', {
+      isLoading,
+      isError,
+      arreglosCount: arreglos.length,
+      totalItems,
+      totalPages,
+      arreglosResponse,
+      arreglos: arreglos.slice(0, 3), // Primeros 3 para no saturar la consola
+    });
+  }, [isLoading, isError, arreglos.length, totalItems, totalPages, arreglosResponse]);
+
   // Calcular items por página según tamaño de pantalla
   const calculateItemsPerPage = useCallback(() => {
     if (typeof window === 'undefined') return 12;
@@ -185,9 +198,29 @@ const CatalogPage = () => {
             </div>
           ) : arreglos.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-[#665b68] text-lg">
-                No hay arreglos disponibles con los filtros seleccionados.
+              <p className="text-[#665b68] text-lg mb-4">
+                {q || flores || precioMin || precioMax || idFormaArreglo
+                  ? 'No hay arreglos disponibles con los filtros seleccionados.'
+                  : 'No hay arreglos disponibles en este momento.'}
               </p>
+              {(q || flores || precioMin || precioMax || idFormaArreglo) && (
+                <button
+                  onClick={() => {
+                    setSearchParams((prev) => {
+                      prev.delete('q');
+                      prev.delete('flores');
+                      prev.delete('precioMin');
+                      prev.delete('precioMax');
+                      prev.delete('idFormaArreglo');
+                      prev.set('page', '1');
+                      return prev;
+                    });
+                  }}
+                  className="text-[#00A87F] hover:text-[#00A87F]/80 underline font-medium"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
           ) : (
             <>

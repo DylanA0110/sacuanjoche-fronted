@@ -4,16 +4,48 @@
  */
 export function cleanErrorMessage(error: any): string {
   // Intentar obtener el mensaje de diferentes formas
-  let message =
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    (typeof error === 'string' ? error : null) ||
-    'Ocurrió un error inesperado';
+  let message: string | null = null;
   
-  // Si el mensaje es un objeto, intentar extraer el mensaje
-  if (typeof message === 'object' && message !== null) {
-    message = message.message || message.error || 'Ocurrió un error inesperado';
+  // 1. Intentar desde error.response.data (formato más común del backend)
+  if (error?.response?.data) {
+    const errorData = error.response.data;
+    
+    // Si es un array de mensajes (validaciones de NestJS)
+    if (Array.isArray(errorData.message)) {
+      message = errorData.message.join(', ');
+    }
+    // Si es un string
+    else if (typeof errorData.message === 'string') {
+      message = errorData.message;
+    }
+    // Si hay un campo 'error'
+    else if (typeof errorData.error === 'string') {
+      message = errorData.error;
+    }
+    // Si el data completo es un string
+    else if (typeof errorData === 'string') {
+      message = errorData;
+    }
+  }
+  
+  // 2. Si no se encontró, intentar desde error.message
+  if (!message && error?.message) {
+    message = error.message;
+  }
+  
+  // 3. Si es un string directo
+  if (!message && typeof error === 'string') {
+    message = error;
+  }
+  
+  // 4. Si el mensaje es un objeto, intentar extraer el mensaje
+  if (message && typeof message === 'object' && message !== null) {
+    message = (message as any).message || (message as any).error || 'Ocurrió un error inesperado';
+  }
+  
+  // 5. Si aún no hay mensaje, usar uno por defecto
+  if (!message || typeof message !== 'string') {
+    message = 'Ocurrió un error inesperado';
   }
 
   // NO eliminar IDs de factura o pedido en mensajes de error importantes

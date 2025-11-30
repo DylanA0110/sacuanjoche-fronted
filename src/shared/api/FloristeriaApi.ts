@@ -11,6 +11,9 @@ const API_BASE_URL = `${BASE_URL}/api`;
 
 export const floristeriaApi = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    'ngrok-skip-browser-warning': 'true', // Necesario para ngrok
+  },
 });
 
 // Registrar la instancia para aplicar interceptores

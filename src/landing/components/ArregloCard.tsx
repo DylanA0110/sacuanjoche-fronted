@@ -1,6 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { HiShoppingBag, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { useNavigate } from 'react-router';
+import { useAuthStore } from '@/auth/store/auth.store';
+import { useCarrito } from '@/carrito/hooks/useCarrito';
 import { ArregloResponse } from '@/arreglo/types/arreglo.interface';
+import { toast } from 'sonner';
+import { checkAuthAction } from '@/auth/actions/check-status';
 
 interface ArregloCardProps {
   arreglo: ArregloResponse;
@@ -9,6 +14,34 @@ interface ArregloCardProps {
 
 export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const navigate = useNavigate();
+  const { isAuthenticated, user, setUser } = useAuthStore();
+  const { addProducto, isAdding } = useCarrito();
+  
+  // Verificar autenticación adicional basada en token
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
+  // Verificar autenticación de forma más robusta
+  const isUserAuthenticated = isAuthenticated || (hasToken && user);
+
+  // Verificar y sincronizar estado de autenticación si hay token pero no está autenticado
+  useEffect(() => {
+    const syncAuthState = async () => {
+      const token = localStorage.getItem('token');
+      // Si hay token pero no está autenticado en el store, sincronizar
+      if (token && (!isAuthenticated || !user)) {
+        try {
+          const userData = await checkAuthAction();
+          setUser(userData);
+        } catch (error) {
+          // Si falla, el token es inválido, limpiar
+          console.error('Error al verificar autenticación:', error);
+          localStorage.removeItem('token');
+        }
+      }
+    };
+    
+    syncAuthState();
+  }, [isAuthenticated, user, setUser]);
 
   // Obtener todas las imágenes disponibles
   const images = useMemo(() => {
@@ -130,7 +163,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
         </div>
 
         {/* Título */}
-        <h3 className="text-base sm:text-lg font-bold text-[#18181B] mb-[10px] tracking-[-0.5px] line-clamp-2 min-h-[2.5rem]">
+        <h3 className="text-base sm:text-lg font-bold text-[#18181B] mb-[10px] tracking-[-0.5px] line-clamp-2 min-h-10">
           {arreglo.nombre}
         </h3>
 
@@ -158,8 +191,59 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
               {precio}
             </span>
           </div>
-          <button className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-4 py-2 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] group/btn overflow-hidden">
-            <span className="relative z-10">Añadir al carrito</span>
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              
+              // Verificar autenticación - debe estar autenticado EN EL STORE y tener token
+              const token = localStorage.getItem('token');
+              
+              // Si no está autenticado, intentar sincronizar primero
+              if (token && (!isAuthenticated || !user)) {
+                try {
+                  const userData = await checkAuthAction();
+                  setUser(userData);
+                  // Esperar un momento para que el estado se actualice
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                  toast.info('Inicia sesión para agregar productos al carrito');
+                  navigate('/login', { state: { from: window.location.pathname } });
+                  return;
+                }
+              }
+              
+              // Verificar autenticación después de sincronizar
+              if (!isAuthenticated || !token || !user) {
+                toast.info('Inicia sesión para agregar productos al carrito');
+                navigate('/login', { state: { from: window.location.pathname } });
+                return;
+              }
+              
+              // El endpoint público solo retorna arreglos activos, pero verificar por si acaso
+              if (arreglo.estado && arreglo.estado !== 'activo') {
+                toast.error('Este producto no está disponible');
+                return;
+              }
+
+              const precio = parseFloat(
+                typeof arreglo.precioUnitario === 'string'
+                  ? arreglo.precioUnitario
+                  : String(arreglo.precioUnitario)
+              );
+
+              // Agregar producto al carrito
+              addProducto({
+                idArreglo: arreglo.idArreglo,
+                cantidad: 1,
+                precioUnitario: precio,
+              });
+            }}
+            disabled={isAdding === true || (arreglo.estado !== undefined && arreglo.estado !== 'activo' && arreglo.estado !== null)}
+            className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-4 py-2 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] group/btn overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="relative z-10">
+              {isAdding ? 'Agregando...' : 'Añadir al carrito'}
+            </span>
             <HiShoppingBag className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover/btn:rotate-[-10deg] group-hover/btn:scale-110" />
           </button>
         </div>

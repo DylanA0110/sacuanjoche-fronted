@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { HiFilter } from 'react-icons/hi';
-import { useFormaArreglo } from '@/catalogo/hooks/useFormaArreglo';
+import { useFormasArregloPublic } from '../hooks/useFormasArregloPublic';
 import { useFloresPublic } from '../hooks/useFloresPublic';
 
 interface CatalogFiltersProps {
@@ -43,8 +43,23 @@ export const CatalogFilters = ({
     idFormaArreglo: idFormaArreglo || '',
   });
 
-  const { formasArreglo } = useFormaArreglo({ activo: true });
-  const { data: floresList = [], isLoading: isLoadingFlores } = useFloresPublic();
+  const { data: formasArregloData, isLoading: isLoadingFormas } = useFormasArregloPublic();
+  const { data: floresListData, isLoading: isLoadingFlores } = useFloresPublic();
+  
+  // Asegurar que siempre sean arrays - validación más robusta
+  const formasArreglo = useMemo(() => {
+    if (!formasArregloData) return [];
+    if (Array.isArray(formasArregloData)) return formasArregloData;
+    console.warn('⚠️ [CatalogFilters] formasArregloData no es un array:', formasArregloData);
+    return [];
+  }, [formasArregloData]);
+  
+  const floresList = useMemo(() => {
+    if (!floresListData) return [];
+    if (Array.isArray(floresListData)) return floresListData;
+    console.warn('⚠️ [CatalogFilters] floresListData no es un array:', floresListData);
+    return [];
+  }, [floresListData]);
 
   // Sincronizar filtros locales con props cuando cambian desde URL
   useEffect(() => {
@@ -206,14 +221,19 @@ export const CatalogFilters = ({
                 onChange={(e) =>
                   setLocalFilters((prev) => ({ ...prev, idFormaArreglo: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[#E4E4E7] rounded-[10px] text-sm text-[#171517] bg-white focus:outline-none focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20"
+                disabled={isLoadingFormas}
+                className="w-full px-3 py-2 border border-[#E4E4E7] rounded-[10px] text-sm text-[#171517] bg-white focus:outline-none focus:border-[#50C878] focus:ring-2 focus:ring-[#50C878]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Todas</option>
-                {formasArreglo.map((forma) => (
-                  <option key={forma.idFormaArreglo} value={String(forma.idFormaArreglo)}>
-                    {forma.descripcion}
-                  </option>
-                ))}
+                {isLoadingFormas ? (
+                  <option value="" disabled>Cargando...</option>
+                ) : (
+                  formasArreglo.map((forma) => (
+                    <option key={forma.idFormaArreglo} value={String(forma.idFormaArreglo)}>
+                      {forma.descripcion}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

@@ -1,10 +1,12 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { HiMenu, HiX } from 'react-icons/hi';
 import { HiLogout, HiUser } from 'react-icons/hi';
+import { HiShoppingCart } from 'react-icons/hi';
 import { GiRose } from 'react-icons/gi';
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuthStore } from '@/auth/store/auth.store';
+import { useCarrito } from '@/carrito/hooks/useCarrito';
 import { toast } from 'sonner';
 
 export const Header = () => {
@@ -13,6 +15,7 @@ export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { itemCount } = useCarrito();
 
   // Transformaciones FUERA del JSX (muy importante - evita recreación constante)
   const headerHeight = useTransform(scrollY, [0, 100], [64, 56]);
@@ -160,6 +163,21 @@ export const Header = () => {
               );
             })}
 
+            {/* Icono de carrito */}
+            {isAuthenticated && (
+              <Link
+                to="/carrito"
+                className="relative flex items-center justify-center w-10 h-10 text-white/80 hover:text-[#50C878] transition-colors ml-1.5"
+              >
+                <HiShoppingCart className="w-6 h-6" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#50C878] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
             {/* Usuario autenticado - Solo mostrar correo y botón cerrar sesión */}
             {isAuthenticated && user && (
               <div className="flex items-center gap-3 ml-1.5">
@@ -274,6 +292,23 @@ export const Header = () => {
                       </Link>
                     );
                   })}
+
+                  {/* Icono de carrito en móvil */}
+                  {isAuthenticated && (
+                    <Link
+                      to="/carrito"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center gap-2 py-2.5 px-6 text-white/80 hover:text-[#50C878] hover:bg-white/5 transition-all font-medium text-sm uppercase tracking-wider border-l-2 border-transparent hover:border-[#50C878] relative"
+                    >
+                      <HiShoppingCart className="w-4 h-4" />
+                      <span>Carrito</span>
+                      {itemCount > 0 && (
+                        <span className="ml-auto bg-[#50C878] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {itemCount > 99 ? '99+' : itemCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
 
                   {/* Opciones de usuario en menú móvil */}
                   {isAuthenticated && user && (

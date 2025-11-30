@@ -6,6 +6,14 @@ import { isTokenExpired, clearTokenCache } from '@/shared/utils/tokenUtils';
 let lastExpirationCheck: { token: string; isExpired: boolean; checkedAt: number } | null = null;
 const EXPIRATION_CHECK_CACHE_TTL = 5000; // Cachear verificación por 5 segundos
 
+/**
+ * Limpia el caché de verificación de expiración
+ * Útil cuando se actualiza el token después del login
+ */
+export const clearExpirationCache = () => {
+  lastExpirationCheck = null;
+};
+
 // Roles que tienen acceso al panel administrativo
 const ADMIN_PANEL_ROLES = ['admin', 'vendedor', 'conductor'];
 
@@ -16,6 +24,7 @@ const PUBLIC_ENDPOINTS = [
   '/arreglos/public',
   '/flor/public',
   '/accesorio/public',
+  '/forma-arreglo/public',
   '/pago/paypal/webhook',
 ];
 
@@ -24,18 +33,32 @@ const PUBLIC_ENDPOINTS = [
  */
 const createRequestInterceptor = () => {
   return (config: InternalAxiosRequestConfig) => {
+    // Verificar si es un endpoint público (no requiere token)
+    const url = config.url || '';
+    const isPublic = isPublicEndpoint(url);
+    
+    // Si es público, no agregar token
+    if (isPublic) {
+      return config;
+    }
+    
+    // Para endpoints protegidos, agregar token si existe
     const token = localStorage.getItem('token');
     
-    // Solo verificar expiración si es un endpoint protegido
-    if (token && config.url && !isPublicEndpoint(config.url)) {
+    // Solo verificar expiración si es un endpoint protegido y hay token
+    if (token && config.url) {
       const now = Date.now();
       
       // Usar caché de verificación para evitar decodificar en cada petición
       let isExpired = false;
       
+      // Si el token cambió, limpiar el caché
+      if (lastExpirationCheck && lastExpirationCheck.token !== token) {
+        lastExpirationCheck = null;
+      }
+      
       if (
         !lastExpirationCheck ||
-        lastExpirationCheck.token !== token ||
         now - lastExpirationCheck.checkedAt > EXPIRATION_CHECK_CACHE_TTL
       ) {
         // Verificar expiración solo si el caché expiró o el token cambió
@@ -77,6 +100,10 @@ const createRequestInterceptor = () => {
       
       // Agregar token al header
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (!token && !isPublic) {
+      // Si no hay token y no es un endpoint público, podría ser un problema
+      // Pero no rechazamos aquí para permitir que el backend maneje el error
+      console.warn('Petición a endpoint protegido sin token:', config.url);
     }
     
     return config;
@@ -88,23 +115,40 @@ const createRequestInterceptor = () => {
  */
 const createResponseInterceptor = () => {
   return async (error: AxiosError) => {
-    // Si el error es 401 (No autorizado), limpiar token y redirigir a login
+    // Si el error es 401 (No autorizado)
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      clearTokenCache();
-      lastExpirationCheck = null;
+      const currentPath = window.location.pathname;
+      const publicPaths = ['/login', '/register', '/catalogo', '/'];
       
-      // Importar y usar el store de forma dinámica para evitar dependencias circulares
-      try {
-        const { useAuthStore } = await import('@/auth/store/auth.store');
-        useAuthStore.getState().logout();
-      } catch (err) {
-        // Si falla la importación, solo limpiar localStorage
-        console.error('Error al limpiar store de autenticación:', err);
+      // Verificar si estamos en una ruta pública
+      const isPublicPath = publicPaths.includes(currentPath) || 
+                           currentPath.startsWith('/catalogo');
+      
+      // Si estamos en una ruta pública, NO limpiar el token ni hacer logout
+      // Solo permitir que el error se propague normalmente
+      if (isPublicPath) {
+        return Promise.reject(error);
       }
       
-      // Solo redirigir si no estamos ya en la página de login
-      if (window.location.pathname !== '/login') {
+      // Solo para rutas protegidas: limpiar token y redirigir a login
+      const isProtectedPath = currentPath.startsWith('/admin') || 
+                               currentPath.startsWith('/carrito') ||
+                               currentPath.startsWith('/pedido');
+      
+      if (isProtectedPath) {
+        localStorage.removeItem('token');
+        clearTokenCache();
+        lastExpirationCheck = null;
+        
+        // Importar y usar el store de forma dinámica para evitar dependencias circulares
+        try {
+          const { useAuthStore } = await import('@/auth/store/auth.store');
+          useAuthStore.getState().logout();
+        } catch (err) {
+          // Si falla la importación, solo limpiar localStorage
+          console.error('Error al limpiar store de autenticación:', err);
+        }
+        
         window.location.href = '/login';
       }
     }
@@ -172,7 +216,10 @@ export const setupResponseInterceptor = () => {
  * Verifica si un endpoint es público (no requiere autenticación)
  */
 const isPublicEndpoint = (url: string): boolean => {
-  return PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+  if (!url) return false;
+  // Normalizar la URL para comparar solo la ruta (sin baseURL)
+  const normalizedUrl = url.replace(/^https?:\/\/[^/]+/, ''); // Remover protocolo y dominio
+  return PUBLIC_ENDPOINTS.some((endpoint) => normalizedUrl.includes(endpoint));
 };
 
 /**

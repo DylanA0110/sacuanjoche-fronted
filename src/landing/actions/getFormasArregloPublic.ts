@@ -1,13 +1,13 @@
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
-import type { FlorPublic } from '../types/public.interface';
+import type { FormaArregloPublic } from '../types/public.interface';
 
 /**
- * Obtiene la lista de flores activas disponibles para usar en los selectores/filtros de la landing page.
- * Endpoint: GET /flor/public
+ * Obtiene la lista de formas de arreglo activas disponibles para usar en los selectores/filtros de la landing page.
+ * Endpoint: GET /forma-arreglo/public
  */
-export const getFloresPublic = async (): Promise<FlorPublic[]> => {
+export const getFormasArregloPublic = async (): Promise<FormaArregloPublic[]> => {
   try {
-    const response = await floristeriaApi.get<FlorPublic[]>('/flor/public', {
+    const response = await floristeriaApi.get<FormaArregloPublic[]>('/forma-arreglo/public', {
       headers: {
         'ngrok-skip-browser-warning': 'true',
       },
@@ -15,7 +15,7 @@ export const getFloresPublic = async (): Promise<FlorPublic[]> => {
     
     // Verificar si la respuesta es HTML (error de ngrok)
     if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE')) {
-      console.error('❌ [getFloresPublic] Ngrok bloqueó la petición, recibió HTML en lugar de JSON');
+      console.error('❌ [getFormasArregloPublic] Ngrok bloqueó la petición, recibió HTML en lugar de JSON');
       return [];
     }
     
@@ -23,17 +23,17 @@ export const getFloresPublic = async (): Promise<FlorPublic[]> => {
     if (Array.isArray(response.data)) {
       return response.data;
     }
-    console.warn('⚠️ [getFloresPublic] La respuesta no es un array:', response.data);
+    console.warn('⚠️ [getFormasArregloPublic] La respuesta no es un array:', response.data);
     return [];
   } catch (error: any) {
-    console.error('❌ [getFloresPublic] Error al cargar flores públicas:', {
+    console.error('❌ [getFormasArregloPublic] Error al cargar formas de arreglo públicas:', {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
       isHtml: typeof error.response?.data === 'string' && error.response?.data?.includes('<!DOCTYPE'),
     });
     // Retornar array vacío en caso de error en lugar de lanzar el error
-    // Esto permite que la UI funcione aunque falle la carga de flores
+    // Esto permite que la UI funcione aunque falle la carga de formas de arreglo
     return [];
   }
 };

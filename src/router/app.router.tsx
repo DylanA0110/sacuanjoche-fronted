@@ -2,12 +2,14 @@ import { createBrowserRouter, Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
 import { Layout } from '@/shared/components/layout/Layout';
 import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
+import { ClienteRoute } from '@/shared/components/ClienteRoute';
 
 // Lazy loading de páginas para code splitting
 const LandingPage = lazy(() => import('../landing/pages/LandingPage'));
 const CatalogPage = lazy(() => import('../landing/pages/CatalogPage'));
 const LoginPage = lazy(() => import('../auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('../auth/pages/RegisterPage'));
+const CartPage = lazy(() => import('../carrito/pages/CartPage'));
 const DashboardPage = lazy(() => import('../admin/pages/DashboardPage'));
 const PedidosPage = lazy(() => import('../pedido/pages/PedidosPage'));
 const PedidoFormPage = lazy(() => import('../pedido/pages/PedidoFormPage'));
@@ -20,6 +22,11 @@ const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
 const RutasPage = lazy(() => import('../rutas/pages/RutasPage'));
 const ProfilePage = lazy(() => import('../auth/pages/ProfilePage'));
+const CheckoutPage = lazy(() => import('../carrito/pages/CheckoutPage'));
+const CompletarPedidoPage = lazy(() => import('../carrito/pages/CompletarPedidoPage'));
+const PaymentSuccessPage = lazy(() => import('../pago/pages/PaymentSuccessPage'));
+const PaymentCancelPage = lazy(() => import('../pago/pages/PaymentCancelPage'));
+const PedidoConfirmacionPage = lazy(() => import('../pedido/pages/PedidoConfirmacionPage'));
 
 // Componente de carga para el router (Landing Page)
 const RouterLoadingFallback = () => (
@@ -55,9 +62,11 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: (
-      <Suspense fallback={<RouterLoadingFallback />}>
-        <LandingPage />
-      </Suspense>
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <LandingPage />
+        </Suspense>
+      </ClienteRoute>
     ),
   },
   {
@@ -82,6 +91,66 @@ export const router = createBrowserRouter([
       <Suspense fallback={<RouterLoadingFallback />}>
         <RegisterPage />
       </Suspense>
+    ),
+  },
+  {
+    path: '/carrito',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <CartPage />
+        </Suspense>
+      </ClienteRoute>
+    ),
+  },
+  {
+    path: '/carrito/checkout',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <CheckoutPage />
+        </Suspense>
+      </ClienteRoute>
+    ),
+  },
+  {
+    path: '/carrito/checkout/completar',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <CompletarPedidoPage />
+        </Suspense>
+      </ClienteRoute>
+    ),
+  },
+  {
+    path: '/payment/success',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <PaymentSuccessPage />
+        </Suspense>
+      </ClienteRoute>
+    ),
+  },
+  {
+    path: '/payment/cancel',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <PaymentCancelPage />
+        </Suspense>
+      </ClienteRoute>
+    ),
+  },
+  {
+    path: '/pedido/:idPedido/confirmacion',
+    element: (
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <PedidoConfirmacionPage />
+        </Suspense>
+      </ClienteRoute>
     ),
   },
   {
@@ -145,9 +214,11 @@ export const router = createBrowserRouter([
   {
     path: '*',
     element: (
-      <Suspense fallback={<RouterLoadingFallback />}>
-        <LandingPage />
-      </Suspense>
+      <ClienteRoute>
+        <Suspense fallback={<RouterLoadingFallback />}>
+          <LandingPage />
+        </Suspense>
+      </ClienteRoute>
     ),
   },
 ]);

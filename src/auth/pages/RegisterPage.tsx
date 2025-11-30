@@ -8,9 +8,8 @@ import { toast } from 'sonner';
 import { useAuthStore } from '../store/auth.store';
 import { checkAuthAction } from '../actions/check-status';
 import { hasAdminPanelAccess } from '@/shared/api/interceptors';
-import { createCliente } from '@/cliente/actions/createCliente';
 import { registerAction } from '../actions/register.action';
-import type { CreateClienteDto } from '@/cliente/types/cliente.interface';
+import { loginAction } from '../actions/login.action';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 
 interface RegisterFormData {
@@ -81,45 +80,292 @@ export default function RegisterPage() {
   }, [isAuthenticated, navigate, location]);
 
   const onSubmit = async (data: RegisterFormData) => {
+    // Logs persistentes que NO se borran
+    console.error('%c🚀🚀🚀 REGISTRO INICIADO 🚀🚀🚀', 'background: #ff0000; color: #ffffff; font-size: 20px; padding: 10px;');
+    console.warn('🚀 [RegisterPage] Iniciando registro...', { email: data.email });
+    console.warn('🚀 [RegisterPage] Datos completos del formulario:', data);
+    
+    // Guardar en localStorage para que no se pierda
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action: 'REGISTRO_INICIADO',
+      data: { email: data.email, primerNombre: data.primerNombre },
+    };
+    const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+    existingLogs.push(logEntry);
+    localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20))); // Guardar últimos 20
+    
     setIsLoading(true);
 
     try {
-      const clienteData: CreateClienteDto = {
+      // Preparar clienteData para el registro
+      // Enviar el teléfono exactamente como lo escribió el usuario (sin modificar)
+      const clienteData = {
         primerNombre: data.primerNombre.trim(),
         primerApellido: data.primerApellido.trim(),
-        telefono: data.telefono.trim(),
-        estado: 'activo',
+        // No se pide dirección en el formulario actual
+        telefono: data.telefono.trim(), // Enviar exactamente lo que escribió el usuario
       };
 
-      let nuevoCliente;
+      console.warn('📝 [RegisterPage] Datos del cliente para registro:', clienteData);
+
+      // 1. Registrar al usuario con clienteData (el backend crea el cliente automáticamente)
+      // Solo enviar email, password y clienteData (sin clienteId ni empleadoId)
+      const registerData = {
+        email: data.email.trim(),
+        password: data.password,
+        clienteData: clienteData, // Enviar clienteData directamente
+      };
+
+      console.log('📝 [RegisterPage] Datos del registro:', { ...registerData, password: '***', clienteData });
+
       try {
-        nuevoCliente = await createCliente(clienteData);
+        console.log('⏳ [RegisterPage] Llamando a registerAction con clienteData...');
+        await registerAction(registerData);
+        console.error('%c✅ USUARIO REGISTRADO EXITOSAMENTE ✅', 'background: #00ff00; color: #000000; font-size: 16px; padding: 5px;');
+        console.log('✅ [RegisterPage] Usuario registrado exitosamente');
+        
+        // Guardar en localStorage
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: 'USUARIO_REGISTRADO',
+        };
+        const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+        existingLogs.push(logEntry);
+        localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
       } catch (error: any) {
-        const message = cleanErrorMessage(error);
-        toast.error(message);
+        console.error('%c❌❌❌ ERROR AL REGISTRAR USUARIO ❌❌❌', 'background: #ff0000; color: #ffffff; font-size: 16px; padding: 5px;');
+        console.error('❌ [RegisterPage] Error al registrar usuario:', error);
+        console.error('❌ [RegisterPage] Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        
+        // Guardar error en localStorage
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: 'ERROR_REGISTRAR_USUARIO',
+          error: {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+          },
+        };
+        const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+        existingLogs.push(logEntry);
+        localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
+        
+        // Extraer mensaje del backend de forma más específica
+        let errorMessage = 'Error al crear la cuenta';
+        
+        if (error.response?.data) {
+          const errorData = error.response.data;
+          // Intentar obtener el mensaje de diferentes formas
+          errorMessage = 
+            errorData.message || 
+            errorData.error || 
+            (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+            (typeof errorData === 'string' ? errorData : null) ||
+            errorMessage;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
+        const cleanMessage = cleanErrorMessage(error);
+        toast.error(cleanMessage, {
+          duration: 5000,
+        });
+        
         setIsLoading(false);
         return;
       }
 
-      const userData = await registerAction({
+      // 3. Después del registro exitoso, hacer login automático
+      const loginData = {
         email: data.email.trim(),
         password: data.password,
-        clienteId: nuevoCliente.idCliente,
-        empleadoId: null,
-        estado: 'activo',
+      };
+
+      console.log('📝 [RegisterPage] Datos del login:', { ...loginData, password: '***' });
+
+      let loginResponse;
+      try {
+        console.log('⏳ [RegisterPage] Llamando a loginAction...');
+        loginResponse = await loginAction(loginData);
+        console.log('✅ [RegisterPage] Login exitoso:', {
+          token: loginResponse.token ? '✅' : '❌',
+          id: loginResponse.id,
+          email: loginResponse.email,
+          roles: loginResponse.roles,
+          cliente: loginResponse.cliente ? '✅' : '❌',
+        });
+      } catch (error: any) {
+        console.error('❌ [RegisterPage] Error al hacer login:', error);
+        console.error('❌ [RegisterPage] Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        
+        // Extraer mensaje del backend de forma más específica
+        let errorMessage = 'Error al iniciar sesión';
+        
+        if (error.response?.data) {
+          const errorData = error.response.data;
+          errorMessage = 
+            errorData.message || 
+            errorData.error || 
+            (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+            (typeof errorData === 'string' ? errorData : null) ||
+            errorMessage;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
+        const cleanMessage = cleanErrorMessage(error);
+        toast.error(cleanMessage, {
+          duration: 5000,
+        });
+        
+        setIsLoading(false);
+        return;
+      }
+
+      // 4. El login devuelve { token, id, email, roles, cliente: {...}, empleado: {...} }
+      const { token, id, roles, cliente } = loginResponse;
+
+      console.log('🔍 [RegisterPage] Verificando respuesta del login:', {
+        hasToken: !!token,
+        hasCliente: !!cliente,
+        id,
+        clienteId: cliente?.idCliente,
       });
 
-      setUser(userData);
-      
-      const nombreCompleto = `${data.primerNombre} ${data.primerApellido}`;
-      toast.success(`¡Cuenta creada exitosamente, ${nombreCompleto}!`);
+      if (token && cliente) {
+        // Obtener datos del cliente
+        const clienteId = cliente.idCliente || 0;
+        const clienteNombre =
+          cliente.nombreCompleto ||
+          [cliente.primerNombre, cliente.primerApellido]
+            .filter(Boolean)
+            .join(' ') ||
+          `${data.primerNombre} ${data.primerApellido}`;
 
-      navigate('/', { replace: true });
+        // El id del usuario puede ser string (UUID) o number
+        const userId = typeof id === 'string' ? id : Number(id) || 0;
+
+        console.log('💾 [RegisterPage] Guardando datos en localStorage y store...', {
+          token: token ? '✅' : '❌',
+          userId,
+          clienteId,
+          clienteNombre,
+        });
+
+        // Guardar token en localStorage (ya lo hace loginAction, pero nos aseguramos)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', token);
+          console.log('✅ [RegisterPage] Token guardado en localStorage');
+        }
+
+        // Establecer el usuario en el store con los datos del login
+        setUser(loginResponse);
+        console.log('✅ [RegisterPage] Usuario establecido en el store');
+
+        // También guardar datos adicionales en localStorage para compatibilidad
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(
+              'user',
+              JSON.stringify({
+                id: id,
+                email: data.email.trim(),
+                cliente: cliente,
+                roles: roles || [],
+              })
+            );
+            console.log('✅ [RegisterPage] Datos adicionales guardados en localStorage');
+          }
+        } catch (error) {
+          // Error al guardar - continuar de todas formas
+          console.error('❌ [RegisterPage] Error al guardar datos adicionales:', error);
+        }
+
+        toast.success(`¡Bienvenido, ${clienteNombre}! Tu cuenta ha sido creada exitosamente.`);
+
+        console.log('🎉 [RegisterPage] Registro completo. Redirigiendo a /...');
+        // Redirigir a la landing page (ya está autenticado)
+        navigate('/', { replace: true });
+      } else {
+        console.error('❌ [RegisterPage] Login response incompleta:', {
+          hasToken: !!token,
+          hasCliente: !!cliente,
+          loginResponse,
+        });
+        // Si no viene el token o cliente, mostrar error pero NO redirigir
+        toast.error(
+          'Error: No se pudo completar el inicio de sesión automático. Por favor, intenta iniciar sesión manualmente.',
+          {
+            duration: 5000,
+          }
+        );
+        // NO redirigir al login, quedarse en la página de registro
+        setIsLoading(false);
+        return;
+      }
     } catch (error: any) {
-      const message = cleanErrorMessage(error);
-      toast.error(message);
+      console.error('%c❌❌❌ ERROR GENERAL EN REGISTRO ❌❌❌', 'background: #ff0000; color: #ffffff; font-size: 16px; padding: 5px;');
+      console.error('❌ [RegisterPage] Error general:', error);
+      console.error('❌ [RegisterPage] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        stack: error.stack,
+      });
+      
+      // Guardar error en localStorage
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        action: 'ERROR_GENERAL_REGISTRO',
+        error: {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        },
+      };
+      const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+      existingLogs.push(logEntry);
+      localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
+      
+      // Extraer mensaje del backend de forma más específica
+      let errorMessage = 'Error al procesar el registro';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        errorMessage = 
+          errorData.message || 
+          errorData.error || 
+          (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+          (typeof errorData === 'string' ? errorData : null) ||
+          errorMessage;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
+      const cleanMessage = cleanErrorMessage(error);
+      toast.error(cleanMessage, {
+        duration: 5000,
+      });
+      
+      // NO redirigir al login cuando hay error, quedarse en la página de registro
+      setIsLoading(false);
+      // NO hacer return aquí, dejar que el finally se ejecute
     } finally {
       setIsLoading(false);
+      console.log('🏁 [RegisterPage] Proceso de registro finalizado');
     }
   };
 
@@ -169,7 +415,29 @@ export default function RegisterPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 shadow-xl shadow-slate-900/5"
           >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form 
+              onSubmit={(e) => {
+                // PREVENIR RECARGA DE PÁGINA
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.error('%c🟢🟢🟢 FORMULARIO ENVIADO 🟢🟢🟢', 'background: #00ff00; color: #000000; font-size: 20px; padding: 10px;');
+                console.warn('🟢 [RegisterPage] Formulario enviado!', e);
+                
+                // Guardar en localStorage
+                const logEntry = {
+                  timestamp: new Date().toISOString(),
+                  action: 'FORMULARIO_ENVIADO',
+                };
+                const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+                existingLogs.push(logEntry);
+                localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
+                
+                // Ejecutar handleSubmit sin recargar
+                handleSubmit(onSubmit)(e);
+              }} 
+              className="space-y-5"
+            >
               {/* Grid de 2 columnas para nombre y apellido */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 {/* Primer Nombre */}
