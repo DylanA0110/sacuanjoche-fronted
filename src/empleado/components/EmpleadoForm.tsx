@@ -28,6 +28,8 @@ import {
   validateName,
   formatTelefono,
   validateTelefono,
+  formatTelefonoForBackend,
+  formatTelefonoForInput,
 } from '@/shared/utils/validation';
 import { toast } from 'sonner';
 
@@ -76,7 +78,7 @@ export function EmpleadoForm({
         primerApellido: empleado.primerApellido || '',
         segundoApellido: empleado.segundoApellido || '',
         sexo: (empleado.sexo as 'M' | 'F') || 'M',
-        telefono: empleado.telefono || '',
+        telefono: formatTelefonoForInput(empleado.telefono || ''),
         fechaNac: empleado.fechaNac ? empleado.fechaNac.split('T')[0] : '',
         estado: empleado.estado || 'activo',
       });
@@ -171,10 +173,8 @@ export function EmpleadoForm({
       }
     }
 
-    // Formatear teléfono: agregar 505 si no lo tiene
-    const telefonoLimpio = data.telefono.replace(/\D/g, '');
-    const telefonoBackend =
-      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+    // Formatear teléfono: agregar 505 internamente (el usuario solo escribe 8 dígitos)
+    const telefonoBackend = formatTelefonoForBackend(data.telefono);
 
     onSubmit({
       ...data,

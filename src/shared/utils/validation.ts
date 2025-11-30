@@ -70,19 +70,17 @@ export const validateEmail = (email: string): string | null => {
 
 /**
  * Formatea un teléfono (solo números, máximo 8 dígitos)
+ * El usuario solo puede escribir 8 dígitos, el 505 se agrega internamente
  */
 export const formatTelefono = (value: string): string => {
   // Remover todo excepto números
   const cleaned = value.replace(/\D/g, '');
-  // Si empieza con 505, removerlo
-  if (cleaned.startsWith('505') && cleaned.length > 3) {
-    return cleaned.slice(3).slice(0, 8);
-  }
+  // Solo permitir máximo 8 dígitos (sin el 505)
   return cleaned.slice(0, 8);
 };
 
 /**
- * Valida un teléfono
+ * Valida un teléfono (debe tener exactamente 8 dígitos)
  */
 export const validateTelefono = (telefono: string): string | null => {
   const cleaned = formatTelefono(telefono);
@@ -90,6 +88,44 @@ export const validateTelefono = (telefono: string): string | null => {
     return 'El teléfono debe tener 8 dígitos';
   }
   return null;
+};
+
+/**
+ * Formatea el teléfono para enviar al backend (agrega 505 internamente)
+ * El usuario solo escribe 8 dígitos, esta función agrega el 505
+ */
+export const formatTelefonoForBackend = (telefono: string): string => {
+  const cleaned = formatTelefono(telefono);
+  // Si tiene 8 dígitos, agregar 505 al inicio (sin el +)
+  if (cleaned.length === 8) {
+    return `505${cleaned}`;
+  }
+  // Si ya tiene 505, dejarlo como está (pero sin +)
+  if (cleaned.startsWith('505') && cleaned.length === 11) {
+    return cleaned;
+  }
+  // Si tiene menos de 8 dígitos, devolverlo como está (el backend validará)
+  return cleaned;
+};
+
+/**
+ * Extrae solo los 8 dígitos del teléfono para mostrar en el input
+ * Si el teléfono viene del backend con 505, lo remueve para mostrar solo los 8 dígitos
+ */
+export const formatTelefonoForInput = (telefono: string): string => {
+  if (!telefono) return '';
+  // Remover todo excepto números
+  const cleaned = telefono.replace(/\D/g, '');
+  // Si empieza con 505 y tiene 11 dígitos, extraer solo los últimos 8
+  if (cleaned.startsWith('505') && cleaned.length === 11) {
+    return cleaned.slice(3);
+  }
+  // Si tiene más de 8 dígitos, tomar solo los últimos 8
+  if (cleaned.length > 8) {
+    return cleaned.slice(-8);
+  }
+  // Devolver tal cual (ya está en formato correcto)
+  return cleaned;
 };
 
 /**

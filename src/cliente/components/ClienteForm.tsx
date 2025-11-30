@@ -34,6 +34,8 @@ import {
   validateName,
   formatTelefono,
   validateTelefono,
+  formatTelefonoForBackend,
+  formatTelefonoForInput,
 } from '@/shared/utils/validation';
 
 interface ClienteFormProps {
@@ -113,7 +115,7 @@ export function ClienteForm({
       reset({
         primerNombre: cliente.primerNombre,
         primerApellido: cliente.primerApellido,
-        telefono: cliente.telefono,
+        telefono: formatTelefonoForInput(cliente.telefono || ''),
         direccionTexto: '',
         referencia: '',
         etiquetaDireccion: 'Casa',
@@ -160,10 +162,8 @@ export function ClienteForm({
       return;
     }
 
-    // Formatear teléfono: agregar 505 si no lo tiene
-    const telefonoLimpio = data.telefono.replace(/\D/g, '');
-    const telefonoBackend =
-      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+    // Formatear teléfono: agregar 505 internamente (el usuario solo escribe 8 dígitos)
+    const telefonoBackend = formatTelefonoForBackend(data.telefono);
 
     const dataToSubmit = cliente
       ? {

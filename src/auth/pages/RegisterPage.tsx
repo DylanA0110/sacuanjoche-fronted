@@ -3,7 +3,14 @@ import { useNavigate, useLocation, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { GiRose } from 'react-icons/gi';
-import { HiMail, HiLockClosed, HiEye, HiEyeOff, HiUser, HiPhone } from 'react-icons/hi';
+import {
+  HiMail,
+  HiLockClosed,
+  HiEye,
+  HiEyeOff,
+  HiUser,
+  HiPhone,
+} from 'react-icons/hi';
 import { toast } from 'sonner';
 import { useAuthStore } from '../store/auth.store';
 import { checkAuthAction } from '../actions/check-status';
@@ -11,6 +18,7 @@ import { hasAdminPanelAccess } from '@/shared/api/interceptors';
 import { registerAction } from '../actions/register.action';
 import { loginAction } from '../actions/login.action';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
+import { formatTelefonoForBackend } from '@/shared/utils/validation';
 
 interface RegisterFormData {
   primerNombre: string;
@@ -28,7 +36,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser, isAuthenticated } = useAuthStore();
-  
+
   const {
     register,
     handleSubmit,
@@ -44,7 +52,7 @@ export default function RegisterPage() {
       confirmPassword: '',
     },
   });
-  
+
   const password = watch('password');
 
   // Verificar si ya está autenticado
@@ -69,7 +77,7 @@ export default function RegisterPage() {
       const { user } = useAuthStore.getState();
       if (user) {
         const from = (location.state as any)?.from?.pathname;
-        
+
         if (hasAdminPanelAccess(user.roles)) {
           navigate(from || '/admin', { replace: true });
         } else {
@@ -86,20 +94,27 @@ export default function RegisterPage() {
       action: 'REGISTRO_INICIADO',
       data: { email: data.email, primerNombre: data.primerNombre },
     };
-    const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+    const existingLogs = JSON.parse(
+      localStorage.getItem('register_logs') || '[]'
+    );
     existingLogs.push(logEntry);
-    localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20))); // Guardar últimos 20
-    
+    localStorage.setItem(
+      'register_logs',
+      JSON.stringify(existingLogs.slice(-20))
+    ); // Guardar últimos 20
+
     setIsLoading(true);
 
     try {
       // Preparar clienteData para el registro
-      // Enviar el teléfono exactamente como lo escribió el usuario (sin modificar)
+      // El usuario solo escribe 8 dígitos, el 505 se agrega internamente
+      const telefonoBackend = formatTelefonoForBackend(data.telefono);
+
       const clienteData = {
         primerNombre: data.primerNombre.trim(),
         primerApellido: data.primerApellido.trim(),
         // No se pide dirección en el formulario actual
-        telefono: data.telefono.trim(), // Enviar exactamente lo que escribió el usuario
+        telefono: telefonoBackend,
       };
 
       // 1. Registrar al usuario con clienteData (el backend crea el cliente automáticamente)
@@ -112,17 +127,21 @@ export default function RegisterPage() {
 
       try {
         await registerAction(registerData);
-        
+
         // Guardar en localStorage
         const logEntry = {
           timestamp: new Date().toISOString(),
           action: 'USUARIO_REGISTRADO',
         };
-        const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+        const existingLogs = JSON.parse(
+          localStorage.getItem('register_logs') || '[]'
+        );
         existingLogs.push(logEntry);
-        localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
+        localStorage.setItem(
+          'register_logs',
+          JSON.stringify(existingLogs.slice(-20))
+        );
       } catch (error: any) {
-        
         // Guardar error en localStorage
         const logEntry = {
           timestamp: new Date().toISOString(),
@@ -133,32 +152,39 @@ export default function RegisterPage() {
             status: error.response?.status,
           },
         };
-        const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+        const existingLogs = JSON.parse(
+          localStorage.getItem('register_logs') || '[]'
+        );
         existingLogs.push(logEntry);
-        localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
-        
+        localStorage.setItem(
+          'register_logs',
+          JSON.stringify(existingLogs.slice(-20))
+        );
+
         // Extraer mensaje del backend de forma más específica
         let errorMessage = 'Error al crear la cuenta';
-        
+
         if (error.response?.data) {
           const errorData = error.response.data;
           // Intentar obtener el mensaje de diferentes formas
-          errorMessage = 
-            errorData.message || 
-            errorData.error || 
-            (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+          errorMessage =
+            errorData.message ||
+            errorData.error ||
+            (Array.isArray(errorData.message)
+              ? errorData.message.join(', ')
+              : null) ||
             (typeof errorData === 'string' ? errorData : null) ||
             errorMessage;
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
         const cleanMessage = cleanErrorMessage(error);
         toast.error(cleanMessage, {
           duration: 5000,
         });
-        
+
         setIsLoading(false);
         return;
       }
@@ -173,28 +199,29 @@ export default function RegisterPage() {
       try {
         loginResponse = await loginAction(loginData);
       } catch (error: any) {
-        
         // Extraer mensaje del backend de forma más específica
         let errorMessage = 'Error al iniciar sesión';
-        
+
         if (error.response?.data) {
           const errorData = error.response.data;
-          errorMessage = 
-            errorData.message || 
-            errorData.error || 
-            (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+          errorMessage =
+            errorData.message ||
+            errorData.error ||
+            (Array.isArray(errorData.message)
+              ? errorData.message.join(', ')
+              : null) ||
             (typeof errorData === 'string' ? errorData : null) ||
             errorMessage;
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
         const cleanMessage = cleanErrorMessage(error);
         toast.error(cleanMessage, {
           duration: 5000,
         });
-        
+
         setIsLoading(false);
         return;
       }
@@ -236,7 +263,9 @@ export default function RegisterPage() {
           // Error al guardar - continuar de todas formas
         }
 
-        toast.success(`¡Bienvenido, ${clienteNombre}! Tu cuenta ha sido creada exitosamente.`);
+        toast.success(
+          `¡Bienvenido, ${clienteNombre}! Tu cuenta ha sido creada exitosamente.`
+        );
 
         // Redirigir a la landing page (ya está autenticado)
         navigate('/', { replace: true });
@@ -253,7 +282,6 @@ export default function RegisterPage() {
         return;
       }
     } catch (error: any) {
-      
       // Guardar error en localStorage
       const logEntry = {
         timestamp: new Date().toISOString(),
@@ -264,31 +292,38 @@ export default function RegisterPage() {
           status: error.response?.status,
         },
       };
-      const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+      const existingLogs = JSON.parse(
+        localStorage.getItem('register_logs') || '[]'
+      );
       existingLogs.push(logEntry);
-      localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
-      
+      localStorage.setItem(
+        'register_logs',
+        JSON.stringify(existingLogs.slice(-20))
+      );
+
       // Extraer mensaje del backend de forma más específica
       let errorMessage = 'Error al procesar el registro';
-      
+
       if (error.response?.data) {
         const errorData = error.response.data;
-        errorMessage = 
-          errorData.message || 
-          errorData.error || 
-          (Array.isArray(errorData.message) ? errorData.message.join(', ') : null) ||
+        errorMessage =
+          errorData.message ||
+          errorData.error ||
+          (Array.isArray(errorData.message)
+            ? errorData.message.join(', ')
+            : null) ||
           (typeof errorData === 'string' ? errorData : null) ||
           errorMessage;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       // Limpiar y mostrar el mensaje con sonner (pasar el error completo)
       const cleanMessage = cleanErrorMessage(error);
       toast.error(cleanMessage, {
         duration: 5000,
       });
-      
+
       // NO redirigir al login cuando hay error, quedarse en la página de registro
       setIsLoading(false);
       // NO hacer return aquí, dejar que el finally se ejecute
@@ -343,24 +378,29 @@ export default function RegisterPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-8 shadow-xl shadow-slate-900/5"
           >
-            <form 
+            <form
               onSubmit={(e) => {
                 // PREVENIR RECARGA DE PÁGINA
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 // Guardar en localStorage
                 const logEntry = {
                   timestamp: new Date().toISOString(),
                   action: 'FORMULARIO_ENVIADO',
                 };
-                const existingLogs = JSON.parse(localStorage.getItem('register_logs') || '[]');
+                const existingLogs = JSON.parse(
+                  localStorage.getItem('register_logs') || '[]'
+                );
                 existingLogs.push(logEntry);
-                localStorage.setItem('register_logs', JSON.stringify(existingLogs.slice(-20)));
-                
+                localStorage.setItem(
+                  'register_logs',
+                  JSON.stringify(existingLogs.slice(-20))
+                );
+
                 // Ejecutar handleSubmit sin recargar
                 handleSubmit(onSubmit)(e);
-              }} 
+              }}
               className="space-y-5"
             >
               {/* Grid de 2 columnas para nombre y apellido */}
@@ -382,13 +422,17 @@ export default function RegisterPage() {
                       })}
                       placeholder="Juan"
                       className={`w-full px-4 py-3 pl-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                        errors.primerNombre ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                        errors.primerNombre
+                          ? 'border-red-400 focus:border-red-400'
+                          : 'border-slate-300 focus:border-emerald-500'
                       }`}
                     />
                     <HiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   </div>
                   {errors.primerNombre && (
-                    <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.primerNombre.message}</p>
+                    <p className="mt-1.5 text-xs text-red-500 font-medium">
+                      {errors.primerNombre.message}
+                    </p>
                   )}
                 </div>
 
@@ -404,18 +448,23 @@ export default function RegisterPage() {
                         required: 'El primer apellido es requerido',
                         minLength: {
                           value: 2,
-                          message: 'El apellido debe tener al menos 2 caracteres',
+                          message:
+                            'El apellido debe tener al menos 2 caracteres',
                         },
                       })}
                       placeholder="Pérez"
                       className={`w-full px-4 py-3 pl-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                        errors.primerApellido ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                        errors.primerApellido
+                          ? 'border-red-400 focus:border-red-400'
+                          : 'border-slate-300 focus:border-emerald-500'
                       }`}
                     />
                     <HiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   </div>
                   {errors.primerApellido && (
-                    <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.primerApellido.message}</p>
+                    <p className="mt-1.5 text-xs text-red-500 font-medium">
+                      {errors.primerApellido.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -437,13 +486,17 @@ export default function RegisterPage() {
                     })}
                     placeholder="+505 1234-5678"
                     className={`w-full px-4 py-3 pl-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                      errors.telefono ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                      errors.telefono
+                        ? 'border-red-400 focus:border-red-400'
+                        : 'border-slate-300 focus:border-emerald-500'
                     }`}
                   />
                   <HiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 </div>
                 {errors.telefono && (
-                  <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.telefono.message}</p>
+                  <p className="mt-1.5 text-xs text-red-500 font-medium">
+                    {errors.telefono.message}
+                  </p>
                 )}
               </div>
 
@@ -464,13 +517,17 @@ export default function RegisterPage() {
                     })}
                     placeholder="tu@email.com"
                     className={`w-full px-4 py-3 pl-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                      errors.email ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                      errors.email
+                        ? 'border-red-400 focus:border-red-400'
+                        : 'border-slate-300 focus:border-emerald-500'
                     }`}
                   />
                   <HiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 </div>
                 {errors.email && (
-                  <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.email.message}</p>
+                  <p className="mt-1.5 text-xs text-red-500 font-medium">
+                    {errors.email.message}
+                  </p>
                 )}
               </div>
 
@@ -488,12 +545,15 @@ export default function RegisterPage() {
                         required: 'La contraseña es requerida',
                         minLength: {
                           value: 4,
-                          message: 'La contraseña debe tener al menos 4 caracteres',
+                          message:
+                            'La contraseña debe tener al menos 4 caracteres',
                         },
                       })}
                       placeholder="••••••••"
                       className={`w-full px-4 py-3 pl-11 pr-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                        errors.password ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                        errors.password
+                          ? 'border-red-400 focus:border-red-400'
+                          : 'border-slate-300 focus:border-emerald-500'
                       }`}
                     />
                     <HiLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -510,7 +570,9 @@ export default function RegisterPage() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.password.message}</p>
+                    <p className="mt-1.5 text-xs text-red-500 font-medium">
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
 
@@ -529,13 +591,17 @@ export default function RegisterPage() {
                       })}
                       placeholder="••••••••"
                       className={`w-full px-4 py-3 pl-11 pr-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
-                        errors.confirmPassword ? 'border-red-400 focus:border-red-400' : 'border-slate-300 focus:border-emerald-500'
+                        errors.confirmPassword
+                          ? 'border-red-400 focus:border-red-400'
+                          : 'border-slate-300 focus:border-emerald-500'
                       }`}
                     />
                     <HiLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       {showConfirmPassword ? (
@@ -546,7 +612,9 @@ export default function RegisterPage() {
                     </button>
                   </div>
                   {errors.confirmPassword && (
-                    <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.confirmPassword.message}</p>
+                    <p className="mt-1.5 text-xs text-red-500 font-medium">
+                      {errors.confirmPassword.message}
+                    </p>
                   )}
                 </div>
               </div>

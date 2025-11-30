@@ -56,6 +56,7 @@ import {
   validateName,
   formatTelefono,
   validateTelefono,
+  formatTelefonoForBackend,
 } from '@/shared/utils/validation';
 
 export default function EmpleadosPage() {
@@ -305,10 +306,8 @@ export default function EmpleadosPage() {
       }
     }
 
-    // Formatear teléfono: agregar 505 si no lo tiene
-    const telefonoLimpio = empleadoForm.telefono.replace(/\D/g, '');
-    const telefonoBackend =
-      telefonoLimpio.length === 8 ? `505${telefonoLimpio}` : telefonoLimpio;
+    // Formatear teléfono: agregar 505 internamente (el usuario solo escribe 8 dígitos)
+    const telefonoBackend = formatTelefonoForBackend(empleadoForm.telefono);
 
     createEmpleadoMutation.mutate({
       ...empleadoForm,
