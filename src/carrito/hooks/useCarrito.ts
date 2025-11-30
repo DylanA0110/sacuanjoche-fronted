@@ -207,14 +207,16 @@ export const useCarrito = () => {
         throw new Error('El precio del producto no es válido');
       }
       
-      // Según la documentación, el backend calcula totalLinea automáticamente
-      // Solo enviar cantidad y precioUnitario
+      // Calcular totalLinea (cantidad * precioUnitario)
+      const totalLinea = cantidad * precioUnitario;
+      
+      // Crear el DTO con todos los campos requeridos
       const createDto: CreateCarritoArregloDto = {
         idCarrito: carritoId,
         idArreglo: data.idArreglo,
         cantidad: cantidad,
         precioUnitario: precioUnitario,
-        // totalLinea se calcula automáticamente en el backend (cantidad * precioUnitario)
+        totalLinea: totalLinea, // Calcular totalLinea antes de enviar
       };
       
       console.log('🛒 [addProductoMutation] Agregando nuevo producto al carrito:', createDto);

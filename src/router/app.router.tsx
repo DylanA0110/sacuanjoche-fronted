@@ -20,7 +20,8 @@ const ClientesPage = lazy(() => import('../cliente/pages/ClientesPage'));
 const CatalogoPage = lazy(() => import('../catalogo/pages/CatalogoPage'));
 const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
-const RutasPage = lazy(() => import('../rutas/pages/RutasPage'));
+const RutasPage = lazy(() => import('../ruta/pages/RutasPage'));
+const RutasConductorPage = lazy(() => import('../ruta/pages/RutasConductorPage'));
 const ProfilePage = lazy(() => import('../auth/pages/ProfilePage'));
 const CheckoutPage = lazy(() => import('../carrito/pages/CheckoutPage'));
 const CompletarPedidoPage = lazy(() => import('../carrito/pages/CompletarPedidoPage'));
@@ -204,6 +205,10 @@ export const router = createBrowserRouter([
       {
         path: 'rutas',
         element: <RutasPage />,
+      },
+      {
+        path: 'mis-rutas',
+        element: <RutasConductorPage />,
       },
       {
         path: 'perfil',

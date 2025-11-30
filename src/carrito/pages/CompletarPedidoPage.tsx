@@ -19,9 +19,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { MdCheckCircle, MdLocationOn, MdPerson } from 'react-icons/md';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ClienteDireccion } from '@/cliente/types/direccion.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
+import type { Carrito } from '../types/carrito.interface';
 
 interface CompletarPedidoFormData {
   idDireccion: string;
@@ -34,6 +35,7 @@ interface CompletarPedidoFormData {
 
 export default function CompletarPedidoPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { carrito, subtotal, itemCount, refetch, isLoading: isLoadingCarrito } = useCarrito();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,12 +65,12 @@ export default function CompletarPedidoPage() {
     },
   });
 
-  const idCliente = user?.cliente?.idCliente || user?.idCliente || null;
+  const idCliente = user?.cliente?.idCliente;
 
   // Obtener direcciones del cliente
   const { data: direccionesData, isLoading: isLoadingDirecciones } = useQuery({
     queryKey: ['clienteDirecciones', idCliente],
-    queryFn: () => getClienteDirecciones({ idCliente, limit: 100 }),
+    queryFn: () => getClienteDirecciones({ idCliente: idCliente!, limit: 100 }),
     enabled: !!idCliente,
   });
 
@@ -115,8 +117,11 @@ export default function CompletarPedidoPage() {
       return;
     }
 
+    // Type assertion para ayudar a TypeScript
+    const carritoTyped = carrito as Carrito;
+
     // Si el carrito no tiene productos, es un carrito nuevo - redirigir al checkout para agregar productos
-    if (!carrito.carritosArreglo || carrito.carritosArreglo.length === 0) {
+    if (!carritoTyped.carritosArreglo || carritoTyped.carritosArreglo.length === 0) {
       console.log('🔄 Carrito sin productos. Redirigiendo al checkout...');
       toast.error('Tu carrito está vacío. Agrega productos antes de pagar.');
       navigate('/carrito/checkout', { replace: true });
@@ -128,7 +133,7 @@ export default function CompletarPedidoPage() {
       setIsVerifying(true);
       
       // Si no hay idPago, redirigir al checkout para crear un nuevo pago
-      if (!carrito.idPago) {
+      if (!carritoTyped.idPago) {
         console.log('🔄 Carrito sin pago. Redirigiendo al checkout para crear pago...');
         toast.error('Debes completar el pago primero');
         navigate('/carrito/checkout', { replace: true });
@@ -138,7 +143,7 @@ export default function CompletarPedidoPage() {
       
       // Verificar que el pago esté REALMENTE confirmado (estado "pagado")
       // Si tiene idPago pero no está pagado, es un pago anterior o pendiente - redirigir a checkout
-      if (carrito.pago?.estado === 'pagado') {
+      if (carritoTyped.pago?.estado === 'pagado') {
         console.log('✅ Pago confirmado correctamente');
         setIsVerifying(false);
         verificandoRef.current = false;
@@ -146,8 +151,8 @@ export default function CompletarPedidoPage() {
       }
       
       // Si tiene idPago pero el pago no está confirmado, redirigir a checkout para crear nuevo pago
-      if (carrito.idPago && carrito.pago && carrito.pago.estado !== 'pagado') {
-        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Estado:', carrito.pago.estado);
+      if (carritoTyped.idPago && carritoTyped.pago && carritoTyped.pago.estado !== 'pagado') {
+        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Estado:', carritoTyped.pago.estado);
         console.log('🔄 Redirigiendo a checkout para crear nuevo pago...');
         toast.error('El pago anterior no está confirmado. Debes crear un nuevo pago.');
         navigate('/carrito/checkout', { replace: true });
@@ -156,7 +161,7 @@ export default function CompletarPedidoPage() {
       }
       
       // Si no tenemos información del pago pero sí tenemos idPago, intentar obtenerla (solo una vez)
-      if (!carrito.pago && carrito.idPago) {
+      if (!carritoTyped.pago && carritoTyped.idPago) {
         console.log('🔄 Carrito tiene idPago pero no información del pago. Obteniendo información...');
         
         let intentos = 0;
@@ -166,13 +171,15 @@ export default function CompletarPedidoPage() {
           await new Promise(resolve => setTimeout(resolve, 1000));
           const carritoRefetch = await refetch();
           
-          if (carritoRefetch.data?.pago) {
+          const carritoRefetchTyped = carritoRefetch.data as Carrito | undefined;
+          
+          if (carritoRefetchTyped?.pago) {
             console.log('✅ Información del pago obtenida:', {
-              estado: carritoRefetch.data.pago.estado,
+              estado: carritoRefetchTyped.pago.estado,
               intento: intentos + 1,
             });
             
-            if (carritoRefetch.data.pago.estado === 'pagado') {
+            if (carritoRefetchTyped.pago.estado === 'pagado') {
               setIsVerifying(false);
               verificandoRef.current = false;
               return;
@@ -186,8 +193,8 @@ export default function CompletarPedidoPage() {
         
         console.log('⚠️ Carrito tiene idPago pero no se pudo obtener información completa del pago. Continuando...');
         console.log('ℹ️ El backend validará el estado del pago al crear el pedido.');
-      } else if (carrito.pago && carrito.pago.estado !== 'pagado') {
-        console.error('❌ Estado del pago no es "pagado":', carrito.pago.estado);
+      } else if (carritoTyped.pago && carritoTyped.pago.estado !== 'pagado') {
+        console.error('❌ Estado del pago no es "pagado":', carritoTyped.pago.estado);
         toast.error('El pago debe estar confirmado antes de completar el pedido');
         navigate('/carrito/checkout', { replace: true });
         verificandoRef.current = false;
@@ -200,7 +207,7 @@ export default function CompletarPedidoPage() {
     
     verificarPago();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoadingCarrito, carrito?.idCarrito, carrito?.idPago]); // Solo cuando cambia el idCarrito o idPago
+  }, [isLoadingCarrito, (carrito as Carrito)?.idCarrito, (carrito as Carrito)?.idPago, navigate, refetch]); // Solo cuando cambia el idCarrito o idPago
 
   const onSubmit = async (data: CompletarPedidoFormData) => {
     // Validaciones según la documentación
@@ -209,14 +216,17 @@ export default function CompletarPedidoPage() {
       return;
     }
 
+    // Type assertion para ayudar a TypeScript
+    const carritoTyped = carrito as Carrito;
+
     // Validar que el carrito tenga productos
-    if (!carrito.carritosArreglo || carrito.carritosArreglo.length === 0) {
+    if (!carritoTyped.carritosArreglo || carritoTyped.carritosArreglo.length === 0) {
       toast.error('El carrito no tiene productos. Agrega productos antes de crear el pedido.');
       return;
     }
 
     // Validar que el carrito tenga un pago asociado
-    if (!carrito.idPago) {
+    if (!carritoTyped.idPago) {
       toast.error('El carrito no tiene un pago asociado. Debes completar el pago primero.');
       navigate('/carrito/checkout', { replace: true });
       return;
@@ -224,18 +234,20 @@ export default function CompletarPedidoPage() {
 
     // Validar que el pago esté en estado PAGADO (solo si tenemos la información del pago)
     // Si no tenemos la información pero sí tenemos idPago, permitir continuar (el backend validará)
-    if (carrito.pago && carrito.pago.estado !== 'pagado') {
+    if (carritoTyped.pago && carritoTyped.pago.estado !== 'pagado') {
       toast.error('El pago debe estar completado antes de crear el pedido.');
       navigate('/carrito/checkout', { replace: true });
       return;
     }
     
     // Si tenemos idPago pero no información del pago, hacer un último refetch antes de continuar
-    if (carrito.idPago && !carrito.pago) {
+    if (carritoTyped.idPago && !carritoTyped.pago) {
       console.log('🔄 Último intento: Obteniendo información del pago antes de crear el pedido...');
       const carritoActualizado = await refetch();
       
-      if (carritoActualizado.data?.pago && carritoActualizado.data.pago.estado !== 'pagado') {
+      const carritoActualizadoTyped = carritoActualizado.data as Carrito | undefined;
+      
+      if (carritoActualizadoTyped?.pago && carritoActualizadoTyped.pago.estado !== 'pagado') {
         toast.error('El pago debe estar completado antes de crear el pedido.');
         navigate('/carrito/checkout', { replace: true });
         return;
@@ -309,7 +321,7 @@ export default function CompletarPedidoPage() {
             });
           }
 
-          idDireccionFinal = nuevaDireccion.idDireccion;
+          idDireccionFinal = nuevaDireccion.idDireccion!;
           console.log('✅ Dirección creada:', idDireccionFinal);
         } catch (error: any) {
           console.error('❌ Error al crear dirección:', error);
@@ -363,12 +375,18 @@ export default function CompletarPedidoPage() {
       }
 
       // Crear pedido desde el carrito (sin idEmpleado, sin costoEnvio, sin fechaEntregaEstimada)
-      const pedido = await crearPedidoDesdeCarrito(carrito.idCarrito, {
+      const pedido = await crearPedidoDesdeCarrito(carritoTyped.idCarrito, {
         idDireccion: idDireccionFinal,
         idContactoEntrega: contacto.idContactoEntrega,
         idFolio: 2, // Siempre debe ser 2
         direccionTxt: data.direccionTxt,
       });
+
+      // Invalidar la query del carrito para que se actualice (el backend probablemente lo limpia)
+      queryClient.invalidateQueries({ queryKey: ['carrito', 'activo'] });
+      
+      // También limpiar el localStorage del pago si existe
+      localStorage.removeItem('paypal_pago_id');
 
       toast.success('¡Pedido creado exitosamente!');
       navigate(`/pedido/${pedido.idPedido}/confirmacion`);
@@ -399,7 +417,7 @@ export default function CompletarPedidoPage() {
   }
 
   // Verificar que el pago exista
-  if (!carrito.idPago) {
+  if (!carrito || !(carrito as Carrito).idPago) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -419,7 +437,7 @@ export default function CompletarPedidoPage() {
         <Card className="bg-green-50 border-green-200 mb-6">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <MdCheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+              <MdCheckCircle className="w-6 h-6 text-green-600 shrink-0" />
               <div>
                 <p className="font-semibold text-green-900">Pago Confirmado</p>
                 <p className="text-sm text-green-700">Tu pago ha sido procesado exitosamente. Completa la información de entrega para crear tu pedido.</p>
@@ -521,7 +539,7 @@ export default function CompletarPedidoPage() {
                       {direccionData && (
                         <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
                           <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
-                            <MdLocationOn className="h-5 w-5 text-green-600 flex-shrink-0" />
+                            <MdLocationOn className="h-5 w-5 text-green-600 shrink-0" />
                             {direccionData.formattedAddress}
                           </p>
                         </div>
@@ -635,7 +653,7 @@ export default function CompletarPedidoPage() {
                   {/* Lista de productos */}
                   <div className="space-y-2 pt-4 border-t border-gray-200">
                     <p className="text-sm font-medium text-gray-700">Productos:</p>
-                    {carrito.carritosArreglo?.map((item) => {
+                    {(carrito as Carrito)?.carritosArreglo?.map((item: any) => {
                       const precio = Number(item.precioUnitario) || 0;
                       return (
                         <div key={item.idCarritoArreglo} className="text-sm text-gray-600">

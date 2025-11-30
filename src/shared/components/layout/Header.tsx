@@ -11,6 +11,7 @@ import { MdPerson, MdLogout, MdMenu } from 'react-icons/md';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/auth/store/auth.store';
+import { AdminNotifications } from '../AdminNotifications';
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
@@ -55,9 +56,13 @@ export function AppHeader({ onToggleSidebar, onOpenMobile }: AppHeaderProps) {
         </button>
       </div>
 
-      {/* Avatar y menú de usuario - Siempre visible a la derecha */}
-      <div className="shrink-0 ml-1.5">
-      <DropdownMenu>
+      {/* Notificaciones y Avatar - Siempre visible a la derecha */}
+      <div className="flex items-center gap-2 shrink-0 ml-1.5">
+        {/* Centro de notificaciones */}
+        <AdminNotifications />
+        
+        {/* Avatar y menú de usuario */}
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"

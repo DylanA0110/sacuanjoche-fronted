@@ -11,10 +11,12 @@ import {
   MdCategory,
   MdDescription,
   MdReceipt,
+  MdPerson,
 } from 'react-icons/md';
 import { GiRose } from 'react-icons/gi';
+import { useAuthStore } from '@/auth/store/auth.store';
 
-const menuItems = [
+const menuItemsAdmin = [
   { title: 'Dashboard', url: '/admin', icon: MdDashboard },
   { title: 'Arreglos', url: '/admin/arreglos', icon: MdLocalFlorist },
   { title: 'Catálogo', url: '/admin/catalogo', icon: MdCategory },
@@ -23,6 +25,10 @@ const menuItems = [
   { title: 'Facturas', url: '/admin/facturas', icon: MdReceipt },
   { title: 'Rutas & Envíos', url: '/admin/rutas', icon: MdLocalShipping },
   { title: 'Reportes', url: '/admin/reportes', icon: MdDescription },
+];
+
+const menuItemsConductor = [
+  { title: 'Mis Rutas', url: '/admin/mis-rutas', icon: MdLocalShipping },
 ];
 
 interface AppSidebarProps {
@@ -40,6 +46,13 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { user, hasRole } = useAuthStore();
+  
+  // Determinar si el usuario es conductor
+  const isConductor = user && hasRole('conductor') && !hasRole('admin') && !hasRole('vendedor');
+  
+  // Seleccionar el menú según el rol
+  const menuItems = isConductor ? menuItemsConductor : menuItemsAdmin;
 
   return (
     <aside

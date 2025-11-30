@@ -80,6 +80,9 @@ export default function LoginPage() {
       // Actualizar el store de Zustand
       setUser(userData);
       
+      // Verificar acceso al panel
+      const tieneAccesoPanel = hasAdminPanelAccess(userData.roles);
+      
       let welcomeMessage = '¡Bienvenido de nuevo!';
       const nombreCompleto = userData.empleado?.nombreCompleto || 
         (userData.empleado?.primerNombre && userData.empleado?.primerApellido
@@ -100,15 +103,34 @@ export default function LoginPage() {
 
       const from = (location.state as any)?.from?.pathname;
       
-      if (hasAdminPanelAccess(userData.roles)) {
+      if (tieneAccesoPanel) {
         navigate(from || '/admin', { replace: true });
       } else {
         // Si venía del catálogo, redirigir al catálogo
         navigate(from === '/catalogo' ? '/catalogo' : from || '/', { replace: true });
       }
     } catch (error: any) {
-      const message = cleanErrorMessage(error);
-      toast.error(message);
+      // Obtener el mensaje del backend directamente de la respuesta
+      // El loginAction ya extrae el mensaje del backend, así que usamos error.message
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : error?.response?.data?.message
+          ? error.response.data.message
+          : error?.response?.data?.error
+          ? error.response.data.error
+          : 'Error al iniciar sesión. Verifica tus credenciales.';
+
+      console.error('❌ [LoginPage] Error al iniciar sesión:', {
+        message: errorMessage,
+        status: error.status || error.response?.status,
+        responseData: error.response?.data,
+      });
+
+      toast.error(errorMessage, {
+        position: 'top-right',
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }

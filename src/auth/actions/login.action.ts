@@ -36,37 +36,66 @@ export const loginAction = async (loginData: LoginDto): Promise<AuthResponse> =>
     return data;
   } catch (error: any) {
     console.error('❌ [loginAction] Error al hacer login:', error);
-    console.error('❌ [loginAction] Error details:', {
+    
+    // Mostrar TODOS los detalles del error del backend
+    const errorDetails = {
       message: error.message,
-      response: error.response?.data,
       status: error.response?.status,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        data: error.config?.data,
-      },
-    });
+      statusText: error.response?.statusText,
+      responseData: error.response?.data,
+      responseHeaders: error.response?.headers,
+      requestUrl: error.config?.url,
+      requestMethod: error.config?.method,
+      requestData: error.config?.data ? { ...JSON.parse(error.config.data), password: '***' } : null,
+    };
+    
+    console.error('❌ [loginAction] Detalles completos del error:', errorDetails);
+    console.error('❌ [loginAction] Response data completo:', JSON.stringify(error.response?.data, null, 2));
     
     // Extraer el mensaje de error del backend de forma consistente
     if (error.response?.data) {
       const errorData = error.response.data;
-      const errorMessage = 
-        errorData.message || 
-        errorData.error || 
-        (typeof errorData === 'string' ? errorData : null) ||
-        'Error al iniciar sesión';
+      let errorMessage: string;
       
-      console.error('❌ [loginAction] Mensaje de error del backend:', errorMessage);
+      // Si es un array de mensajes (validaciones de NestJS)
+      if (Array.isArray(errorData.message)) {
+        errorMessage = errorData.message.join(', ');
+      }
+      // Si es un string
+      else if (typeof errorData.message === 'string') {
+        errorMessage = errorData.message;
+      }
+      // Si hay un campo 'error'
+      else if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error;
+      }
+      // Si el data completo es un string
+      else if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      }
+      // Si hay un objeto con detalles
+      else if (errorData.details || errorData.reason) {
+        errorMessage = errorData.details || errorData.reason || 'Error al iniciar sesión';
+      }
+      // Mensaje por defecto
+      else {
+        errorMessage = `Error ${error.response.status}: ${error.response.statusText || 'Error al iniciar sesión'}`;
+      }
       
-      // Crear un nuevo error con el mensaje del backend
+      console.error('❌ [loginAction] Mensaje de error extraído:', errorMessage);
+      console.error('❌ [loginAction] Status code:', error.response.status);
+      
+      // Crear un nuevo error con el mensaje del backend y toda la información
       const customError = new Error(errorMessage);
       (customError as any).response = error.response;
       (customError as any).status = error.response.status;
+      (customError as any).errorDetails = errorDetails;
       throw customError;
     }
     
     // Si no hay response, es un error de red
     if (error instanceof Error) {
+      console.error('❌ [loginAction] Error de red o sin respuesta del servidor');
       throw error;
     }
     

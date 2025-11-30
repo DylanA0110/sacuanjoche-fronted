@@ -1,9 +1,7 @@
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { HiMenu, HiX } from 'react-icons/hi';
-import { HiLogout, HiUser } from 'react-icons/hi';
-import { HiShoppingCart } from 'react-icons/hi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiMenu, HiX, HiLogout, HiUser, HiShoppingCart } from 'react-icons/hi';
 import { GiRose } from 'react-icons/gi';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuthStore } from '@/auth/store/auth.store';
 import { useCarrito } from '@/carrito/hooks/useCarrito';
@@ -11,19 +9,18 @@ import { toast } from 'sonner';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { scrollY } = useScroll();
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { itemCount } = useCarrito();
 
-  // Transformaciones FUERA del JSX (muy importante - evita recreación constante)
-  const headerHeight = useTransform(scrollY, [0, 100], [64, 56]);
+  // Transformaciones: Solo aplicamos cambio de altura en pantallas grandes (md hacia arriba)
+  // En móvil mantenemos una altura fija para evitar saltos visuales
+  
+  // Fondo sólido y oscuro para asegurar legibilidad
+  const backgroundColor = 'rgba(15, 15, 15, 0.98)';
 
-  // Fondo fijo sin cambio de color - más simple y moderno
-  const backgroundColor = 'rgba(15, 15, 15, 0.95)';
-
-  // Hashes válidos
   const VALID_HASHES = ['#inicio', '#servicios', '#galeria', '#historia', '#contacto'];
 
   const menuItems = [
@@ -35,32 +32,45 @@ export const Header = () => {
     { label: 'Contacto', href: '#contacto' },
   ];
 
-  // Handler para enlaces con hash
+  // 🔒 BLOQUEO DE SCROLL ROBUSTO
+  useEffect(() => {
+    if (isMenuOpen) {
+      // Guardar la posición actual para evitar que la página salte al inicio
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+    } else {
+      // Restaurar el scroll
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
+  }, [isMenuOpen]);
+
   const handleHashLink = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
       e.preventDefault();
+      setIsMenuOpen(false); // Cerrar menú inmediatamente
       
-      // Validar que el hash sea válido
       if (!VALID_HASHES.includes(hash)) {
-        // Limpiar URL y redirigir a inicio
-        window.history.replaceState(null, '', '/');
         navigate('/', { replace: true });
-        setIsMenuOpen(false);
         return;
       }
       
       if (location.pathname !== '/') {
-        // Si no estamos en la landing, navegar primero
         navigate(`/${hash}`);
       } else {
-        // Si estamos en la landing, actualizar la URL con el hash y hacer scroll suave
         window.history.pushState(null, '', hash);
-        
         const element = document.querySelector(hash);
         if (element) {
-          const headerOffset = 80;
-          const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+          const offset = 80;
+          const bodyRect = document.body.getBoundingClientRect().top;
+          const elementRect = element.getBoundingClientRect().top;
+          const elementPosition = elementRect - bodyRect;
+          const offsetPosition = elementPosition - offset;
 
           window.scrollTo({
             top: offsetPosition,
@@ -68,21 +78,10 @@ export const Header = () => {
           });
         }
       }
-      setIsMenuOpen(false);
     },
     [location.pathname, navigate]
   );
 
-  // Obtener nombre del usuario
-  const nombreUsuario = user?.empleado?.nombreCompleto || 
-    (user?.empleado?.primerNombre && user?.empleado?.primerApellido
-      ? `${user.empleado.primerNombre} ${user.empleado.primerApellido}`
-      : user?.empleado?.primerNombre || user?.cliente?.nombreCompleto ||
-        (user?.cliente?.primerNombre && user?.cliente?.primerApellido
-          ? `${user.cliente.primerNombre} ${user.cliente.primerApellido}`
-          : user?.cliente?.primerNombre || user?.email || 'Usuario'));
-
-  // Manejar cierre de sesión
   const handleLogout = useCallback(() => {
     logout();
     toast.success('Sesión cerrada correctamente');
@@ -90,273 +89,211 @@ export const Header = () => {
     navigate('/', { replace: true });
   }, [logout, navigate]);
 
+  const nombreUsuario = user?.email || 'Usuario';
+
   return (
-    <motion.header
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      style={{
-        height: headerHeight,
-        backgroundColor: backgroundColor,
-        '--header-height': headerHeight.get() + 'px',
-      } as React.CSSProperties & { '--header-height': string }}
-      className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 shadow-lg backdrop-blur-xl"
-    >
-      {/* Fondo sutil que combina con el Hero */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-32 h-32 bg-[#50C878]/20 opacity-[0.03] rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-[#50C878]/15 opacity-[0.02] rounded-full blur-3xl" />
-      </div>
-
-      <nav className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 relative z-10 h-full flex items-center">
-        <div className="flex items-center justify-between w-full py-2">
-          {/* Logo con más vida */}
-          <motion.a
-            href="#inicio"
-            onClick={(e) => handleHashLink(e, '#inicio')}
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center gap-2 group relative"
-          >
-            <motion.div
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-linear-to-br from-[#50C878]/40 to-[#50C878]/25 border-2 border-[#50C878]/50 flex items-center justify-center backdrop-blur-sm group-hover:from-[#50C878]/50 group-hover:to-[#50C878]/35 transition-all shadow-lg group-hover:shadow-[0_0_20px_rgba(80,200,120,0.4)]"
-              whileHover={{ rotate: 10 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+    <>
+      <motion.header
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        style={{
+          // En móvil usamos altura automática/fija, en desktop la dinámica
+          backgroundColor: backgroundColor,
+        }}
+        // z-40 para el header base, pero el menú móvil tendrá z-100
+        className="fixed top-0 left-0 right-0 z-40 border-b border-white/5 shadow-lg backdrop-blur-xl min-h-[60px]"
+      >
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10 h-full">
+          <div className="flex items-center justify-between py-3 md:py-0 md:h-(--header-height)" style={{ height: '100%' }}>
+            
+            {/* LOGO */}
+            <Link 
+              to="/" 
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-2 relative z-101" // Z-index alto para que el logo se vea sobre el menú abierto si quieres
             >
-              <GiRose className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#50C878] group-hover:scale-110 transition-transform" />
-            </motion.div>
-            <span className="font-orquidea text-base sm:text-lg font-bold text-white group-hover:text-[#50C878] transition-colors">
-              Sacuanjoche
-            </span>
-          </motion.a>
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#50C878]/40 to-[#50C878]/25 border-2 border-[#50C878]/50 flex items-center justify-center">
+                <GiRose className="w-4 h-4 text-[#50C878]" />
+              </div>
+              <span className="font-orquidea text-lg font-bold text-white">
+                Sacuanjoche
+              </span>
+            </Link>
 
-          {/* Menú desktop con más vida */}
-          <div className="hidden md:flex items-center space-x-0.5">
-            {menuItems.map((item) => {
-              const isHashLink = item.href.startsWith('#');
-              
-              if (isHashLink) {
-                return (
-                  <motion.a
+            {/* MENÚ DESKTOP (Oculto en móvil) */}
+            <div className="hidden md:flex items-center space-x-1">
+              {menuItems.map((item) => (
+                item.href.startsWith('#') ? (
+                  <a
                     key={item.href}
                     href={item.href}
                     onClick={(e) => handleHashLink(e, item.href)}
-                    className="px-3 py-1.5 text-white/80 hover:text-[#50C878] transition-colors font-medium text-xs uppercase tracking-wider relative group cursor-pointer"
-                    whileHover={{ y: -1 }}
+                    className="px-3 py-2 text-white/80 hover:text-[#50C878] transition-colors text-xs uppercase tracking-wider font-medium"
                   >
                     {item.label}
-                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
-                    <span className="absolute inset-0 bg-[#50C878]/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
-                  </motion.a>
-                );
-              }
+                  </a>
+                ) : (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="px-3 py-2 text-white/80 hover:text-[#50C878] transition-colors text-xs uppercase tracking-wider font-medium"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              ))}
 
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className="px-3 py-1.5 text-white/80 hover:text-[#50C878] transition-colors font-medium text-xs uppercase tracking-wider relative group"
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
-                  <span className="absolute inset-0 bg-[#50C878]/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
-                </Link>
-              );
-            })}
-
-            {/* Icono de carrito */}
-            {isAuthenticated && (
-              <Link
-                to="/carrito"
-                className="relative flex items-center justify-center w-10 h-10 text-white/80 hover:text-[#50C878] transition-colors ml-1.5"
-              >
-                <HiShoppingCart className="w-6 h-6" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#50C878] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
+              {/* Iconos Desktop */}
+              <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-2">
+                {isAuthenticated ? (
+                  <>
+                    <Link to="/carrito" className="p-2 text-white hover:text-[#50C878] relative">
+                      <HiShoppingCart size={20} />
+                      {itemCount > 0 && (
+                        <span className="absolute top-0 right-0 bg-[#50C878] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                          {itemCount > 9 ? '9+' : itemCount}
+                        </span>
+                      )}
+                    </Link>
+                    <button onClick={handleLogout} className="p-2 text-white hover:text-red-400" title="Salir">
+                      <HiLogout size={20} />
+                    </button>
+                  </>
+                ) : (
+                  <Link to="/login" className="px-4 py-1.5 bg-[#50C878] text-white rounded text-xs font-bold uppercase hover:bg-[#40b065] transition">
+                    Ingresar
+                  </Link>
                 )}
-              </Link>
-            )}
-
-            {/* Usuario autenticado - Solo mostrar correo y botón cerrar sesión */}
-            {isAuthenticated && user && (
-              <div className="flex items-center gap-3 ml-1.5">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 text-white/80 font-medium text-xs uppercase tracking-wider">
-                  <HiUser className="w-3.5 h-3.5 text-[#50C878]" />
-                  <span className="hidden sm:inline text-[#50C878]">{user.email}</span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-white/80 hover:text-red-400 transition-colors font-medium text-xs uppercase tracking-wider relative group"
-                >
-                  <HiLogout className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Cerrar sesión</span>
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-red-400 group-hover:w-full transition-all duration-300" />
-                </button>
               </div>
-            )}
+            </div>
 
-            {/* Botones de login/registro si no está autenticado */}
-            {!isAuthenticated && (
-              <div className="ml-1.5 flex items-center gap-1.5">
-                <Link
-                  to="/login"
-                  className="px-3 py-1.5 text-white/80 hover:text-[#50C878] transition-colors font-medium text-xs uppercase tracking-wider relative group"
-                >
-                  Iniciar sesión
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-linear-to-r from-[#50C878] to-[#3aa85c] group-hover:w-full transition-all duration-300" />
+            {/* BOTÓN HAMBURGUESA (Solo Móvil) */}
+            <div className="flex items-center gap-3 md:hidden">
+              {/* Carrito visible en header móvil también */}
+              {isAuthenticated && (
+                <Link to="/carrito" className="text-white hover:text-[#50C878] relative p-1">
+                   <HiShoppingCart size={24} />
+                   {itemCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-[#50C878] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                        {itemCount}
+                      </span>
+                   )}
                 </Link>
-                <Link
-                  to="/register"
-                  className="px-3 py-1.5 bg-[#50C878] text-white rounded-md hover:bg-[#00A87F] transition-colors font-medium text-xs uppercase tracking-wider"
-                >
-                  Registrarse
-                </Link>
-              </div>
-            )}
+              )}
+
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-white p-2 rounded-lg active:bg-white/10 transition-colors z-101" // Z-index crítico
+                aria-label="Abrir menú"
+              >
+                {isMenuOpen ? <HiX size={28} /> : <HiMenu size={28} />}
+              </button>
+            </div>
           </div>
-
-          {/* Botón menú móvil */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden text-white p-1.5 hover:text-[#50C878] transition-colors relative z-10 rounded-lg hover:bg-white/5"
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <HiX size={22} /> : <HiMenu size={22} />}
-          </button>
         </div>
+      </motion.header>
 
-        {/* Menú móvil - Drawer lateral moderno */}
+      {/* 📱 MENÚ MÓVIL (DRAWER) REPARADO */}
+      <AnimatePresence>
         {isMenuOpen && (
           <>
-            {/* Overlay oscuro */}
+            {/* 1. Backdrop (Fondo oscuro) */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-99"
             />
-            
-            {/* Drawer lateral */}
+
+            {/* 2. Drawer Panel */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0D0D0D] border-l border-white/10 shadow-2xl z-50 md:hidden overflow-y-auto"
+              // Usamos h-[100dvh] para móviles modernos, z-[100] para estar encima de todo
+              className="fixed top-0 right-0 h-dvh w-[80%] max-w-[300px] bg-[#0f0f0f] border-l border-white/10 shadow-2xl z-100 overflow-y-auto"
             >
-              <div className="flex flex-col h-full">
-                {/* Header del drawer */}
-                <div className="flex items-center justify-between p-4 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-[#50C878]/40 to-[#50C878]/25 border-2 border-[#50C878]/50 flex items-center justify-center">
-                      <GiRose className="w-4 h-4 text-[#50C878]" />
-                    </div>
-                    <span className="font-orquidea text-base font-bold text-white">Sacuanjoche</span>
-                  </div>
-                  <button
+              <div className="flex flex-col min-h-full pb-10">
+                
+                {/* Cabecera del Drawer */}
+                <div className="flex items-center justify-between p-5 border-b border-white/10">
+                  <span className="font-orquidea text-xl font-bold text-white">Menú</span>
+                  <button 
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-white/80 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                    className="p-2 text-white/60 hover:text-white"
                   >
-                    <HiX size={20} />
+                    <HiX size={24} />
                   </button>
                 </div>
 
-                {/* Contenido del menú */}
-                <div className="flex-1 py-4">
-                  {menuItems.map((item) => {
-                    const isHashLink = item.href.startsWith('#');
-                    
-                    if (isHashLink) {
-                      return (
-                        <a
-                          key={item.href}
-                          href={item.href}
-                          onClick={(e) => handleHashLink(e, item.href)}
-                          className="block py-2.5 px-6 text-white/80 hover:text-[#50C878] hover:bg-white/5 transition-all font-medium text-sm uppercase tracking-wider cursor-pointer border-l-2 border-transparent hover:border-[#50C878]"
-                        >
-                          {item.label}
-                        </a>
-                      );
-                    }
-
-                    return (
+                {/* Lista de Enlaces */}
+                <div className="flex-col flex py-4">
+                  {menuItems.map((item) => (
+                    item.href.startsWith('#') ? (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        onClick={(e) => handleHashLink(e, item.href)}
+                        className="px-6 py-4 text-white hover:bg-white/5 border-l-4 border-transparent hover:border-[#50C878] transition-all text-sm font-medium uppercase tracking-widest"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
                       <Link
                         key={item.href}
                         to={item.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className="block py-2.5 px-6 text-white/80 hover:text-[#50C878] hover:bg-white/5 transition-all font-medium text-sm uppercase tracking-wider border-l-2 border-transparent hover:border-[#50C878]"
+                        className="px-6 py-4 text-white hover:bg-white/5 border-l-4 border-transparent hover:border-[#50C878] transition-all text-sm font-medium uppercase tracking-widest"
                       >
                         {item.label}
                       </Link>
-                    );
-                  })}
+                    )
+                  ))}
+                </div>
 
-                  {/* Icono de carrito en móvil */}
-                  {isAuthenticated && (
-                    <Link
-                      to="/carrito"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-2 py-2.5 px-6 text-white/80 hover:text-[#50C878] hover:bg-white/5 transition-all font-medium text-sm uppercase tracking-wider border-l-2 border-transparent hover:border-[#50C878] relative"
-                    >
-                      <HiShoppingCart className="w-4 h-4" />
-                      <span>Carrito</span>
-                      {itemCount > 0 && (
-                        <span className="ml-auto bg-[#50C878] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                          {itemCount > 99 ? '99+' : itemCount}
-                        </span>
-                      )}
-                    </Link>
-                  )}
-
-                  {/* Opciones de usuario en menú móvil */}
-                  {isAuthenticated && user && (
-                    <>
-                      <div className="border-t border-white/10 my-4 mx-4"></div>
-                      <div className="px-6 py-3 mb-2">
-                        <p className="text-sm font-semibold text-white">{nombreUsuario}</p>
-                        <p className="text-xs text-white/60 truncate mt-0.5">{user.email}</p>
+                {/* Footer del Menú (Usuario / Login) */}
+                <div className="mt-auto px-6 pt-6 border-t border-white/10">
+                  {isAuthenticated ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 text-white/80">
+                        <HiUser className="text-[#50C878]" />
+                        <span className="text-sm truncate">{nombreUsuario}</span>
                       </div>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 py-2.5 px-6 text-white/80 hover:text-[#50C878] hover:bg-white/5 transition-all font-medium text-sm uppercase tracking-wider border-l-2 border-transparent hover:border-red-500"
+                        className="w-full py-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-bold uppercase transition flex items-center justify-center gap-2"
                       >
-                        <HiLogout className="w-4 h-4" />
-                        <span>Cerrar sesión</span>
+                        <HiLogout /> Cerrar Sesión
                       </button>
-                    </>
-                  )}
-
-                  {/* Botones de login/registro en menú móvil si no está autenticado */}
-                  {!isAuthenticated && (
-                    <>
-                      <div className="border-t border-white/10 my-4 mx-4"></div>
-                      <div className="px-4 space-y-2">
-                        <Link
-                          to="/login"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="block py-2.5 px-4 text-center text-white/80 hover:text-[#50C878] hover:bg-white/5 rounded-lg transition-all font-medium text-sm uppercase tracking-wider border border-white/10 hover:border-[#50C878]"
-                        >
-                          Iniciar sesión
-                        </Link>
-                        <Link
-                          to="/register"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="block py-2.5 px-4 bg-[#50C878] text-white rounded-lg hover:bg-[#00A87F] transition-all font-medium text-sm uppercase tracking-wider text-center"
-                        >
-                          Registrarse
-                        </Link>
-                      </div>
-                    </>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full py-3 text-center border border-white/20 text-white rounded-lg text-xs font-bold uppercase hover:bg-white/5"
+                      >
+                        Iniciar Sesión
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full py-3 text-center bg-[#50C878] text-white rounded-lg text-xs font-bold uppercase hover:bg-[#40b065]"
+                      >
+                        Registrarse
+                      </Link>
+                    </div>
                   )}
                 </div>
+
               </div>
             </motion.div>
           </>
         )}
-      </nav>
-
-    </motion.header>
+      </AnimatePresence>
+    </>
   );
 };

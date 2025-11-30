@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { MdArrowBack } from 'react-icons/md';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
+import type { Carrito } from '../types/carrito.interface';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -14,17 +15,41 @@ export default function CheckoutPage() {
   const { carrito, subtotal, itemCount } = useCarrito();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Type assertion para ayudar a TypeScript
+  const carritoTyped = carrito as Carrito | null | undefined;
+
   // Limpiar estado de pago anterior si el carrito no tiene pago
   useEffect(() => {
     // Si el carrito no tiene idPago, limpiar cualquier estado de pago anterior del localStorage
-    if (carrito && !carrito.idPago) {
+    if (carritoTyped && !carritoTyped.idPago) {
       const paypalPagoId = localStorage.getItem('paypal_pago_id');
       if (paypalPagoId) {
         console.log('🧹 Limpiando estado de pago anterior del localStorage...');
         localStorage.removeItem('paypal_pago_id');
       }
     }
-  }, [carrito?.idPago]);
+  }, [carritoTyped?.idPago]);
+
+  // Solo redirigir a completar pedido si el pago está REALMENTE confirmado (estado "pagado")
+  // Si el carrito tiene idPago pero el pago no está confirmado, permitir crear un nuevo pago
+  useEffect(() => {
+    if (carritoTyped?.idPago && carritoTyped.carritosArreglo && carritoTyped.carritosArreglo.length > 0) {
+      // Verificar que el pago esté realmente confirmado
+      if (carritoTyped.pago?.estado === 'pagado') {
+        console.log('✅ Pago confirmado, redirigiendo a completar pedido...');
+        navigate('/carrito/checkout/completar', { replace: true });
+      } else {
+        // Si tiene idPago pero no está pagado, es un pago anterior o pendiente
+        // Limpiar el idPago del carrito para permitir crear un nuevo pago
+        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Permitir crear nuevo pago.');
+        console.log('📋 Estado del pago:', carritoTyped.pago?.estado || 'sin información');
+        // No redirigir - permitir que el usuario cree un nuevo pago
+      }
+    } else if (carritoTyped?.idPago && (!carritoTyped.carritosArreglo || carritoTyped.carritosArreglo.length === 0)) {
+      // Carrito sin productos pero con idPago - no hacer nada, el usuario necesita agregar productos
+      console.log('🔄 Carrito sin productos pero con idPago. Esperando productos...');
+    }
+  }, [carritoTyped?.idPago, carritoTyped?.pago?.estado, carritoTyped?.carritosArreglo, navigate]);
 
   // ID del método de pago PayPal (siempre 2)
   const ID_METODO_PAGO_PAYPAL = 2;
@@ -44,13 +69,13 @@ export default function CheckoutPage() {
   // Calcular el monto en USD para PayPal
   const montoUSD = convertirNIOaUSD(subtotal);
 
-  // Verificar autenticación
+  // Verificar autenticación - DESPUÉS de todos los hooks
   if (!isAuthenticated || !user) {
     navigate('/login', { state: { from: '/carrito/checkout' } });
     return null;
   }
 
-  if (!carrito || carrito.carritosArreglo?.length === 0) {
+  if (!carritoTyped || carritoTyped.carritosArreglo?.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -65,27 +90,6 @@ export default function CheckoutPage() {
     );
   }
 
-  // Solo redirigir a completar pedido si el pago está REALMENTE confirmado (estado "pagado")
-  // Si el carrito tiene idPago pero el pago no está confirmado, permitir crear un nuevo pago
-  useEffect(() => {
-    if (carrito?.idPago && carrito.carritosArreglo && carrito.carritosArreglo.length > 0) {
-      // Verificar que el pago esté realmente confirmado
-      if (carrito.pago?.estado === 'pagado') {
-        console.log('✅ Pago confirmado, redirigiendo a completar pedido...');
-        navigate('/carrito/checkout/completar', { replace: true });
-      } else {
-        // Si tiene idPago pero no está pagado, es un pago anterior o pendiente
-        // Limpiar el idPago del carrito para permitir crear un nuevo pago
-        console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Permitir crear nuevo pago.');
-        console.log('📋 Estado del pago:', carrito.pago?.estado || 'sin información');
-        // No redirigir - permitir que el usuario cree un nuevo pago
-      }
-    } else if (carrito?.idPago && (!carrito.carritosArreglo || carrito.carritosArreglo.length === 0)) {
-      // Carrito sin productos pero con idPago - no hacer nada, el usuario necesita agregar productos
-      console.log('🔄 Carrito sin productos pero con idPago. Esperando productos...');
-    }
-  }, [carrito?.idPago, carrito?.pago?.estado, carrito?.carritosArreglo, navigate]);
-
   // Función para crear pago y redirigir a PayPal
   const handlePayWithPayPal = async () => {
     setIsProcessing(true);
@@ -95,20 +99,20 @@ export default function CheckoutPage() {
         montoNIO: subtotal, 
         montoUSD: montoUSD,
         idMetodoPago: ID_METODO_PAGO_PAYPAL,
-        carritoIdPago: carrito?.idPago,
-        pagoEstado: carrito?.pago?.estado,
+        carritoIdPago: carritoTyped?.idPago,
+        pagoEstado: carritoTyped?.pago?.estado,
       });
 
       // Validar que el carrito exista
-      if (!carrito?.idCarrito) {
+      if (!carritoTyped?.idCarrito) {
         throw new Error('No se pudo obtener el carrito. Por favor, intenta nuevamente.');
       }
 
       // Si el carrito tiene un idPago pero el pago no está confirmado, limpiar el estado
       // Esto permite crear un nuevo pago para este carrito
-      if (carrito.idPago && carrito.pago?.estado !== 'pagado') {
+      if (carritoTyped.idPago && carritoTyped.pago?.estado !== 'pagado') {
         console.log('⚠️ Carrito tiene idPago pero el pago no está confirmado. Creando nuevo pago...');
-        console.log('📋 Estado del pago anterior:', carrito.pago?.estado || 'sin información');
+        console.log('📋 Estado del pago anterior:', carritoTyped.pago?.estado || 'sin información');
         // Continuar con la creación del nuevo pago - el backend manejará la asociación
       }
 
@@ -286,7 +290,7 @@ export default function CheckoutPage() {
                 {/* Lista de productos */}
                 <div className="space-y-2 pt-4 border-t border-gray-200">
                   <p className="text-sm font-medium text-gray-700">Productos:</p>
-                  {carrito.carritosArreglo?.map((item) => {
+                  {carritoTyped?.carritosArreglo?.map((item: any) => {
                     const precio = Number(item.precioUnitario) || 0;
                     return (
                       <div key={item.idCarritoArreglo} className="text-sm text-gray-600">
