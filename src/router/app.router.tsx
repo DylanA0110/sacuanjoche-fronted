@@ -22,6 +22,7 @@ const ArreglosPage = lazy(() => import('../arreglo/pages/ArreglosPage'));
 const ReportesPage = lazy(() => import('../reports/pages/ReportesPage'));
 const RutasPage = lazy(() => import('../ruta/pages/RutasPage'));
 const RutasConductorPage = lazy(() => import('../ruta/pages/RutasConductorPage'));
+const EmpleadosPage = lazy(() => import('../empleado/pages/EmpleadosPage'));
 const ProfilePage = lazy(() => import('../auth/pages/ProfilePage'));
 const CheckoutPage = lazy(() => import('../carrito/pages/CheckoutPage'));
 const CompletarPedidoPage = lazy(() => import('../carrito/pages/CompletarPedidoPage'));
@@ -209,6 +210,14 @@ export const router = createBrowserRouter([
       {
         path: 'mis-rutas',
         element: <RutasConductorPage />,
+      },
+      {
+        path: 'empleados',
+        element: (
+          <ProtectedRoute requiredRoles={['admin']}>
+            <EmpleadosPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'perfil',

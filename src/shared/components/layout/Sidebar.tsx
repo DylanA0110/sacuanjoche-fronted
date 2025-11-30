@@ -12,6 +12,8 @@ import {
   MdDescription,
   MdReceipt,
   MdPerson,
+  MdRoute,
+  MdBusiness,
 } from 'react-icons/md';
 import { GiRose } from 'react-icons/gi';
 import { useAuthStore } from '@/auth/store/auth.store';
@@ -24,11 +26,12 @@ const menuItemsAdmin = [
   { title: 'Pedidos', url: '/admin/pedidos', icon: MdShoppingCart },
   { title: 'Facturas', url: '/admin/facturas', icon: MdReceipt },
   { title: 'Rutas & Envíos', url: '/admin/rutas', icon: MdLocalShipping },
+  { title: 'Empleados', url: '/admin/empleados', icon: MdBusiness },
   { title: 'Reportes', url: '/admin/reportes', icon: MdDescription },
 ];
 
 const menuItemsConductor = [
-  { title: 'Mis Rutas', url: '/admin/mis-rutas', icon: MdLocalShipping },
+  { title: 'Mis Rutas', url: '/admin/mis-rutas', icon: MdRoute },
 ];
 
 interface AppSidebarProps {

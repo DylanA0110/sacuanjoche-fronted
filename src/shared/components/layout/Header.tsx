@@ -24,6 +24,11 @@ export function AppHeader({ onToggleSidebar, onOpenMobile }: AppHeaderProps) {
   const { user, logout } = useAuthStore();
   const userEmail = user?.email || null;
 
+  // Solo mostrar notificaciones para admin y vendedor, no para conductores
+  const mostrarNotificaciones = user?.roles?.some(role => 
+    role.toLowerCase() === 'admin' || role.toLowerCase() === 'vendedor'
+  ) || false;
+
   const handleLogout = () => {
     logout();
     toast.success('Sesión cerrada correctamente');
@@ -58,8 +63,8 @@ export function AppHeader({ onToggleSidebar, onOpenMobile }: AppHeaderProps) {
 
       {/* Notificaciones y Avatar - Siempre visible a la derecha */}
       <div className="flex items-center gap-2 shrink-0 ml-1.5">
-        {/* Centro de notificaciones */}
-        <AdminNotifications />
+        {/* Centro de notificaciones - Solo para admin y vendedor */}
+        {mostrarNotificaciones && <AdminNotifications />}
         
         {/* Avatar y menú de usuario */}
         <DropdownMenu>

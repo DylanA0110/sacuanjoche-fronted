@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { useAuthStore } from '@/auth/store/auth.store';
 import {
   Card,
   CardContent,
@@ -7,6 +10,21 @@ import {
 } from '@/shared/components/ui/card';
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  // Redirigir conductores a Mis Rutas
+  useEffect(() => {
+    if (user?.roles?.includes('conductor')) {
+      navigate('/admin/mis-rutas', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Si es conductor, no renderizar nada (se está redirigiendo)
+  if (user?.roles?.includes('conductor')) {
+    return null;
+  }
+
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header mejorado */}

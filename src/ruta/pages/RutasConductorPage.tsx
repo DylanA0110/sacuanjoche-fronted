@@ -81,7 +81,35 @@ export default function RutasConductorPage() {
 
   // Filtrar y ordenar rutas (memoizado para mejor rendimiento)
   const rutasFiltradasYOrdenadas = useMemo(() => {
-    let filtered = [...rutas];
+    const ahora = new Date();
+    const hace30Dias = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 días atrás
+    
+    // Estados activos que siempre se deben mostrar
+    const estadosActivos = ['pendiente', 'en_proceso', 'en_camino'];
+    
+    let filtered = rutas.filter((ruta) => {
+      // Si tiene estado activo, siempre mostrarlo
+      if (estadosActivos.includes(ruta.estado?.toLowerCase() || '')) {
+        return true;
+      }
+      
+      // Si tiene fecha programada, verificar que esté en rango relevante
+      if (ruta.fechaProgramada) {
+        const fechaProgramada = new Date(ruta.fechaProgramada);
+        // Mostrar si está en el futuro o en los últimos 30 días
+        return fechaProgramada >= hace30Dias;
+      }
+      
+      // Si no tiene fecha programada, usar fecha de creación
+      if (ruta.fechaCreacion) {
+        const fechaCreacion = new Date(ruta.fechaCreacion);
+        // Mostrar si fue creada en los últimos 30 días
+        return fechaCreacion >= hace30Dias;
+      }
+      
+      // Si no tiene ninguna fecha, no mostrarlo (muy antiguo)
+      return false;
+    });
 
     // Filtrar por búsqueda (solo si estamos en tab de rutas)
     if (activeTab === 'rutas' && searchQuery.trim()) {
@@ -89,13 +117,11 @@ export default function RutasConductorPage() {
       filtered = filtered.filter((ruta) => {
         const nombre = (ruta.nombre || '').toLowerCase();
         const estado = (ruta.estado || '').toLowerCase();
-        const idRuta = String(ruta.idRuta);
         const pedidosCount = String(ruta.rutaPedidos?.length || 0);
         
         return (
           nombre.includes(query) ||
           estado.includes(query) ||
-          idRuta.includes(query) ||
           pedidosCount.includes(query)
         );
       });
@@ -122,9 +148,9 @@ export default function RutasConductorPage() {
   // Filtrar y ordenar envíos (memoizado para mejor rendimiento)
   // Solo mostrar envíos que tienen ruta asignada
   const enviosFiltradosYOrdenados = useMemo(() => {
-    // Filtrar solo envíos con ruta asignada (idRuta o ruta no nulos)
+    // Filtrar solo envíos con ruta asignada (idRuta no nulo ni undefined)
     let filtered = envios.filter((envio) => {
-      return envio.idRuta !== null && envio.idRuta !== undefined;
+      return envio.idRuta != null; // != null verifica tanto null como undefined
     });
 
     // Ordenar por fecha programada (más recientes primero por defecto)
@@ -367,7 +393,7 @@ export default function RutasConductorPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
             type="text"
-            placeholder="Buscar por nombre, estado, ID o cantidad de pedidos..."
+            placeholder="Buscar por nombre, estado o cantidad de pedidos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 w-full"
@@ -406,9 +432,9 @@ export default function RutasConductorPage() {
       {/* Contenido principal según el tab activo */}
       {activeTab === 'rutas' ? (
         /* Layout: Lista de rutas a la izquierda, Mapa y detalles a la derecha */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 min-h-[600px] lg:h-[calc(100vh-250px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Lista de rutas - Columna izquierda */}
-          <div className="lg:col-span-1 overflow-y-auto space-y-3 lg:space-y-4 pr-2 lg:max-h-full">
+          <div className="lg:col-span-1 space-y-3 lg:space-y-4">
             {rutasFiltradasYOrdenadas.length === 0 ? (
               <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
                 <p className="text-gray-500">
@@ -534,9 +560,9 @@ export default function RutasConductorPage() {
           </div>
 
           {/* Mapa y detalles - Columnas derechas */}
-          <div className="lg:col-span-2 flex flex-col gap-4 lg:gap-6 overflow-y-auto lg:overflow-hidden">
+          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
             {/* Mapa */}
-            <div className="shrink-0 min-h-[300px] sm:min-h-[400px] lg:min-h-[450px] lg:flex-1 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="min-h-[300px] sm:min-h-[400px] lg:min-h-[500px] bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               {rutaParaMapa ? (
                 <RouteMap
                   key={`ruta-${rutaParaMapa.idRuta}-${pedidosOrdenados.length}`}
@@ -546,7 +572,7 @@ export default function RutasConductorPage() {
                   rutaPedidos={pedidosOrdenados}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                <div className="w-full h-full flex items-center justify-center bg-gray-50 min-h-[300px] sm:min-h-[400px] lg:min-h-[500px]">
                   <div className="text-center">
                     <MdLocationOn className="w-16 h-16 text-gray-300 mx-auto mb-2" />
                     <p className="text-gray-500 font-medium">Selecciona una ruta para ver el mapa</p>
@@ -556,18 +582,18 @@ export default function RutasConductorPage() {
               )}
             </div>
 
-            {/* Lista de pedidos ordenados por secuencia */}
+            {/* Lista de pedidos ordenados por secuencia - En flujo normal */}
             {pedidosOrdenados.length > 0 && (
-              <div className="shrink-0 bg-white rounded-lg border border-gray-200 shadow-sm p-4 lg:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                  <h3 className="font-semibold text-gray-900 text-base sm:text-lg">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 lg:p-6 xl:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 lg:mb-6">
+                  <h3 className="font-semibold text-gray-900 text-lg sm:text-xl">
                     Paradas de la Ruta ({pedidosOrdenados.length})
                   </h3>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded self-start sm:self-auto whitespace-nowrap">
+                  <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded self-start sm:self-auto whitespace-nowrap">
                     Orden optimizado por Mapbox
                   </span>
                 </div>
-                <div className="space-y-3 overflow-y-auto pr-2 -mr-2">
+                <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                   {pedidosOrdenados.map((pedido) => (
                     <PedidoCard 
                       key={pedido.idRutaPedido} 
@@ -582,7 +608,7 @@ export default function RutasConductorPage() {
         </div>
       ) : (
         /* Layout para envíos: Grid de cards */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {enviosFiltradosYOrdenados.length === 0 ? (
             <div className="col-span-full bg-white rounded-lg border border-gray-200 p-6 text-center">
               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

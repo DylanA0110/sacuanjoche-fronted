@@ -84,8 +84,14 @@ export function ClienteRoute({ children }: ClienteRouteProps) {
   const canAccessPanel = hasAdminPanelAccess(user.roles);
   const isCliente = user.cliente !== undefined && user.cliente !== null;
   const hasClienteRole = user.roles.includes('cliente');
+  const esConductor = user.roles?.includes('conductor');
 
-  // Si tiene acceso al panel (admin, vendedor, conductor, etc.), redirigir al panel
+  // Si es conductor, siempre llevarlo a Mis Rutas
+  if (esConductor) {
+    return <Navigate to="/admin/mis-rutas" replace />;
+  }
+
+  // Si tiene acceso al panel (admin, vendedor, etc.), redirigir al panel
   if (canAccessPanel) {
     return <Navigate to="/admin" replace />;
   }

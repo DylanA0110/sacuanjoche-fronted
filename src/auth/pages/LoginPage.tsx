@@ -56,8 +56,12 @@ export default function LoginPage() {
       const { user } = useAuthStore.getState();
       if (user) {
         const from = (location.state as any)?.from?.pathname;
+        const esConductor = user.roles?.includes('conductor');
         
-        if (hasAdminPanelAccess(user.roles)) {
+        // Si es conductor, siempre llevarlo a Mis Rutas
+        if (esConductor) {
+          navigate('/admin/mis-rutas', { replace: true });
+        } else if (hasAdminPanelAccess(user.roles)) {
           navigate(from || '/admin', { replace: true });
         } else {
           navigate('/', { replace: true });
@@ -82,6 +86,7 @@ export default function LoginPage() {
       
       // Verificar acceso al panel
       const tieneAccesoPanel = hasAdminPanelAccess(userData.roles);
+      const esConductor = userData.roles?.includes('conductor');
       
       let welcomeMessage = '¡Bienvenido de nuevo!';
       const nombreCompleto = userData.empleado?.nombreCompleto || 
@@ -103,7 +108,10 @@ export default function LoginPage() {
 
       const from = (location.state as any)?.from?.pathname;
       
-      if (tieneAccesoPanel) {
+      // Si es conductor, siempre llevarlo a Mis Rutas
+      if (esConductor) {
+        navigate('/admin/mis-rutas', { replace: true });
+      } else if (tieneAccesoPanel) {
         navigate(from || '/admin', { replace: true });
       } else {
         // Si venía del catálogo, redirigir al catálogo

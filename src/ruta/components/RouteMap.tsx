@@ -102,6 +102,20 @@ type RouteMapProps = {
 const ROUTE_SOURCE_ID = 'route-line';
 const ROUTE_LAYER_ID = 'route-layer';
 
+// Paleta de colores para segmentos de ruta entre pedidos
+const ROUTE_SEGMENT_COLORS = [
+  '#ef4444', // rojo
+  '#f59e0b', // naranja
+  '#10b981', // verde
+  '#3b82f6', // azul
+  '#8b5cf6', // púrpura
+  '#ec4899', // rosa
+  '#06b6d4', // cian
+  '#f97316', // naranja oscuro
+  '#84cc16', // verde lima
+  '#6366f1', // índigo
+];
+
 export function RouteMap({
   geometry,
   origenLat,
@@ -339,6 +353,7 @@ export function RouteMap({
           ...pedidosParaBounds,
         ];
 
+    // Agregar la ruta principal completa (línea base gris)
     if (decodedRoute.length) {
       const source = map.getSource(ROUTE_SOURCE_ID) as
         | mapboxgl.GeoJSONSource
@@ -360,6 +375,7 @@ export function RouteMap({
           data,
         });
 
+        // Capa base de la ruta completa (gris, más delgada)
         map.addLayer({
           id: ROUTE_LAYER_ID,
           type: 'line',
@@ -369,9 +385,9 @@ export function RouteMap({
             'line-join': 'round',
           },
           paint: {
-            'line-color': '#2563eb',
-            'line-width': 5,
-            'line-opacity': 0.8,
+            'line-color': '#9ca3af',
+            'line-width': 3,
+            'line-opacity': 0.4,
           },
         });
       } else {
@@ -383,6 +399,125 @@ export function RouteMap({
             lateSource.setData(data);
           }
         });
+      }
+    }
+
+    // Agregar segmentos de ruta coloreados entre pedidos consecutivos
+    const pedidosValidosParaSegmentos = rutaPedidos
+      .map((pedido) => {
+        const lat = typeof pedido.lat === 'number' ? pedido.lat : parseFloat(String(pedido.lat));
+        const lng = typeof pedido.lng === 'number' ? pedido.lng : parseFloat(String(pedido.lng));
+        
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { ...pedido, lat, lng };
+        }
+        return null;
+      })
+      .filter((pedido): pedido is RutaPedido & { lat: number; lng: number } => pedido !== null)
+      .sort((a, b) => a.secuencia - b.secuencia);
+
+    // Limpiar segmentos anteriores (limpiar hasta 20 segmentos para asegurar limpieza completa)
+    if (map.isStyleLoaded()) {
+      for (let i = 0; i < 20; i++) {
+        const segmentLayerId = `route-segment-layer-${i}`;
+        const segmentSourceId = `route-segment-${i}`;
+        if (map.getLayer(segmentLayerId)) {
+          map.removeLayer(segmentLayerId);
+        }
+        if (map.getSource(segmentSourceId)) {
+          map.removeSource(segmentSourceId);
+        }
+      }
+    }
+
+    // Crear segmentos entre pedidos consecutivos
+    if (map.isStyleLoaded() && pedidosValidosParaSegmentos.length > 0) {
+      // Segmento desde origen hasta el primer pedido
+      const primerPedido = pedidosValidosParaSegmentos[0];
+      const segment0SourceId = 'route-segment-0';
+      const segment0LayerId = 'route-segment-layer-0';
+      const segment0Color = ROUTE_SEGMENT_COLORS[0 % ROUTE_SEGMENT_COLORS.length];
+      
+      const segment0Data = {
+        type: 'Feature' as const,
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [origenLng, origenLat],
+            [primerPedido.lng, primerPedido.lat],
+          ],
+        },
+        properties: { segmentIndex: 0 },
+      };
+
+      if (!map.getSource(segment0SourceId)) {
+        map.addSource(segment0SourceId, {
+          type: 'geojson',
+          data: segment0Data,
+        });
+
+        map.addLayer({
+          id: segment0LayerId,
+          type: 'line',
+          source: segment0SourceId,
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round',
+          },
+          paint: {
+            'line-color': segment0Color,
+            'line-width': 6,
+            'line-opacity': 0.9,
+          },
+        });
+      } else {
+        (map.getSource(segment0SourceId) as mapboxgl.GeoJSONSource).setData(segment0Data);
+      }
+
+      // Segmentos entre pedidos consecutivos
+      for (let i = 0; i < pedidosValidosParaSegmentos.length - 1; i++) {
+        const pedidoActual = pedidosValidosParaSegmentos[i];
+        const pedidoSiguiente = pedidosValidosParaSegmentos[i + 1];
+        const segmentIndex = i + 1;
+        const segmentSourceId = `route-segment-${segmentIndex}`;
+        const segmentLayerId = `route-segment-layer-${segmentIndex}`;
+        const segmentColor = ROUTE_SEGMENT_COLORS[segmentIndex % ROUTE_SEGMENT_COLORS.length];
+
+        const segmentData = {
+          type: 'Feature' as const,
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: [
+              [pedidoActual.lng, pedidoActual.lat],
+              [pedidoSiguiente.lng, pedidoSiguiente.lat],
+            ],
+          },
+          properties: { segmentIndex },
+        };
+
+        if (!map.getSource(segmentSourceId)) {
+          map.addSource(segmentSourceId, {
+            type: 'geojson',
+            data: segmentData,
+          });
+
+          map.addLayer({
+            id: segmentLayerId,
+            type: 'line',
+            source: segmentSourceId,
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+            },
+            paint: {
+              'line-color': segmentColor,
+              'line-width': 6,
+              'line-opacity': 0.9,
+            },
+          });
+        } else {
+          (map.getSource(segmentSourceId) as mapboxgl.GeoJSONSource).setData(segmentData);
+        }
       }
     }
 
@@ -398,6 +533,7 @@ export function RouteMap({
       map.setZoom(13);
     }
 
+    // Limpiar marcadores anteriores
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
@@ -410,22 +546,8 @@ export function RouteMap({
 
     // Marcadores de pedidos (rojos, numerados según secuencia de Mapbox)
     // Los pedidos ya vienen ordenados por secuencia desde el backend (optimización de Mapbox)
-    // Filtrar y validar pedidos con coordenadas válidas
-    const pedidosValidos = rutaPedidos
-      .map((pedido) => {
-        const lat = typeof pedido.lat === 'number' ? pedido.lat : parseFloat(String(pedido.lat));
-        const lng = typeof pedido.lng === 'number' ? pedido.lng : parseFloat(String(pedido.lng));
-        
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          return { ...pedido, lat, lng };
-        }
-        return null;
-      })
-      .filter((pedido): pedido is RutaPedido & { lat: number; lng: number } => pedido !== null)
-      .sort((a, b) => a.secuencia - b.secuencia); // Ordenar por secuencia (orden optimizado de Mapbox)
-
-    // Crear marcadores para todos los pedidos válidos con número de secuencia visible
-    pedidosValidos.forEach((pedido, index) => {
+    // Usar los mismos pedidos validados que se usaron para los segmentos
+    pedidosValidosParaSegmentos.forEach((pedido) => {
       // Crear elemento HTML personalizado con número de secuencia
       const el = document.createElement('div');
       el.className = 'custom-marker';

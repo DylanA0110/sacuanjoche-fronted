@@ -323,60 +323,89 @@ export function PedidoDetailsModal({
               <div className="bg-linear-to-br from-gray-50 to-gray-100/50 rounded-xl p-4 sm:p-6 border border-gray-200">
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                   <MdShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-[#50C878]" />
-                  Arreglos del Pedido
+                  Arreglos del Pedido ({detalles?.length || 0})
                 </h3>
                 {isLoading ? (
                   <div className="text-center py-4 text-gray-500">
                     Cargando detalles...
                   </div>
                 ) : detalles && detalles.length > 0 ? (
-                  <div className="space-y-3">
-                    {detalles.map((detalle, index) => (
-                      <div
-                        key={detalle.idDetallePedido || `detalle-${index}`}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-[#50C878]/30 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm sm:text-base break-words">
-                            {detalle.arreglo?.nombre || 'Arreglo'}
-                          </p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Cantidad:{' '}
-                            <span className="font-semibold">
-                              {detalle.cantidad}
-                            </span>{' '}
-                            x $
-                            {(() => {
-                              // Calcular precio unitario desde el arreglo (no desde la BD que es 0)
-                              const precioArreglo =
-                                typeof detalle.arreglo?.precioUnitario === 'string'
-                                  ? parseFloat(detalle.arreglo.precioUnitario)
-                                  : detalle.arreglo?.precioUnitario || 0;
-                              return precioArreglo.toFixed(2);
-                            })()}
-                          </p>
+                  <div className="space-y-4">
+                    {detalles.map((detalle, index) => {
+                      const precioArreglo =
+                        typeof detalle.arreglo?.precioUnitario === 'string'
+                          ? parseFloat(detalle.arreglo.precioUnitario)
+                          : detalle.arreglo?.precioUnitario || 0;
+                      const subtotalCalculado = detalle.cantidad * precioArreglo;
+                      
+                      return (
+                        <div
+                          key={detalle.idDetallePedido || `detalle-${index}`}
+                          className="flex gap-4 p-4 sm:p-5 bg-white rounded-lg border-2 border-gray-200 hover:border-[#50C878]/30 transition-all duration-200 shadow-sm hover:shadow-md"
+                        >
+                          {/* Imagen del arreglo */}
+                          {detalle.arreglo?.url ? (
+                            <div className="shrink-0">
+                              <img
+                                src={detalle.arreglo.url}
+                                alt={detalle.arreglo.nombre || 'Arreglo'}
+                                className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-cover rounded-lg border-2 border-gray-200"
+                                onError={(e) => {
+                                  // Si la imagen falla, ocultar el contenedor
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-[#50C878]/20 to-[#45b86a]/20 rounded-lg border-2 border-gray-200 flex items-center justify-center">
+                              <MdShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-[#50C878]" />
+                            </div>
+                          )}
+                          
+                          {/* Información del arreglo */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 break-words">
+                              {detalle.arreglo?.nombre || 'Arreglo sin nombre'}
+                            </h4>
+                            {detalle.arreglo?.descripcion && (
+                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                {detalle.arreglo.descripcion}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm sm:text-base">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">Cantidad:</span>
+                                <span className="font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                                  {detalle.cantidad}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">Precio unitario:</span>
+                                <span className="font-semibold text-gray-900">
+                                  ${precioArreglo.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Subtotal */}
+                          <div className="shrink-0 text-right">
+                            <p className="text-xs sm:text-sm text-gray-500 mb-1">Subtotal</p>
+                            <p className="text-xl sm:text-2xl font-bold text-[#50C878]">
+                              ${subtotalCalculado.toFixed(2)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-[#50C878]">
-                            $
-                            {(() => {
-                              // Calcular subtotal desde el arreglo (cantidad * precio del arreglo)
-                              const precioArreglo =
-                                typeof detalle.arreglo?.precioUnitario === 'string'
-                                  ? parseFloat(detalle.arreglo.precioUnitario)
-                                  : detalle.arreglo?.precioUnitario || 0;
-                              const subtotalCalculado = detalle.cantidad * precioArreglo;
-                              return subtotalCalculado.toFixed(2);
-                            })()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
-                    No hay detalles disponibles
-                  </p>
+                  <div className="text-center py-8">
+                    <MdShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">
+                      No hay arreglos en este pedido
+                    </p>
+                  </div>
                 )}
               </div>
 

@@ -5,6 +5,7 @@ export interface EmpleadoAuth {
   primerApellido: string | null;
   segundoApellido?: string | null;
   nombreCompleto?: string;
+  estado?: string; // 'activo' | 'inactivo'
 }
 
 export interface ClienteAuth {

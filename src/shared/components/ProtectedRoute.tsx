@@ -148,7 +148,11 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     const hasRequiredRole = requiredRoles.some((role) => user.roles.includes(role));
     if (!hasRequiredRole) {
       // Si no tiene el rol requerido, redirigir según el tipo de usuario
-      if (canAccessPanel) {
+      const esConductor = user.roles?.includes('conductor');
+      if (esConductor) {
+        // Si es conductor, llevarlo a Mis Rutas
+        return <Navigate to="/admin/mis-rutas" replace />;
+      } else if (canAccessPanel) {
         // Si tiene acceso al panel pero no al rol específico, redirigir al dashboard
         return <Navigate to="/admin" replace />;
       } else {

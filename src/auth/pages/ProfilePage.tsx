@@ -51,6 +51,10 @@ export default function ProfilePage() {
   const tokenExpiration = token ? getTokenExpiration(token) : null;
   const expirationDate = tokenExpiration ? new Date(tokenExpiration) : null;
 
+  // Obtener el estado correcto: para empleados usar empleado.estado, para otros usar user.estado
+  const estadoUsuario = user.empleado?.estado || user.estado || 'inactivo';
+  const esActivo = estadoUsuario === 'activo';
+
   // Mapear roles a iconos y colores más sutiles
   const getRoleInfo = (role: string) => {
     const roleMap: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
@@ -94,7 +98,7 @@ export default function ProfilePage() {
             </AvatarFallback>
           </Avatar>
           <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-gray-200">
-            {user.estado === 'activo' ? (
+            {esActivo ? (
               <MdCheckCircle className="h-5 w-5 text-emerald-600" />
             ) : (
               <MdCancel className="h-5 w-5 text-red-500" />
@@ -114,12 +118,12 @@ export default function ProfilePage() {
             <Badge 
               variant="outline" 
               className={`${
-                user.estado === 'activo' 
+                esActivo
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
                   : 'bg-red-50 text-red-700 border-red-300'
               }`}
             >
-              {user.estado === 'activo' ? 'Activo' : 'Inactivo'}
+              {esActivo ? 'Activo' : 'Inactivo'}
             </Badge>
           </div>
         </div>
@@ -207,6 +211,39 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
+
+                  {user.empleado.estado && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                      <MdCheckCircle className={`h-5 w-5 mt-0.5 shrink-0 ${
+                        user.empleado.estado === 'activo' 
+                          ? 'text-emerald-500' 
+                          : 'text-red-500'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Estado del Empleado</p>
+                        <Badge 
+                          variant="outline" 
+                          className={`${
+                            user.empleado.estado === 'activo' 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+                              : 'bg-red-50 text-red-700 border-red-300'
+                          }`}
+                        >
+                          {user.empleado.estado === 'activo' ? (
+                            <>
+                              <MdCheckCircle className="h-3 w-3 mr-1" />
+                              Activo
+                            </>
+                          ) : (
+                            <>
+                              <MdCancel className="h-3 w-3 mr-1" />
+                              Inactivo
+                            </>
+                          )}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -279,12 +316,12 @@ export default function ProfilePage() {
                   <Badge 
                     variant="outline" 
                     className={`${
-                      user.estado === 'activo' 
+                      esActivo
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
                         : 'bg-red-50 text-red-700 border-red-300'
                     }`}
                   >
-                    {user.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                    {esActivo ? 'Activo' : 'Inactivo'}
                   </Badge>
                 </div>
               </div>
