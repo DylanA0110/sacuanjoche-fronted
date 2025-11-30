@@ -258,7 +258,7 @@ export const Gallery = () => {
   return (
     <section
       id="galeria"
-      className="py-20 sm:py-24 lg:py-32 relative overflow-hidden min-h-screen flex items-center bg-linear-to-b from-[#0f0b0a] via-[#141010] to-[#0f0b0a]"
+      className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20 sm:pb-24 lg:pb-32 relative overflow-hidden min-h-screen flex items-center bg-linear-to-b from-[#0f0b0a] via-[#141010] to-[#0f0b0a]"
     >
       {/* Textura sutil de fondo premium */}
       <div

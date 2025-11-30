@@ -61,7 +61,10 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
 
       // Validar y agregar parámetros solo si tienen valores válidos
       // El backend espera ASC o DESC en mayúsculas
-      if (orden && (orden.toUpperCase() === 'ASC' || orden.toUpperCase() === 'DESC')) {
+      if (
+        orden &&
+        (orden.toUpperCase() === 'ASC' || orden.toUpperCase() === 'DESC')
+      ) {
         queryParams.orden = orden.toUpperCase();
       }
 
@@ -72,7 +75,9 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         // Mapear precioUnitario a precio para compatibilidad
         if (ordenarPorValue === 'precioUnitario') {
           queryParams.ordenarPor = 'precio';
-        } else if (['nombre', 'precio', 'fechaCreacion'].includes(ordenarPorValue)) {
+        } else if (
+          ['nombre', 'precio', 'fechaCreacion'].includes(ordenarPorValue)
+        ) {
           queryParams.ordenarPor = ordenarPorValue;
         }
       }
@@ -110,28 +115,10 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         }
       }
 
-      console.log('🔍 [usePaginatedArreglos] Fetching arreglos con params:', queryParams);
       const response = await floristeriaApi.get<
         ArregloResponse[] | ArreglosPaginatedResponse
       >('/arreglos/public', {
         params: queryParams,
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
-      
-      // Verificar si la respuesta es HTML (error de ngrok)
-      if (typeof response.data === 'string' && (response.data as string).trim().startsWith('<!DOCTYPE')) {
-        console.error('❌ [usePaginatedArreglos] Ngrok bloqueó la petición, recibió HTML en lugar de JSON');
-        throw new Error('El servidor retornó HTML en lugar de JSON. Verifica la configuración de ngrok.');
-      }
-
-      console.log('📦 [usePaginatedArreglos] Response recibida:', {
-        isArray: Array.isArray(response.data),
-        hasData: 'data' in (response.data || {}),
-        dataType: typeof response.data,
-        dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null,
-        rawData: response.data,
       });
 
       // Mapear los arreglos y asegurar que tengan estado 'activo' (el endpoint público solo retorna activos)
@@ -148,11 +135,6 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
       ) {
         const paginatedData = response.data as ArreglosPaginatedResponse;
         const mappedArreglos = (paginatedData.data || []).map(mapArreglo);
-        console.log('✅ [usePaginatedArreglos] Arreglos paginados:', {
-          total: paginatedData.total,
-          count: mappedArreglos.length,
-          arreglos: mappedArreglos,
-        });
         return {
           arreglos: mappedArreglos,
           total: paginatedData.total || 0,
@@ -160,10 +142,6 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         };
       } else if (Array.isArray(response.data)) {
         const mappedArreglos = response.data.map(mapArreglo);
-        console.log('✅ [usePaginatedArreglos] Arreglos como array:', {
-          count: mappedArreglos.length,
-          arreglos: mappedArreglos,
-        });
         return {
           arreglos: mappedArreglos,
           total: response.data.length,
@@ -171,7 +149,6 @@ export const usePaginatedArreglos = (params: UsePaginatedArreglosParams) => {
         };
       }
 
-      console.warn('⚠️ [usePaginatedArreglos] Formato de respuesta no reconocido, retornando array vacío');
       return {
         arreglos: [],
         total: 0,

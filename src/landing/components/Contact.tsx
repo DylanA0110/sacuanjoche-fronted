@@ -65,7 +65,7 @@ export const Contact = () => {
   return (
     <motion.section
       id="contacto"
-      className="py-16 sm:py-20 md:py-24 lg:py-32 pb-20 sm:pb-24 md:pb-28 lg:pb-32 bg-linear-to-b from-[#fafafa] via-[#ffffff] to-[#f5f5f5] relative overflow-hidden"
+      className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20 sm:pb-24 md:pb-28 lg:pb-32 bg-linear-to-b from-[#fafafa] via-[#ffffff] to-[#f5f5f5] relative overflow-hidden"
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.3 }}

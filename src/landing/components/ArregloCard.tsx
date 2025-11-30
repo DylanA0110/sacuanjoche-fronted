@@ -17,7 +17,6 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
   const navigate = useNavigate();
   const { isAuthenticated, user, setUser } = useAuthStore();
   const { addProducto, isAdding } = useCarrito();
-  
 
   // Verificar y sincronizar estado de autenticación si hay token pero no está autenticado
   useEffect(() => {
@@ -35,7 +34,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
         }
       }
     };
-    
+
     syncAuthState();
   }, [isAuthenticated, user, setUser]);
 
@@ -94,7 +93,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
 
       {/* Carrusel de imágenes */}
       <div className="relative overflow-hidden">
-        <div className="h-[200px] sm:h-[220px] md:h-[240px] lg:h-[260px] overflow-hidden bg-linear-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
+        <div className="h-[280px] sm:h-[240px] md:h-[260px] lg:h-[280px] overflow-hidden bg-linear-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
           {currentImage ? (
             <>
               <img
@@ -102,6 +101,8 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
                 alt={arreglo.nombre || 'Arreglo floral'}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
+                decoding="async"
+                style={{ objectPosition: 'center' }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
@@ -112,20 +113,20 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
                 <>
                   <button
                     onClick={goToPrevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-8 sm:h-8 bg-black/60 hover:bg-black/80 active:bg-black/90 text-white rounded-full flex items-center justify-center transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 backdrop-blur-sm shadow-lg"
                     aria-label="Imagen anterior"
                   >
-                    <HiChevronLeft className="w-5 h-5" />
+                    <HiChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
                   </button>
                   <button
                     onClick={goToNextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-8 sm:h-8 bg-black/60 hover:bg-black/80 active:bg-black/90 text-white rounded-full flex items-center justify-center transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 backdrop-blur-sm shadow-lg"
                     aria-label="Imagen siguiente"
                   >
-                    <HiChevronRight className="w-5 h-5" />
+                    <HiChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
                   </button>
                   {/* Indicadores */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                  <div className="absolute bottom-3 sm:bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-2 sm:gap-1.5">
                     {images.map((_, index) => (
                       <button
                         key={index}
@@ -133,10 +134,10 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
                           e.stopPropagation();
                           setCurrentImageIndex(index);
                         }}
-                        className={`h-1.5 rounded-full transition-all ${
+                        className={`h-2 w-2 sm:h-1.5 sm:w-1.5 rounded-full transition-all ${
                           index === currentImageIndex
-                            ? 'w-6 bg-white'
-                            : 'w-1.5 bg-white/50 hover:bg-white/75'
+                            ? 'w-7 sm:w-6 bg-white shadow-lg'
+                            : 'bg-white/60 hover:bg-white/80 active:bg-white/90'
                         }`}
                         aria-label={`Ir a imagen ${index + 1}`}
                       />
@@ -152,19 +153,19 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
       </div>
 
       {/* Información */}
-      <div className="p-4 sm:p-5">
+      <div className="p-4 sm:p-5 md:p-6">
         {/* Categoría */}
         <div className="text-[11px] font-semibold tracking-wider uppercase text-[#71717A] mb-[5px]">
           {arreglo.formaArreglo?.descripcion || 'Arreglo Floral'}
         </div>
 
         {/* Título */}
-        <h3 className="text-base sm:text-lg font-bold text-[#18181B] mb-[10px] tracking-[-0.5px] line-clamp-2 min-h-10">
+        <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#18181B] mb-2 sm:mb-[10px] tracking-[-0.5px] line-clamp-2 min-h-10">
           {arreglo.nombre}
         </h3>
 
         {/* Descripción */}
-        <p className="text-[13px] text-[#52525B] leading-[1.4] mb-3 line-clamp-2">
+        <p className="text-sm sm:text-[13px] text-[#52525B] leading-normal sm:leading-[1.4] mb-3 sm:mb-4 line-clamp-2">
           {arreglo.descripcion}
         </p>
 
@@ -181,40 +182,44 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
         </div>
 
         {/* Precio y Botón */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
           <div className="flex flex-col">
-            <span className="text-lg sm:text-[20px] font-bold text-[#18181B]">
+            <span className="text-xl sm:text-[20px] md:text-2xl font-bold text-[#18181B]">
               {precio}
             </span>
           </div>
           <button
             onClick={async (e) => {
               e.stopPropagation();
-              
+
               // Verificar autenticación - debe estar autenticado EN EL STORE y tener token
               const token = localStorage.getItem('token');
-              
+
               // Si no está autenticado, intentar sincronizar primero
               if (token && (!isAuthenticated || !user)) {
                 try {
                   const userData = await checkAuthAction();
                   setUser(userData);
                   // Esperar un momento para que el estado se actualice
-                  await new Promise(resolve => setTimeout(resolve, 100));
+                  await new Promise((resolve) => setTimeout(resolve, 100));
                 } catch (error) {
                   toast.info('Inicia sesión para agregar productos al carrito');
-                  navigate('/login', { state: { from: window.location.pathname } });
+                  navigate('/login', {
+                    state: { from: window.location.pathname },
+                  });
                   return;
                 }
               }
-              
+
               // Verificar autenticación después de sincronizar
               if (!isAuthenticated || !token || !user) {
                 toast.info('Inicia sesión para agregar productos al carrito');
-                navigate('/login', { state: { from: window.location.pathname } });
+                navigate('/login', {
+                  state: { from: window.location.pathname },
+                });
                 return;
               }
-              
+
               // El endpoint público solo retorna arreglos activos, pero verificar por si acaso
               if (arreglo.estado && arreglo.estado !== 'activo') {
                 toast.error('Este producto no está disponible');
@@ -234,8 +239,13 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
                 precioUnitario: precio,
               });
             }}
-            disabled={isAdding === true || (arreglo.estado !== undefined && arreglo.estado !== 'activo' && arreglo.estado !== null)}
-            className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-4 py-2 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] group/btn overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={
+              isAdding === true ||
+              (arreglo.estado !== undefined &&
+                arreglo.estado !== 'activo' &&
+                arreglo.estado !== null)
+            }
+            className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-5 py-2.5 sm:px-4 sm:py-2 text-sm sm:text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-2 sm:gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] active:scale-95 group/btn overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative z-10">
               {isAdding ? 'Agregando...' : 'Añadir al carrito'}
@@ -262,7 +272,9 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
               </svg>
             ))}
           </div>
-          <div className="text-[11px] font-semibold text-[#22C55E]">En Stock</div>
+          <div className="text-[11px] font-semibold text-[#22C55E]">
+            En Stock
+          </div>
         </div>
       </div>
     </div>

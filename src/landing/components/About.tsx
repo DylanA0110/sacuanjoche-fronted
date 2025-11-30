@@ -40,7 +40,7 @@ export const About = () => {
   return (
     <motion.section
       id="historia"
-      className="py-20 sm:py-24 lg:py-32 bg-linear-to-b from-[#0D0D0D] via-[#1a1a1a] to-[#0D0D0D] relative overflow-hidden"
+      className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20 sm:pb-24 lg:pb-32 bg-linear-to-b from-[#0D0D0D] via-[#1a1a1a] to-[#0D0D0D] relative overflow-hidden"
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.2 }}

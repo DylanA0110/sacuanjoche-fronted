@@ -20,7 +20,11 @@ const CatalogPage = () => {
     setSearchParams,
   } = useQueryParameters();
 
-  const { data: arreglosResponse, isLoading, isError } = usePaginatedArreglos({
+  const {
+    data: arreglosResponse,
+    isLoading,
+    isError,
+  } = usePaginatedArreglos({
     page: +page,
     limit: +limit,
     q: q || undefined,
@@ -35,20 +39,8 @@ const CatalogPage = () => {
   const arreglosResponseTyped = arreglosResponse as any;
   const arreglos = arreglosResponseTyped?.arreglos || [];
   const totalItems = arreglosResponseTyped?.total || 0;
-  const totalPages = arreglosResponseTyped?.pages || Math.ceil(totalItems / (+limit || 12));
-
-  // Debug: Log para ver qué está pasando
-  useEffect(() => {
-    console.log('🔍 [CatalogPage] Estado actual:', {
-      isLoading,
-      isError,
-      arreglosCount: arreglos.length,
-      totalItems,
-      totalPages,
-      arreglosResponse,
-      arreglos: arreglos.slice(0, 3), // Primeros 3 para no saturar la consola
-    });
-  }, [isLoading, isError, arreglos.length, totalItems, totalPages, arreglosResponse]);
+  const totalPages =
+    arreglosResponseTyped?.pages || Math.ceil(totalItems / (+limit || 12));
 
   // Calcular items por página según tamaño de pantalla
   const calculateItemsPerPage = useCallback(() => {
@@ -143,7 +135,8 @@ const CatalogPage = () => {
         if (filters.precioMax) prev.set('precioMax', filters.precioMax);
         else prev.delete('precioMax');
 
-        if (filters.idFormaArreglo) prev.set('idFormaArreglo', filters.idFormaArreglo);
+        if (filters.idFormaArreglo)
+          prev.set('idFormaArreglo', filters.idFormaArreglo);
         else prev.delete('idFormaArreglo');
 
         return prev;
@@ -155,7 +148,7 @@ const CatalogPage = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      <section className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden">
+      <section className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-16 sm:pb-20 md:pb-24 lg:pb-32 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 sm:w-[500px] h-96 sm:h-[500px] rounded-full blur-xl bg-[#50C878]/5" />
           <div className="absolute bottom-1/4 right-1/4 w-80 sm:w-[450px] h-80 sm:h-[450px] rounded-full blur-xl bg-[#E91E63]/4" />
@@ -170,8 +163,8 @@ const CatalogPage = () => {
               NUESTROS ARREGLOS
             </h1>
             <p className="text-[#665b68] text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed px-4 sm:px-0 font-medium">
-              Descubre nuestra colección de arreglos florales únicos, creados con
-              pasión y dedicación para cada ocasión especial.
+              Descubre nuestra colección de arreglos florales únicos, creados
+              con pasión y dedicación para cada ocasión especial.
             </p>
           </div>
 
@@ -194,7 +187,8 @@ const CatalogPage = () => {
           ) : isError ? (
             <div className="text-center py-20">
               <p className="text-[#665b68] text-lg">
-                No se pudieron cargar los arreglos. Por favor, intenta más tarde.
+                No se pudieron cargar los arreglos. Por favor, intenta más
+                tarde.
               </p>
             </div>
           ) : arreglos.length === 0 ? (
@@ -225,7 +219,7 @@ const CatalogPage = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
                 {arreglos.map((arreglo: any) => (
                   <ArregloCard key={arreglo.idArreglo} arreglo={arreglo} />
                 ))}

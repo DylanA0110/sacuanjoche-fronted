@@ -74,7 +74,7 @@ export const Services = () => {
   return (
     <section
       id="servicios"
-      className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] py-16 sm:py-20 md:py-24 lg:py-32 overflow-hidden"
+      className="relative bg-linear-to-b from-[#fdf7f9] via-[#ffffff] to-[#f7f9fb] pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-16 sm:pb-20 md:pb-24 lg:pb-32 overflow-hidden"
     >
       {/* Efectos de fondo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
