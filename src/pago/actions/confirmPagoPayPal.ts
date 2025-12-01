@@ -1,12 +1,16 @@
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
-import type { ConfirmPagoPayPalDto, ConfirmPagoPayPalResponse } from '../types/pago.interface';
+import { logger } from '@/shared/utils/logger';
+import type {
+  ConfirmPagoPayPalDto,
+  ConfirmPagoPayPalResponse,
+} from '../types/pago.interface';
 
 export const confirmPagoPayPal = async (
   idPago: number,
   data: ConfirmPagoPayPalDto
 ): Promise<ConfirmPagoPayPalResponse> => {
   try {
-    console.log('📤 Confirmando pago PayPal:', {
+    logger.debug('📤 Confirmando pago PayPal:', {
       idPago,
       orderId: data.orderId,
       endpoint: `/pago/paypal/confirm/${idPago}`,
@@ -17,7 +21,7 @@ export const confirmPagoPayPal = async (
       data
     );
 
-    console.log('📥 Respuesta de confirmación:', response.data);
+    logger.debug('📥 Respuesta de confirmación:', response.data);
 
     // Validar respuesta
     if (!response.data) {
@@ -25,12 +29,12 @@ export const confirmPagoPayPal = async (
     }
 
     if (!response.data.idPago) {
-      console.error('❌ Respuesta sin idPago:', response.data);
+      logger.error('❌ Respuesta sin idPago:', response.data);
       throw new Error('El servidor no devolvió un ID de pago válido');
     }
 
     if (response.data.idPago !== idPago) {
-      console.error('❌ idPago no coincide:', {
+      logger.error('❌ idPago no coincide:', {
         esperado: idPago,
         recibido: response.data.idPago,
       });
@@ -39,7 +43,7 @@ export const confirmPagoPayPal = async (
 
     return response.data;
   } catch (error: any) {
-    console.error('❌ Error en confirmPagoPayPal:', {
+    logger.error('❌ Error en confirmPagoPayPal:', {
       idPago,
       orderId: data.orderId,
       message: error.message,
@@ -49,4 +53,3 @@ export const confirmPagoPayPal = async (
     throw error;
   }
 };
-

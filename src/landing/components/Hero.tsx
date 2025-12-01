@@ -63,7 +63,7 @@ export const Hero = () => {
     <section
       ref={heroRef}
       id="inicio"
-      className="relative min-h-screen flex items-center overflow-hidden pt-24 sm:pt-20 pb-12 sm:pb-16"
+      className="relative min-h-screen flex items-center overflow-x-hidden overflow-y-auto sm:overflow-hidden pt-24 sm:pt-20 pb-12 sm:pb-16"
     >
       <HeroBackground shouldAnimate={shouldAnimate} />
 
