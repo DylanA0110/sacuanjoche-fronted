@@ -68,7 +68,6 @@ export const getEnviosConductor = async (
       throw new Error(errorData.message || `Error al obtener envíos: ${error.message}`);
     }
     
-    console.error('Error al obtener envíos del conductor:', error);
     throw error instanceof Error ? error : new Error('Error desconocido al obtener envíos');
   }
 };

@@ -7,17 +7,6 @@ export const createRuta = async (data: CreateRutaDto): Promise<Ruta> => {
     return response.data;
   } catch (error: any) {
     const errorData = error.response?.data || {};
-    const errorMessage = Array.isArray(errorData.message) 
-      ? errorData.message.join(', ') 
-      : errorData.message || error.message;
-    
-    console.error('❌ [createRuta] Error al crear ruta:', {
-      status: error.response?.status,
-      message: errorMessage,
-      fullMessage: errorData.message,
-      data: errorData,
-      payload: data,
-    });
     
     if (Array.isArray(errorData.message)) {
       const errorMessages = errorData.message.join(', ');

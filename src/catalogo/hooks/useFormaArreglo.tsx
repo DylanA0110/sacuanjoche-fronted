@@ -43,7 +43,7 @@ export const useFormaArreglo = (options?: UseFormaArregloOptions) => {
 
   useEffect(() => {
     if (query.isError && query.error) {
-      console.error('Error al cargar formas de arreglo:', query.error);
+      // Error al cargar formas de arreglo
     }
   }, [query.isError, query.error]);
 

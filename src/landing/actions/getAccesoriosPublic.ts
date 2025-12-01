@@ -10,7 +10,6 @@ export const getAccesoriosPublic = async (): Promise<AccesorioPublic[]> => {
     const response = await floristeriaApi.get<AccesorioPublic[]>('/accesorio/public');
     return response.data || [];
   } catch (error) {
-    console.error('Error al cargar accesorios públicos:', error);
     throw error;
   }
 };

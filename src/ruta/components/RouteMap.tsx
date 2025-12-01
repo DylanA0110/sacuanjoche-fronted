@@ -61,7 +61,6 @@ const checkWebGLSupport = (): { supported: boolean; error?: string; canRetry?: b
     // Si no se pudo obtener WebGL, pero es un navegador moderno, permitir intentar de todas formas
     // (puede ser un problema temporal o de configuración)
     if (!gl) {
-      console.warn('[RouteMap] No se pudo obtener contexto WebGL, pero se intentará inicializar el mapa de todas formas');
       return {
         supported: true, // Permitir intentar de todas formas en navegadores modernos
         canRetry: true,
@@ -72,19 +71,16 @@ const checkWebGLSupport = (): { supported: boolean; error?: string; canRetry?: b
     try {
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-        console.log('[RouteMap] WebGL Info:', { vendor, renderer });
+        gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
       }
     } catch (e) {
       // No es crítico si no se puede obtener info de debug
-      console.log('[RouteMap] WebGL disponible pero sin info de debug');
     }
     
     return { supported: true };
   } catch (error) {
     // En caso de error, permitir intentar de todas formas si es un navegador moderno
-    console.warn('[RouteMap] Error al verificar WebGL, pero se intentará de todas formas:', error);
     return {
       supported: true, // Permitir intentar
       canRetry: true,
@@ -153,7 +149,6 @@ export function RouteMap({
       // En navegadores modernos, intentar de todas formas después de un pequeño delay
       const timeout = setTimeout(() => {
         if (!mapRef.current && mapContainerRef.current) {
-          console.log('[RouteMap] Intentando inicializar mapa a pesar de verificación WebGL fallida...');
           initializeMap();
         }
       }, 500);
@@ -201,7 +196,6 @@ export function RouteMap({
         map.on('error', (event) => {
           const error = (event as { error?: Error }).error;
           if (error) {
-            console.error('[RouteMap] Error de Mapbox:', error);
             const errorMessage = error.message || String(error);
             
             // Mensajes más específicos según el tipo de error
@@ -229,7 +223,6 @@ export function RouteMap({
             setMapLoaded(true);
             setMapError(null);
           } catch (error) {
-            console.error('[RouteMap] Error al agregar controles:', error);
             setMapError('Error al cargar controles del mapa');
           }
         });
@@ -244,7 +237,6 @@ export function RouteMap({
         });
 
       } catch (error) {
-        console.error('[RouteMap] Error al inicializar el mapa:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         
         // Intentar obtener más información del error
@@ -259,13 +251,12 @@ export function RouteMap({
         
         // En Chrome y otros navegadores modernos, intentar una vez más después de un delay
         if (navigator.userAgent.includes('Chrome') || navigator.userAgent.includes('Edge')) {
-          console.log('[RouteMap] Reintentando inicialización después de error...');
           setTimeout(() => {
             if (!mapRef.current && mapContainerRef.current) {
               try {
                 initializeMap();
               } catch (retryError) {
-                console.error('[RouteMap] Error en reintento:', retryError);
+                // Error en reintento
               }
             }
           }, 1000);
@@ -278,7 +269,7 @@ export function RouteMap({
         try {
           mapRef.current.remove();
         } catch (error) {
-          console.error('[RouteMap] Error al remover el mapa:', error);
+          // Error al remover el mapa
         }
         mapRef.current = null;
       }
@@ -286,7 +277,7 @@ export function RouteMap({
         try {
           marker.remove();
         } catch (error) {
-          console.error('[RouteMap] Error al remover marcador:', error);
+          // Error al remover marcador
         }
       });
       markersRef.current = [];
@@ -299,22 +290,6 @@ export function RouteMap({
 
     const map = mapRef.current;
 
-    // Log de depuración
-    console.log('[RouteMap] Renderizando mapa con:', {
-      totalPedidos: rutaPedidos?.length || 0,
-      tieneGeometry: !!geometry,
-      origenLat,
-      origenLng,
-      pedidos: rutaPedidos?.map(p => ({
-        id: p.idPedido,
-        secuencia: p.secuencia,
-        lat: p.lat,
-        lng: p.lng,
-        latType: typeof p.lat,
-        lngType: typeof p.lng,
-      })) || []
-    });
-
     let decodedRoute: Array<[number, number]> = [];
     if (geometry) {
       try {
@@ -322,15 +297,8 @@ export function RouteMap({
           polyline
             .decode(geometry, 6) as Array<[number, number]>
         ).map(([lat, lng]: [number, number]) => [lng, lat] as [number, number]);
-        if (!decodedRoute.length) {
-          console.warn('Ruta decodificada sin coordenadas', geometry);
-        }
       } catch (error) {
-        console.error(
-          'No se pudo decodificar la geometría recibida',
-          error,
-          geometry
-        );
+        // Error al decodificar la geometría
       }
     }
 

@@ -50,14 +50,12 @@ export const CatalogFilters = ({
   const formasArreglo = useMemo(() => {
     if (!formasArregloData) return [];
     if (Array.isArray(formasArregloData)) return formasArregloData;
-    console.warn('⚠️ [CatalogFilters] formasArregloData no es un array:', formasArregloData);
     return [];
   }, [formasArregloData]);
   
   const floresList = useMemo(() => {
     if (!floresListData) return [];
     if (Array.isArray(floresListData)) return floresListData;
-    console.warn('⚠️ [CatalogFilters] floresListData no es un array:', floresListData);
     return [];
   }, [floresListData]);
 

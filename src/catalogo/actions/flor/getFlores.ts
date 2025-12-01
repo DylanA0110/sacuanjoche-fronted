@@ -103,7 +103,6 @@ export const getFlores = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getFlores:', error);
     throw error;
   }
 };

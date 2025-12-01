@@ -53,10 +53,6 @@ export const getPedidosDetalladoReportPdf = async (
 
     return blob;
   } catch (error: any) {
-    console.error(
-      'Error al descargar PDF de reporte detallado de pedidos:',
-      error
-    );
     if (error.response?.status === 404) {
       throw new Error(
         'El endpoint de reporte detallado de pedidos no fue encontrado. Verifica que el servidor esté funcionando correctamente.'

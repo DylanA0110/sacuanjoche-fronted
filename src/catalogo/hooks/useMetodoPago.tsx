@@ -43,7 +43,7 @@ export const useMetodoPago = (options?: UseMetodoPagoOptions) => {
 
   useEffect(() => {
     if (query.isError && query.error) {
-      console.error('Error al cargar métodos de pago:', query.error);
+      // Error al cargar métodos de pago
     }
   }, [query.isError, query.error]);
 

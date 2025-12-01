@@ -103,7 +103,6 @@ export const getAccesorios = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getAccesorios:', error);
     throw error;
   }
 };

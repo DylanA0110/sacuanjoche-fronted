@@ -115,8 +115,7 @@ export function ArregloDetailsModal({
           .then((media: Media[]) => {
             dispatch({ type: 'SET_IMAGES', payload: media });
           })
-          .catch((error: any) => {
-            console.error('Error al cargar imágenes:', error);
+          .catch(() => {
             dispatch({ type: 'SET_IMAGES', payload: [] });
           })
           .finally(() =>
@@ -129,8 +128,7 @@ export function ArregloDetailsModal({
           dispatch({ type: 'SET_FLORES', payload: f });
           dispatch({ type: 'SET_ACCESORIOS', payload: a });
         })
-        .catch((error: any) => {
-          console.error('Error al cargar asociaciones:', error);
+        .catch(() => {
           dispatch({ type: 'SET_FLORES', payload: [] });
           dispatch({ type: 'SET_ACCESORIOS', payload: [] });
         })

@@ -216,7 +216,6 @@ export default function PedidoFormPage() {
             fechaEntrega = `${year}-${month}-${day}`;
           }
         } catch (error) {
-          console.error('Error al formatear fecha de entrega:', error);
           fechaEntrega = '';
         }
       }
@@ -473,11 +472,6 @@ export default function PedidoFormPage() {
           idDireccion,
           idContactoEntrega,
         };
-        // Debug: mostrar el DTO que se envía
-        console.log(
-          'UpdatePedidoDto que se envía:',
-          JSON.stringify(updateDto, null, 2)
-        );
         pedidoResultado = await updatePedido(Number(idPedido), updateDto);
       } else {
         pedidoResultado = await createPedido(pedidoDto);
@@ -511,8 +505,7 @@ export default function PedidoFormPage() {
             costoEnvio: data.pedido.costoEnvio,
           });
         } catch (error) {
-          // No fallar el pedido si falla el envío, solo loguear
-          console.error('Error al crear envío:', error);
+          // No fallar el pedido si falla el envío
         }
       }
 
@@ -528,21 +521,6 @@ export default function PedidoFormPage() {
       navigate('/admin/pedidos');
     },
     onError: (error: any) => {
-      // Debug: mostrar el error completo del backend
-      console.error('=== ERROR DEL BACKEND ===');
-      console.error('Error completo:', error);
-      console.error('Error response:', error?.response);
-      console.error('Error response data:', error?.response?.data);
-      console.error('Error response status:', error?.response?.status);
-      console.error('Error message:', error?.message);
-      if (error?.response?.data) {
-        console.error(
-          'Error data completo:',
-          JSON.stringify(error.response.data, null, 2)
-        );
-      }
-      console.error('========================');
-
       toast.error(
         isEdit ? 'Error al actualizar el pedido' : 'Error al crear el pedido',
         {

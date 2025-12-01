@@ -36,7 +36,6 @@ export const getClienteDirecciones = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getClienteDirecciones:', error);
     throw error;
   }
 };

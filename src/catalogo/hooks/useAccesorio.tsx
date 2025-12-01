@@ -43,7 +43,7 @@ export const useAccesorio = (options?: UseAccesorioOptions) => {
 
   useEffect(() => {
     if (query.isError && query.error) {
-      console.error('Error al cargar accesorios:', query.error);
+      // Error al cargar accesorios
     }
   }, [query.isError, query.error]);
 

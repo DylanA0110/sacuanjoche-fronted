@@ -34,8 +34,6 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
   const handleCreateOrder = async (): Promise<string> => {
     try {
       setIsProcessing(true);
-      
-      console.log('🔄 [PayPal] Creando orden en backend...', { monto, idMetodoPago });
 
       // Crear el pago en nuestro backend (esto crea la orden en PayPal)
       const response = await floristeriaApi.post('/pago/paypal/create', {
@@ -52,12 +50,9 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
       // Guardar el idPago para usarlo después
       localStorage.setItem('paypal_pago_id', pagoData.idPago.toString());
 
-      console.log('✅ [PayPal] Orden creada:', pagoData.idGateway);
-
       // Devolver el orderId (idGateway) que PayPal necesita
       return pagoData.idGateway;
     } catch (error: any) {
-      console.error('❌ Error al crear orden de PayPal:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al crear el pago';
       toast.error(errorMessage);
       if (onError) {
@@ -76,8 +71,6 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
   const handleApprove = async (data: { orderID: string }): Promise<void> => {
     try {
       setIsProcessing(true);
-
-      console.log('🔄 [PayPal] Capturando orden:', data.orderID);
 
       // Obtener idPago del localStorage
       const idPagoStr = localStorage.getItem('paypal_pago_id');
@@ -101,8 +94,6 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
         throw new Error('El pago no pudo ser confirmado');
       }
 
-      console.log('✅ [PayPal] Pago capturado y confirmado:', pagoConfirmado);
-
       // Asociar el pago al carrito si existe
       const carritoTyped = carrito as Carrito | null;
       if (carritoTyped?.idCarrito) {
@@ -119,7 +110,6 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
         onSuccess(pagoConfirmado.idPago);
       }
     } catch (error: any) {
-      console.error('❌ Error al capturar el pago:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Error al procesar el pago';
       toast.error(errorMessage);
       
@@ -132,7 +122,6 @@ function PayPalButtonsWrapper({ monto, idMetodoPago, onSuccess, onError, disable
   };
 
   const handleError = (err: any) => {
-    console.error('❌ Error en PayPal:', err);
     toast.error('Error al procesar el pago con PayPal');
     if (onError) {
       onError(err);

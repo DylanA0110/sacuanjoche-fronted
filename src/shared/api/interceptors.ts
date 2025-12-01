@@ -89,7 +89,7 @@ const createRequestInterceptor = () => {
             const { useAuthStore } = await import('@/auth/store/auth.store');
             useAuthStore.getState().logout();
           } catch (err) {
-            console.error('Error al limpiar store de autenticación:', err);
+            // Error al limpiar store de autenticación
           }
 
           // Solo redirigir si no estamos ya en la página de login y estamos en el panel
@@ -107,10 +107,6 @@ const createRequestInterceptor = () => {
 
       // Agregar token al header
       config.headers.Authorization = `Bearer ${token}`;
-    } else if (!token && !isPublic) {
-      // Si no hay token y no es un endpoint público, podría ser un problema
-      // Pero no rechazamos aquí para permitir que el backend maneje el error
-      console.warn('Petición a endpoint protegido sin token:', config.url);
     }
 
     return config;
@@ -168,7 +164,6 @@ const createResponseInterceptor = () => {
           useAuthStore.getState().logout();
         } catch (err) {
           // Si falla la importación, solo limpiar localStorage
-          console.error('Error al limpiar store de autenticación:', err);
         }
 
         window.location.href = '/login';

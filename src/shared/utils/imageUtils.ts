@@ -124,7 +124,7 @@ export function validateImageDimensions(
       }
     };
 
-    img.onerror = (error) => {
+    img.onerror = () => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeout);
@@ -207,7 +207,7 @@ export async function compressImage(
     }
 
     const reader = new FileReader();
-    let timeout: NodeJS.Timeout | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     reader.onload = (e) => {
       const img = new Image();

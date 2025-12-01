@@ -16,7 +16,6 @@ export const useFloresPublic = () => {
     select: (data) => {
       if (!data) return [];
       if (Array.isArray(data)) return data;
-      console.warn('⚠️ [useFloresPublic] Data no es un array:', data);
       return [];
     },
     // Valor por defecto mientras carga o en caso de error

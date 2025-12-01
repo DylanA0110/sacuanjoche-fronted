@@ -87,7 +87,6 @@ export const saveArregloInsumos = async (
     // Ejecutar todas las operaciones en paralelo
     await Promise.all([...accesorioPromises, ...florPromises]);
   } catch (error) {
-    console.error('Error al guardar asociaciones:', error);
     throw error;
   }
 };

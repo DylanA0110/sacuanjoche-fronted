@@ -104,7 +104,6 @@ export const getMetodosPago = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getMetodosPago:', error);
     throw error;
   }
 };

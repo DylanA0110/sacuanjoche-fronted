@@ -121,9 +121,6 @@ export const useFactura = (options?: UseFacturaOptions) => {
       }
 
       if (Array.isArray(query.data)) {
-        console.warn(
-          'useFactura - Backend devolvió array cuando se esperaba respuesta paginada.'
-        );
         return query.data.length;
       }
 

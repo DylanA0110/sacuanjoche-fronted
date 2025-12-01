@@ -43,7 +43,7 @@ export const useFlor = (options?: UseFlorOptions) => {
 
   useEffect(() => {
     if (query.isError && query.error) {
-      console.error('Error al cargar flores:', query.error);
+      // Error al cargar flores
     }
   }, [query.isError, query.error]);
 

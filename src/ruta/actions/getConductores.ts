@@ -59,7 +59,6 @@ export const getConductores = async (): Promise<EmpleadoConductor[]> => {
 
     return [];
   } catch (error: unknown) {
-    console.error('Error al obtener conductores:', error);
     // Si el endpoint no existe, retornar array vacío
     // El componente manejará el error
     if (error && typeof error === 'object' && 'response' in error) {

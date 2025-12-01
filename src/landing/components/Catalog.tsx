@@ -81,7 +81,6 @@ export const Catalog = () => {
         }
       } catch (err) {
         if (cancelled) return;
-        console.error('Error al cargar arreglos:', err);
         setError('No se pudieron cargar los arreglos. Por favor, intenta más tarde.');
         setArreglos([]);
         setTotalItems(0);

@@ -17,7 +17,6 @@ export const getMetodosPagoPorCanal = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getMetodosPagoPorCanal:', error);
     throw error;
   }
 };

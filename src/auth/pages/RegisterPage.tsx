@@ -9,7 +9,6 @@ import {
   HiEye,
   HiEyeOff,
   HiUser,
-  HiPhone,
 } from 'react-icons/hi';
 import { toast } from 'sonner';
 import { useAuthStore } from '../store/auth.store';
@@ -20,7 +19,6 @@ import { loginAction } from '../actions/login.action';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import {
   formatTelefono,
-  validateTelefono,
   formatTelefonoForBackend,
 } from '@/shared/utils/validation';
 

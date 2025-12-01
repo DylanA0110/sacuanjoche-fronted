@@ -103,7 +103,6 @@ export const getFormasArreglo = async (
 
     return [];
   } catch (error) {
-    console.error('Error en getFormasArreglo:', error);
     throw error;
   }
 };

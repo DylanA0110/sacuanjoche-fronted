@@ -26,10 +26,6 @@ export const getDetallePedidoByPedidoId = async (
         } catch (error2: any) {
           // Si ambas opciones fallan, retornar array vacío silenciosamente
           // No loguear error porque los detalles pueden no existir aún o venir en el pedido
-          // Solo loguear si no es un error 400/404 (error inesperado)
-          if (error2?.response?.status !== 400 && error2?.response?.status !== 404) {
-            console.warn('Error inesperado al obtener detalles del pedido:', error2);
-          }
           return [];
         }
       } else {
@@ -55,10 +51,6 @@ export const getDetallePedidoByPedidoId = async (
   } catch (error: any) {
     // No lanzar error, retornar array vacío para que el modal se muestre
     // Los detalles pueden venir en el pedido directamente
-    // Solo loguear si no es un error 400/404 (error inesperado)
-    if (error?.response?.status !== 400 && error?.response?.status !== 404) {
-      console.warn('Error al obtener detalles del pedido:', error);
-    }
     return [];
   }
 };

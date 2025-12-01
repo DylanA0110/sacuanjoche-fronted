@@ -63,7 +63,6 @@ export const usePedido = (options?: UsePedidoOptions) => {
       // esto es un error - el backend debería devolver el total real
       // Pero por ahora, asumimos que si hay más elementos que el limit, hay más páginas
       if (Array.isArray(query.data)) {
-        console.warn('Backend devolvió array cuando se esperaba respuesta paginada. Esto no debería pasar con paginación.');
         // Si tenemos exactamente 'limit' elementos, podría haber más páginas
         // Pero no podemos saber el total real sin hacer otra llamada
         // Por ahora, retornamos el length pero esto es incorrecto

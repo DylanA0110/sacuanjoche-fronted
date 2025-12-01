@@ -27,7 +27,6 @@ export const getFacturaPdf = async (idFactura: number): Promise<Blob> => {
 
     return blob;
   } catch (error) {
-    console.error('Error al descargar PDF de factura:', error);
     throw error;
   }
 };

@@ -90,7 +90,6 @@ export const getRutasConductor = async (idEmpleado?: number): Promise<RutaConduc
       throw new Error(errorData.message || `Error al obtener rutas: ${error.message}`);
     }
     
-    console.error('Error al obtener rutas del conductor:', error);
     throw error instanceof Error ? error : new Error('Error desconocido al obtener rutas');
   }
 };
@@ -124,7 +123,6 @@ export const getRutaById = async (idRuta: number): Promise<RutaConductor> => {
       throw new Error(errorData.message || `Error al obtener la ruta: ${error.message}`);
     }
     
-    console.error('Error al obtener ruta por ID:', error);
     throw error instanceof Error ? error : new Error('Error desconocido al obtener la ruta');
   }
 };

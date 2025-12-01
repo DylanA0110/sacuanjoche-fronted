@@ -51,7 +51,6 @@ export const getArreglosReportPdf = async (
 
     return blob;
   } catch (error: any) {
-    console.error('Error al descargar PDF de reporte de arreglos:', error);
     if (error.response?.status === 404) {
       throw new Error(
         'El endpoint de reporte de arreglos no fue encontrado. Verifica que el servidor esté funcionando correctamente.'

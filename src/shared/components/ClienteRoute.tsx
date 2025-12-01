@@ -51,7 +51,6 @@ export function ClienteRoute({ children }: ClienteRouteProps) {
         } catch (error) {
           // Si falla, el token es inválido - limpiar pero NO redirigir
           // Permitir que el usuario continúe navegando (la landing es pública)
-          console.warn('Token inválido o expirado, limpiando estado de autenticación');
           localStorage.removeItem('token');
           logout();
         }

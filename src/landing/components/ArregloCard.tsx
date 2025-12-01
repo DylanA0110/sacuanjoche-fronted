@@ -29,7 +29,6 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
           setUser(userData);
         } catch (error) {
           // Si falla, el token es inválido, limpiar
-          console.error('Error al verificar autenticación:', error);
           localStorage.removeItem('token');
         }
       }

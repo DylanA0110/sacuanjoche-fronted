@@ -7,17 +7,6 @@ export const updateRuta = async (idRuta: number, data: UpdateRutaDto): Promise<R
     return response.data;
   } catch (error: any) {
     const errorData = error.response?.data || {};
-    const errorMessage = Array.isArray(errorData.message) 
-      ? errorData.message.join(', ') 
-      : errorData.message || error.message;
-    
-    console.error('❌ [updateRuta] Error al actualizar ruta:', {
-      status: error.response?.status,
-      message: errorMessage,
-      fullMessage: errorData.message,
-      data: errorData,
-      payload: data,
-    });
     
     if (Array.isArray(errorData.message)) {
       const errorMessages = errorData.message.join(', ');

@@ -13,13 +13,6 @@ export const asociarPagoAlCarrito = async (
     );
     return response.data;
   } catch (error: any) {
-    console.error('❌ Error al asociar pago al carrito:', {
-      idCarrito,
-      idPago,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-      data: error.response?.data,
-    });
     throw error;
   }
 };

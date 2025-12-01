@@ -33,7 +33,6 @@ export const getOrdenTrabajoPdf = async (idPedido: number): Promise<Blob> => {
 
     return blob;
   } catch (error) {
-    console.error('Error al descargar Orden de Trabajo PDF:', error);
     throw error;
   }
 };

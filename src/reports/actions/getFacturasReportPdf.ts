@@ -51,7 +51,6 @@ export const getFacturasReportPdf = async (
 
     return blob;
   } catch (error: any) {
-    console.error('Error al descargar PDF de reporte de facturas:', error);
     // Mejorar el mensaje de error
     if (error.response?.status === 404) {
       throw new Error(

@@ -206,11 +206,6 @@ export const getCarritoActivo = async (): Promise<Carrito | null> => {
                   // Usar el carrito arreglo completo que viene del endpoint
                   return carritoArregloCompleto;
                 } catch (error) {
-                  console.error(
-                    `❌ [getCarritoActivo] Error al cargar carrito arreglo ${item.idCarritoArreglo}:`,
-                    error
-                  );
-
                   // Fallback: intentar cargar solo el arreglo por ID
                   if (item.idArreglo) {
                     try {
@@ -233,10 +228,6 @@ export const getCarritoActivo = async (): Promise<Carrito | null> => {
                         },
                       };
                     } catch (fallbackError) {
-                      console.error(
-                        `❌ [getCarritoActivo] Error en fallback al cargar arreglo ${item.idArreglo}:`,
-                        fallbackError
-                      );
                     }
                   }
 

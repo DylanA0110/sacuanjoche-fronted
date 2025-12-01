@@ -150,7 +150,6 @@ export const useArreglo = (options?: UseArregloOptions) => {
       }
       
       if (Array.isArray(query.data)) {
-        console.warn('useArreglo - Backend devolvió array cuando se esperaba respuesta paginada.');
         return query.data.length;
       }
       

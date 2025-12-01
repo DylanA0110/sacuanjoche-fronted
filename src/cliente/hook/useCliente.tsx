@@ -156,7 +156,6 @@ export const useCliente = (options?: UseClienteOptions) => {
       }
       
       if (Array.isArray(query.data)) {
-        console.warn('useCliente - Backend devolvió array cuando se esperaba respuesta paginada.');
         return query.data.length;
       }
       
