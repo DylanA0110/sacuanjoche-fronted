@@ -135,23 +135,49 @@ export default function PedidoFormPage() {
   );
   const debouncedSearch = useDebounce(searchArreglo, 300);
   const isUserTypingRef = useRef(false);
+  const previousSearchRef = useRef<string | null>(null);
+
+  // Inicializar el ref con el valor actual de la URL
+  useEffect(() => {
+    if (previousSearchRef.current === null) {
+      previousSearchRef.current = searchParams.get('q') || '';
+    }
+  }, []);
 
   // Actualizar URL cuando cambia el debounced search
   useEffect(() => {
-    if (debouncedSearch === searchParams.get('q')) {
+    const currentUrlQuery = searchParams.get('q') || '';
+    const currentDebounced = debouncedSearch || '';
+    
+    // Si el valor en la URL ya coincide con el debounced, no hacer nada
+    if (currentDebounced === currentUrlQuery) {
       isUserTypingRef.current = false;
+      // Actualizar el ref para mantener sincronizado
+      if (previousSearchRef.current !== currentDebounced) {
+        previousSearchRef.current = currentDebounced;
+      }
       return;
     }
 
-    isUserTypingRef.current = true;
-    const newParams = new URLSearchParams(searchParams);
-    if (debouncedSearch) {
-      newParams.set('q', debouncedSearch);
-    } else {
-      newParams.delete('q');
+    // Solo actualizar si la búsqueda realmente cambió desde la última vez
+    const previousSearch = previousSearchRef.current;
+    const searchChanged = currentDebounced !== previousSearch;
+
+    if (searchChanged) {
+      isUserTypingRef.current = true;
+      const newParams = new URLSearchParams(searchParams);
+      
+      if (debouncedSearch) {
+        newParams.set('q', debouncedSearch);
+      } else {
+        newParams.delete('q');
+      }
+      
+      // Solo eliminar page si la búsqueda cambió (resetear a página 1)
+      newParams.delete('page');
+      previousSearchRef.current = currentDebounced;
+      setSearchParams(newParams, { replace: true });
     }
-    newParams.delete('page');
-    setSearchParams(newParams, { replace: true });
   }, [debouncedSearch, searchParams, setSearchParams]);
 
   // Sincronizar searchInput cuando cambia la URL desde fuera
@@ -160,9 +186,11 @@ export default function PedidoFormPage() {
       const urlQuery = searchParams.get('q') || '';
       if (urlQuery !== searchArreglo) {
         setSearchArreglo(urlQuery);
+        // Actualizar el ref cuando cambia desde fuera
+        previousSearchRef.current = urlQuery;
       }
     }
-  }, [searchParams]);
+  }, [searchParams, searchArreglo]);
 
   // Obtener arreglos usando el hook con paginación real
   const {
