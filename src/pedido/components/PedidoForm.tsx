@@ -131,7 +131,6 @@ export function PedidoForm({
   }, [arreglos, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(arreglos.length / itemsPerPage);
-  const hasMorePages = currentPage < totalPages;
 
   // Resetear página cuando cambia la búsqueda
   useEffect(() => {
@@ -463,13 +462,26 @@ export function PedidoForm({
 
                   {/* Paginación */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 mb-6">
-                      <p className="text-sm text-gray-600">
-                        Mostrando {paginatedArreglos.length} de{' '}
-                        {arreglos.length} arreglos
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 mb-6 px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-lg">
+                      <p className="text-sm text-gray-600 order-2 sm:order-1">
+                        Mostrando{' '}
+                        <span className="font-semibold text-gray-900">
+                          {paginatedArreglos.length > 0
+                            ? (currentPage - 1) * itemsPerPage + 1
+                            : 0}
+                        </span>{' '}
+                        a{' '}
+                        <span className="font-semibold text-gray-900">
+                          {Math.min(currentPage * itemsPerPage, arreglos.length)}
+                        </span>{' '}
+                        de{' '}
+                        <span className="font-semibold text-gray-900">
+                          {arreglos.length}
+                        </span>{' '}
+                        arreglos
                         {searchArreglo && ` para "${searchArreglo}"`}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 order-1 sm:order-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -478,12 +490,13 @@ export function PedidoForm({
                             setCurrentPage((p) => Math.max(1, p - 1))
                           }
                           disabled={currentPage === 1}
-                          className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                          className="h-9 px-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                          aria-label="Página anterior"
                         >
                           Anterior
                         </Button>
-                        <span className="text-sm text-gray-600 px-2">
-                          Página {currentPage} de {totalPages}
+                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-[80px] text-center">
+                          {currentPage} / {totalPages}
                         </span>
                         <Button
                           type="button"
@@ -493,25 +506,12 @@ export function PedidoForm({
                             setCurrentPage((p) => Math.min(totalPages, p + 1))
                           }
                           disabled={currentPage === totalPages}
-                          className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                          className="h-9 px-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                          aria-label="Página siguiente"
                         >
                           Siguiente
                         </Button>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Botón "Cargar más" */}
-                  {hasMorePages && (
-                    <div className="flex justify-center mb-6">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setCurrentPage((p) => p + 1)}
-                        className="border-[#50C878] text-[#50C878] hover:bg-[#50C878]/10"
-                      >
-                        Cargar más arreglos
-                      </Button>
                     </div>
                   )}
                 </>
