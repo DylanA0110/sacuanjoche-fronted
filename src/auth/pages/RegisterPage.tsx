@@ -18,7 +18,11 @@ import { hasAdminPanelAccess } from '@/shared/api/interceptors';
 import { registerAction } from '../actions/register.action';
 import { loginAction } from '../actions/login.action';
 import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
-import { formatTelefonoForBackend } from '@/shared/utils/validation';
+import {
+  formatTelefono,
+  validateTelefono,
+  formatTelefonoForBackend,
+} from '@/shared/utils/validation';
 
 interface RegisterFormData {
   primerNombre: string;
@@ -41,6 +45,7 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RegisterFormData>({
     defaultValues: {
@@ -54,6 +59,12 @@ export default function RegisterPage() {
   });
 
   const password = watch('password');
+
+  // Handler para formatear teléfono
+  const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatTelefono(e.target.value);
+    setValue('telefono', formatted);
+  };
 
   // Verificar si ya está autenticado
   useEffect(() => {
@@ -472,26 +483,30 @@ export default function RegisterPage() {
               {/* Teléfono */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Teléfono
+                  Teléfono * (8 dígitos)
                 </label>
-                <div className="relative">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center h-[52px] px-3 bg-slate-100 border border-r-0 border-slate-300 rounded-l-xl text-sm font-medium text-slate-700">
+                    +505
+                  </div>
                   <input
                     type="tel"
                     {...register('telefono', {
                       required: 'El teléfono es requerido',
                       pattern: {
-                        value: /^[0-9+\-\s()]+$/,
-                        message: 'Teléfono inválido',
+                        value: /^\d{8}$/,
+                        message: 'El teléfono debe tener 8 dígitos',
                       },
                     })}
-                    placeholder="+505 1234-5678"
-                    className={`w-full px-4 py-3 pl-11 border rounded-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
+                    onChange={handleTelefonoChange}
+                    placeholder="12345678"
+                    maxLength={8}
+                    className={`flex-1 px-4 py-3 border rounded-r-xl text-sm text-slate-900 bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all ${
                       errors.telefono
                         ? 'border-red-400 focus:border-red-400'
                         : 'border-slate-300 focus:border-emerald-500'
                     }`}
                   />
-                  <HiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 </div>
                 {errors.telefono && (
                   <p className="mt-1.5 text-xs text-red-500 font-medium">

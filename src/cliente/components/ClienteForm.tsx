@@ -330,8 +330,8 @@ export function ClienteForm({
                   >
                     Teléfono * (8 dígitos)
                   </Label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-0 bottom-0 flex items-center text-muted-foreground text-sm font-medium pointer-events-none z-10">
+                  <div className="flex items-center">
+                    <div className="flex items-center justify-center h-11 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-medium text-gray-700">
                       +505
                     </div>
                     <Input
@@ -345,7 +345,7 @@ export function ClienteForm({
                         },
                       })}
                       onChange={handleTelefonoChange}
-                      className="bg-white border-gray-300 text-gray-900 h-11 text-base pl-14"
+                      className="bg-white border-gray-300 text-gray-900 h-11 text-base rounded-l-none"
                       placeholder="12345678"
                       maxLength={8}
                     />

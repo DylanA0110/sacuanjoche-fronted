@@ -1,12 +1,15 @@
 import { floristeriaApi } from '@/shared/api/FloristeriaApi';
-import type { CreatePagoPayPalDto, CreatePagoPayPalResponse } from '../types/pago.interface';
+import type {
+  CreatePagoPayPalDto,
+  CreatePagoPayPalResponse,
+} from '../types/pago.interface';
 
 export const createPagoPayPal = async (
   data: CreatePagoPayPalDto
 ): Promise<CreatePagoPayPalResponse> => {
   try {
     console.log('📤 Enviando request a /pago/paypal/create:', data);
-    
+
     const response = await floristeriaApi.post<CreatePagoPayPalResponse>(
       '/pago/paypal/create',
       data
@@ -39,4 +42,3 @@ export const createPagoPayPal = async (
     throw error;
   }
 };
-

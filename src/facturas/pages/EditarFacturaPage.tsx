@@ -30,10 +30,11 @@ import {
 } from '@/shared/components/ui/table';
 import { getFacturaById, updateFactura } from '../actions';
 import { getFacturaDetalleByFacturaId, updateFacturaDetalle } from '../actions';
-import type { Factura } from '../types/factura.interface';
+import type { Factura, UpdateFacturaDto } from '../types/factura.interface';
 import type { FacturaDetalle } from '../types/factura-detalle.interface';
 import type { UpdateFacturaDetalleDto } from '../actions/updateFacturaDetalle';
 import type { FacturaEstado } from '@/shared/types/estados.types';
+import { useUserIdEmpleado } from '@/shared/utils/getUserId';
 import {
   MdArrowBack,
   MdSave,
@@ -55,6 +56,7 @@ const EditarFacturaPage = () => {
   const { idFactura } = useParams<{ idFactura: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const idEmpleado = useUserIdEmpleado();
   const [editingDetalleId, setEditingDetalleId] = useState<number | null>(null);
   const [detalleEditForm, setDetalleEditForm] = useState<
     Partial<UpdateFacturaDetalleDto>
@@ -107,7 +109,8 @@ const EditarFacturaPage = () => {
 
   // Mutation para actualizar factura
   const updateFacturaMutation = useMutation({
-    mutationFn: (data: FormValues) => updateFactura(Number(idFactura!), data),
+    mutationFn: (data: UpdateFacturaDto) =>
+      updateFactura(Number(idFactura!), data),
     onSuccess: () => {
       toast.success('Factura actualizada exitosamente');
       queryClient.invalidateQueries({ queryKey: ['facturas'] });
@@ -142,10 +145,23 @@ const EditarFacturaPage = () => {
   });
 
   const onSubmit = (data: FormValues) => {
+    // Validar que el usuario tenga idEmpleado
+    if (!idEmpleado) {
+      toast.error('Error de autenticación', {
+        description:
+          'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+      });
+      return;
+    }
+
     // idFolio siempre es 1, no se edita
+    // Incluir idEmpleado para registrar quién actualizó la factura
     updateFacturaMutation.mutate({
-      ...data,
+      numFactura: data.numFactura,
+      estado: data.estado,
+      montoTotal: data.montoTotal,
       idFolio: 1,
+      idEmpleado,
     });
   };
 

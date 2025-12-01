@@ -28,6 +28,7 @@ import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MdEdit, MdVisibility, MdMoreVert, MdDownload, MdDelete } from 'react-icons/md';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
+import { useUserIdEmpleado } from '@/shared/utils/getUserId';
 
 // Componente para renderizar cliente con carga lazy
 const ClienteCell = ({ factura }: { factura: Factura }) => {
@@ -133,6 +134,7 @@ const FacturasPage = () => {
   const [selectedFacturaId, setSelectedFacturaId] = useState<number | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState<number | null>(null);
   const navigate = useNavigate();
+  const idEmpleado = useUserIdEmpleado();
 
   // Hook de paginación general
   // Nota: totalItems se actualizará después del query, pero el hook recalcula totalPages automáticamente
@@ -182,7 +184,12 @@ const FacturasPage = () => {
 
   // Mutación para anular factura
   const anularFacturaMutation = useMutation({
-    mutationFn: (id: number) => updateFactura(id, { estado: 'anulada' }),
+    mutationFn: (id: number) => {
+      if (!idEmpleado) {
+        throw new Error('No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.');
+      }
+      return updateFactura(id, { estado: 'anulada', idEmpleado });
+    },
     onSuccess: () => {
       toast.success('Factura anulada exitosamente', {
         description: 'La factura ha sido anulada correctamente',

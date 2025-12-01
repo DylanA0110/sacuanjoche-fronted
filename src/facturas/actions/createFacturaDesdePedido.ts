@@ -1,17 +1,24 @@
 import { facturaApi } from '../api/facturaApi';
 import type { Factura } from '../types/factura.interface';
 import { getUserIdEmpleado } from '@/shared/utils/getUserId';
+import { logger } from '@/shared/utils/logger';
+import { useAuthStore } from '@/auth/store/auth.store';
 
 export const createFacturaDesdePedido = async (
   idPedido: number | string
 ): Promise<Factura> => {
   try {
     // Validar y convertir a número primero
-    const idPedidoNum = typeof idPedido === 'string' 
-      ? parseInt(idPedido.trim(), 10) 
-      : Number(idPedido);
-    
-    if (isNaN(idPedidoNum) || idPedidoNum <= 0 || !Number.isInteger(idPedidoNum)) {
+    const idPedidoNum =
+      typeof idPedido === 'string'
+        ? parseInt(idPedido.trim(), 10)
+        : Number(idPedido);
+
+    if (
+      isNaN(idPedidoNum) ||
+      idPedidoNum <= 0 ||
+      !Number.isInteger(idPedidoNum)
+    ) {
       throw new Error('ID de pedido inválido');
     }
 
@@ -21,7 +28,28 @@ export const createFacturaDesdePedido = async (
     // Obtener el idEmpleado del usuario autenticado
     const idEmpleado = getUserIdEmpleado();
     if (!idEmpleado) {
-      throw new Error('No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.');
+      // Obtener información del usuario para debugging
+      const { user } = useAuthStore.getState();
+      logger.error('createFacturaDesdePedido: No se pudo obtener idEmpleado', {
+        user: user
+          ? {
+              id: user.id,
+              email: user.email,
+              roles: user.roles,
+              tieneEmpleado: !!user.empleado,
+              tieneCliente: !!user.cliente,
+              empleado: user.empleado,
+            }
+          : null,
+      });
+
+      throw new Error(
+        user?.empleado
+          ? 'El empleado no tiene un ID válido. Por favor, contacta al administrador.'
+          : user?.cliente
+          ? 'Solo los empleados pueden crear facturas. Por favor, inicia sesión con una cuenta de empleado.'
+          : 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.'
+      );
     }
 
     const response = await facturaApi.post<Factura>(
@@ -36,7 +64,7 @@ export const createFacturaDesdePedido = async (
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
-      
+
       // Intentar obtener el mensaje de error de diferentes formas
       const message =
         data?.message ||
@@ -45,8 +73,9 @@ export const createFacturaDesdePedido = async (
         (typeof data === 'string' ? data : null);
 
       // Crear un error con el mensaje apropiado
-      const errorMessage = message || 
-        (status === 400 
+      const errorMessage =
+        message ||
+        (status === 400
           ? 'El pedido no está pagado, ya tiene factura, o no tiene detalles'
           : status === 404
           ? 'Pedido no encontrado'
@@ -66,4 +95,3 @@ export const createFacturaDesdePedido = async (
     throw new Error('Error desconocido al crear la factura');
   }
 };
-

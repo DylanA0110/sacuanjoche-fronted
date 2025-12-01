@@ -22,7 +22,10 @@ import {
   MdSave,
   MdArrowBack,
 } from 'react-icons/md';
-import type { CreatePedidoDto } from '../types/pedido.interface';
+import type {
+  CreatePedidoDto,
+  UpdatePedidoDto,
+} from '../types/pedido.interface';
 import type { Arreglo } from '@/arreglo/types/arreglo.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
 import { usePedidoCart } from '../hook/usePedidoCart';
@@ -46,6 +49,14 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card';
 import { useUserIdEmpleado } from '@/shared/utils/getUserId';
+import {
+  sanitizeName,
+  validateName,
+  formatTelefono,
+  validateTelefono,
+  formatTelefonoForBackend,
+  formatTelefonoForInput,
+} from '@/shared/utils/validation';
 
 interface FormValues {
   idCliente: string;
@@ -95,6 +106,7 @@ export default function PedidoFormPage() {
     null
   );
   const [mapboxSearchValue, setMapboxSearchValue] = useState('');
+  const detallesCargadosRef = useRef(false);
 
   // Hook del carrito de pedidos
   const {
@@ -174,33 +186,62 @@ export default function PedidoFormPage() {
     enabled: isEdit && !!idPedido,
   });
 
-  // Cargar detalles del pedido
+  // Cargar detalles del pedido (solo si no vienen en el pedido)
+  // Los detalles normalmente vienen incluidos en el pedido, así que solo los cargamos si no están
   const { data: detallesPedido } = useQuery({
     queryKey: ['detalle-pedido', idPedido],
     queryFn: () => getDetallePedidoByPedidoId(Number(idPedido!)),
-    enabled: isEdit && !!idPedido,
+    enabled:
+      isEdit &&
+      !!idPedido &&
+      (!pedido || !pedido.detalles || pedido.detalles.length === 0),
+    retry: false, // No reintentar si falla
+    refetchOnWindowFocus: false, // No refetch al cambiar de ventana
   });
 
   // Prellenar formulario cuando se carga el pedido
   useEffect(() => {
     if (pedido && isEdit) {
-      const fechaEntrega = pedido.fechaEntregaEstimada
-        ? new Date(pedido.fechaEntregaEstimada).toISOString().slice(0, 16)
-        : '';
+      // Formatear fecha para date input (YYYY-MM-DD)
+      let fechaEntrega = '';
+      if (pedido.fechaEntregaEstimada) {
+        try {
+          const fecha = new Date(pedido.fechaEntregaEstimada);
+          // Verificar que la fecha sea válida
+          if (!isNaN(fecha.getTime())) {
+            // Formatear a YYYY-MM-DD para date input
+            const year = fecha.getFullYear();
+            const month = String(fecha.getMonth() + 1).padStart(2, '0');
+            const day = String(fecha.getDate()).padStart(2, '0');
+            fechaEntrega = `${year}-${month}-${day}`;
+          }
+        } catch (error) {
+          console.error('Error al formatear fecha de entrega:', error);
+          fechaEntrega = '';
+        }
+      }
       const costoEnvio =
         typeof pedido.costoEnvio === 'string'
           ? pedido.costoEnvio
           : String(pedido.costoEnvio || '0');
 
-      reset({
-        idCliente: String(pedido.idCliente),
-        fechaEntregaEstimada: fechaEntrega,
-        costoEnvio: costoEnvio,
-        contactoNombre: pedido.contactoEntrega?.nombre || '',
-        contactoApellido: pedido.contactoEntrega?.apellido || '',
-        contactoTelefono: pedido.contactoEntrega?.telefono || '',
-        direccionTexto: pedido.direccionTxt || '',
-      });
+      reset(
+        {
+          idCliente: String(pedido.idCliente),
+          fechaEntregaEstimada: fechaEntrega,
+          costoEnvio: costoEnvio,
+          contactoNombre: pedido.contactoEntrega?.nombre || '',
+          contactoApellido: pedido.contactoEntrega?.apellido || '',
+          contactoTelefono: formatTelefonoForInput(
+            pedido.contactoEntrega?.telefono || ''
+          ),
+          direccionTexto: pedido.direccionTxt || '',
+        },
+        {
+          // Asegurar que los valores se establezcan correctamente
+          keepDefaultValues: false,
+        }
+      );
 
       // Prellenar dirección del mapa si existe
       if (pedido.direccion) {
@@ -226,33 +267,85 @@ export default function PedidoFormPage() {
       }
 
       // Prellenar carrito con detalles del pedido
-      if (detallesPedido && detallesPedido.length > 0) {
+      // Priorizar detalles del pedido directamente, luego los de la query separada
+      const detalles =
+        pedido.detalles && pedido.detalles.length > 0
+          ? pedido.detalles
+          : detallesPedido && detallesPedido.length > 0
+          ? detallesPedido
+          : [];
+
+      // Solo cargar detalles si el carrito está vacío y no se han cargado ya (evitar recargas innecesarias)
+      if (
+        detalles.length > 0 &&
+        arreglosSeleccionados.length === 0 &&
+        !detallesCargadosRef.current
+      ) {
+        detallesCargadosRef.current = true;
         clearCart();
         setTimeout(() => {
-          detallesPedido.forEach((detalle) => {
-            if (detalle.arreglo) {
-              const arreglo: Arreglo = {
-                idArreglo: detalle.arreglo.idArreglo,
-                idFormaArreglo: detalle.arreglo.idFormaArreglo || 0,
-                nombre: detalle.arreglo.nombre,
-                descripcion: detalle.arreglo.descripcion || '',
-                precioUnitario:
-                  typeof detalle.precioUnitario === 'string'
-                    ? parseFloat(detalle.precioUnitario)
-                    : detalle.precioUnitario,
-                estado: detalle.arreglo.estado || 'activo',
-                url: detalle.arreglo.url,
-              };
-              addItemToCart(arreglo, true);
-              if (detalle.cantidad > 1) {
-                setTimeout(() => {
-                  updateItemQuantity(detalle.idArreglo, detalle.cantidad, true);
-                }, 100);
-              }
+          detalles.forEach((detalle) => {
+            // Verificar que el detalle tenga arreglo o al menos idArreglo
+            if (detalle.arreglo || detalle.idArreglo) {
+              // Si no tiene el objeto arreglo completo, crear uno mínimo
+              const arreglo: Arreglo = detalle.arreglo
+                ? {
+                    idArreglo: detalle.arreglo.idArreglo,
+                    idFormaArreglo: detalle.arreglo.idFormaArreglo || 0,
+                    nombre: detalle.arreglo.nombre,
+                    descripcion: detalle.arreglo.descripcion || '',
+                    precioUnitario:
+                      typeof detalle.precioUnitario === 'string'
+                        ? parseFloat(detalle.precioUnitario)
+                        : typeof detalle.precioUnitario === 'number'
+                        ? detalle.precioUnitario
+                        : typeof detalle.arreglo.precioUnitario === 'string'
+                        ? parseFloat(detalle.arreglo.precioUnitario)
+                        : detalle.arreglo.precioUnitario || 0,
+                    estado: detalle.arreglo.estado || 'activo',
+                    url: detalle.arreglo.url,
+                  }
+                : {
+                    // Si no tiene arreglo completo, crear uno básico con los datos disponibles
+                    idArreglo: detalle.idArreglo,
+                    idFormaArreglo: 0,
+                    nombre: `Arreglo #${detalle.idArreglo}`,
+                    descripcion: '',
+                    precioUnitario:
+                      typeof detalle.precioUnitario === 'string'
+                        ? parseFloat(detalle.precioUnitario)
+                        : detalle.precioUnitario || 0,
+                    estado: 'activo',
+                    url: undefined,
+                  };
+
+              // Agregar con un pequeño delay entre items para evitar problemas de estado
+              setTimeout(() => {
+                addItemToCart(arreglo, true);
+
+                // Actualizar cantidad después de agregar (si la cantidad es diferente de 1)
+                const cantidad = detalle.cantidad || 1;
+                if (cantidad > 1) {
+                  setTimeout(() => {
+                    updateItemQuantity(detalle.idArreglo, cantidad, true);
+                  }, 200);
+                }
+              }, 150 * detalles.indexOf(detalle));
             }
           });
-        }, 50);
+        }, 100);
+      } else if (
+        detalles.length === 0 &&
+        arreglosSeleccionados.length === 0 &&
+        isEdit
+      ) {
+        // Si no hay detalles pero estamos editando, limpiar el carrito
+        clearCart();
+        detallesCargadosRef.current = true;
       }
+    } else if (!isEdit) {
+      // Si no es edición, resetear el flag
+      detallesCargadosRef.current = false;
     }
   }, [
     pedido,
@@ -262,6 +355,7 @@ export default function PedidoFormPage() {
     clearCart,
     addItemToCart,
     updateItemQuantity,
+    arreglosSeleccionados.length,
   ]);
 
   const costoEnvioNum = parseFloat(formValues.costoEnvio) || 0;
@@ -271,6 +365,32 @@ export default function PedidoFormPage() {
   const handleDireccionChange = useCallback((data: MapboxAddressData) => {
     setDireccionData(data);
   }, []);
+
+  // Handlers para nombre y apellido (sanitización)
+  const handleContactoNombreChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = sanitizeName(e.target.value, 30);
+      setValue('contactoNombre', sanitized);
+    },
+    [setValue]
+  );
+
+  const handleContactoApellidoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitized = sanitizeName(e.target.value, 30);
+      setValue('contactoApellido', sanitized);
+    },
+    [setValue]
+  );
+
+  // Handler para teléfono (formateo)
+  const handleContactoTelefonoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatTelefono(e.target.value);
+      setValue('contactoTelefono', formatted);
+    },
+    [setValue]
+  );
 
   // Handlers del carrito
   const handleAgregarArreglo = addItemToCart;
@@ -342,7 +462,7 @@ export default function PedidoFormPage() {
       let pedidoResultado;
       if (isEdit && idPedido) {
         // Para actualizar, usar UpdatePedidoDto con la misma lógica
-        const updateDto = {
+        const updateDto: UpdatePedidoDto = {
           canal: 'interno' as const,
           idPago: null,
           idCliente: pedidoDto.idCliente,
@@ -353,6 +473,11 @@ export default function PedidoFormPage() {
           idDireccion,
           idContactoEntrega,
         };
+        // Debug: mostrar el DTO que se envía
+        console.log(
+          'UpdatePedidoDto que se envía:',
+          JSON.stringify(updateDto, null, 2)
+        );
         pedidoResultado = await updatePedido(Number(idPedido), updateDto);
       } else {
         pedidoResultado = await createPedido(pedidoDto);
@@ -403,6 +528,21 @@ export default function PedidoFormPage() {
       navigate('/admin/pedidos');
     },
     onError: (error: any) => {
+      // Debug: mostrar el error completo del backend
+      console.error('=== ERROR DEL BACKEND ===');
+      console.error('Error completo:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error response data:', error?.response?.data);
+      console.error('Error response status:', error?.response?.status);
+      console.error('Error message:', error?.message);
+      if (error?.response?.data) {
+        console.error(
+          'Error data completo:',
+          JSON.stringify(error.response.data, null, 2)
+        );
+      }
+      console.error('========================');
+
       toast.error(
         isEdit ? 'Error al actualizar el pedido' : 'Error al crear el pedido',
         {
@@ -419,6 +559,27 @@ export default function PedidoFormPage() {
       toast.error('Carrito vacío', {
         description: 'Debes agregar al menos un arreglo al carrito',
       });
+      return;
+    }
+
+    // Validar nombre
+    const nombreError = validateName(data.contactoNombre, 'El nombre');
+    if (nombreError) {
+      toast.error(nombreError);
+      return;
+    }
+
+    // Validar apellido
+    const apellidoError = validateName(data.contactoApellido, 'El apellido');
+    if (apellidoError) {
+      toast.error(apellidoError);
+      return;
+    }
+
+    // Validar teléfono
+    const telefonoError = validateTelefono(data.contactoTelefono);
+    if (telefonoError) {
+      toast.error(telefonoError);
       return;
     }
 
@@ -464,10 +625,41 @@ export default function PedidoFormPage() {
     // Validar que el usuario tenga idEmpleado
     if (!idEmpleado) {
       toast.error('Error de autenticación', {
-        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+        description:
+          'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
       });
       return;
     }
+
+    // Validar que la fecha esté presente
+    if (!data.fechaEntregaEstimada || !data.fechaEntregaEstimada.trim()) {
+      toast.error('Fecha de entrega requerida', {
+        description: 'Debes seleccionar una fecha de entrega estimada.',
+      });
+      return;
+    }
+
+    // Validar formato de fecha (debe ser YYYY-MM-DD)
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!fechaRegex.test(data.fechaEntregaEstimada)) {
+      toast.error('Formato de fecha inválido', {
+        description: 'La fecha debe tener el formato YYYY-MM-DD.',
+      });
+      return;
+    }
+
+    // Verificar que la fecha sea válida
+    const fechaTest = new Date(data.fechaEntregaEstimada);
+    if (isNaN(fechaTest.getTime())) {
+      toast.error('Fecha inválida', {
+        description: 'La fecha seleccionada no es válida.',
+      });
+      return;
+    }
+
+    // Enviar la fecha tal cual viene del input (YYYY-MM-DD)
+    // El backend la procesará según sus validaciones
+    const fechaISO = data.fechaEntregaEstimada;
 
     // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)
     // El costoEnvio NO va en el pedido, va en el envío
@@ -475,7 +667,7 @@ export default function PedidoFormPage() {
       canal: 'interno' as const, // Siempre interno según la interfaz
       idCliente: Number(data.idCliente),
       idEmpleado,
-      fechaEntregaEstimada: new Date(data.fechaEntregaEstimada).toISOString(),
+      fechaEntregaEstimada: fechaISO,
       costoEnvio: parseFloat(data.costoEnvio) || 0, // Se guarda temporalmente para el envío
       direccionTxt:
         data.direccionTexto || direccionData?.formattedAddress || '',
@@ -492,13 +684,16 @@ export default function PedidoFormPage() {
       subtotal: arr.subtotal,
     }));
 
+    // Formatear teléfono para backend (agregar 505 internamente)
+    const telefonoBackend = formatTelefonoForBackend(data.contactoTelefono);
+
     savePedidoMutation.mutate({
       pedido: pedidoBase,
       direccion: direccionDto,
       contactoEntrega: {
         nombre: data.contactoNombre,
         apellido: data.contactoApellido,
-        telefono: data.contactoTelefono,
+        telefono: telefonoBackend,
       },
       detalles,
     });
@@ -709,14 +904,44 @@ export default function PedidoFormPage() {
                       htmlFor="contactoNombre"
                       className="text-sm font-semibold text-gray-700"
                     >
-                      Nombre *
+                      Nombre * (2-30 letras, sin espacios)
                     </Label>
                     <Input
                       id="contactoNombre"
                       {...register('contactoNombre', {
                         required: 'El nombre es requerido',
+                        minLength: {
+                          value: 2,
+                          message: 'El nombre debe tener al menos 2 caracteres',
+                        },
+                        maxLength: {
+                          value: 30,
+                          message: 'El nombre debe tener máximo 30 caracteres',
+                        },
                       })}
+                      onChange={handleContactoNombreChange}
+                      onKeyDown={(e) => {
+                        // Bloquear espacios y cualquier carácter que no sea letra
+                        if (e.key === ' ' || e.key === 'Spacebar') {
+                          e.preventDefault();
+                          return;
+                        }
+                        // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                        if (
+                          e.key.length === 1 &&
+                          !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const text = e.clipboardData.getData('text');
+                        const sanitized = sanitizeName(text, 30);
+                        setValue('contactoNombre', sanitized);
+                      }}
                       placeholder="Juan"
+                      maxLength={30}
                     />
                     {errors.contactoNombre && (
                       <p className="text-sm text-red-500">
@@ -729,14 +954,46 @@ export default function PedidoFormPage() {
                       htmlFor="contactoApellido"
                       className="text-sm font-semibold text-gray-700"
                     >
-                      Apellido *
+                      Apellido * (2-30 letras, sin espacios)
                     </Label>
                     <Input
                       id="contactoApellido"
                       {...register('contactoApellido', {
                         required: 'El apellido es requerido',
+                        minLength: {
+                          value: 2,
+                          message:
+                            'El apellido debe tener al menos 2 caracteres',
+                        },
+                        maxLength: {
+                          value: 30,
+                          message:
+                            'El apellido debe tener máximo 30 caracteres',
+                        },
                       })}
+                      onChange={handleContactoApellidoChange}
+                      onKeyDown={(e) => {
+                        // Bloquear espacios y cualquier carácter que no sea letra
+                        if (e.key === ' ' || e.key === 'Spacebar') {
+                          e.preventDefault();
+                          return;
+                        }
+                        // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
+                        if (
+                          e.key.length === 1 &&
+                          !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const text = e.clipboardData.getData('text');
+                        const sanitized = sanitizeName(text, 30);
+                        setValue('contactoApellido', sanitized);
+                      }}
                       placeholder="Pérez"
+                      maxLength={30}
                     />
                     {errors.contactoApellido && (
                       <p className="text-sm text-red-500">
@@ -749,15 +1006,28 @@ export default function PedidoFormPage() {
                       htmlFor="contactoTelefono"
                       className="text-sm font-semibold text-gray-700"
                     >
-                      Teléfono *
+                      Teléfono * (8 dígitos)
                     </Label>
-                    <Input
-                      id="contactoTelefono"
-                      {...register('contactoTelefono', {
-                        required: 'El teléfono es requerido',
-                      })}
-                      placeholder="+505 1234 5678"
-                    />
+                    <div className="flex items-center">
+                      <div className="flex items-center justify-center h-11 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-medium text-gray-700">
+                        +505
+                      </div>
+                      <Input
+                        id="contactoTelefono"
+                        type="tel"
+                        {...register('contactoTelefono', {
+                          required: 'El teléfono es requerido',
+                          pattern: {
+                            value: /^\d{8}$/,
+                            message: 'El teléfono debe tener 8 dígitos',
+                          },
+                        })}
+                        onChange={handleContactoTelefonoChange}
+                        className="bg-white border-gray-300 text-gray-900 h-11 text-base rounded-l-none"
+                        placeholder="12345678"
+                        maxLength={8}
+                      />
+                    </div>
                     {errors.contactoTelefono && (
                       <p className="text-sm text-red-500">
                         {errors.contactoTelefono.message}
@@ -786,10 +1056,16 @@ export default function PedidoFormPage() {
                   </Label>
                   <Input
                     id="fechaEntregaEstimada"
-                    type="datetime-local"
+                    type="date"
                     {...register('fechaEntregaEstimada', {
                       required: 'La fecha de entrega es requerida',
                     })}
+                    value={formValues.fechaEntregaEstimada || ''}
+                    onChange={(e) => {
+                      setValue('fechaEntregaEstimada', e.target.value, {
+                        shouldValidate: true,
+                      });
+                    }}
                   />
                   {errors.fechaEntregaEstimada && (
                     <p className="text-sm text-red-500">
@@ -829,17 +1105,71 @@ export default function PedidoFormPage() {
                     htmlFor="costoEnvio"
                     className="text-sm font-semibold text-gray-700"
                   >
-                    Costo de Envío
+                    Costo de Envío (0 - 1000)
                   </Label>
                   <Input
                     id="costoEnvio"
                     type="number"
                     step="0.01"
                     min="0"
-                    {...register('costoEnvio')}
+                    max="1000"
+                    {...register('costoEnvio', {
+                      validate: (value) => {
+                        const numValue = parseFloat(value) || 0;
+                        if (numValue < 0) {
+                          return 'El costo de envío no puede ser menor a 0';
+                        }
+                        if (numValue > 1000) {
+                          return 'El costo de envío no puede ser mayor a 1000';
+                        }
+                        return true;
+                      },
+                    })}
+                    onKeyDown={(e) => {
+                      // Bloquear el signo negativo y otros caracteres no permitidos
+                      if (
+                        e.key === '-' ||
+                        e.key === '+' ||
+                        e.key === 'e' ||
+                        e.key === 'E'
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      // Solo permitir números y punto decimal, sin signos negativos
+                      let value = e.target.value.replace(/[^0-9.]/g, '');
+                      // Remover signos negativos si se pegan
+                      value = value.replace(/-/g, '');
+                      // Evitar múltiples puntos decimales
+                      const parts = value.split('.');
+                      const formattedValue =
+                        parts.length > 2
+                          ? parts[0] + '.' + parts.slice(1).join('')
+                          : value;
+                      setValue('costoEnvio', formattedValue, {
+                        shouldValidate: true,
+                      });
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pastedText = e.clipboardData.getData('text');
+                      // Solo permitir números y punto decimal
+                      let value = pastedText.replace(/[^0-9.]/g, '');
+                      // Remover signos negativos
+                      value = value.replace(/-/g, '');
+                      setValue('costoEnvio', value, {
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="0.00"
                     className="text-gray-700"
                   />
+                  {errors.costoEnvio && (
+                    <p className="text-sm text-red-500">
+                      {errors.costoEnvio.message}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

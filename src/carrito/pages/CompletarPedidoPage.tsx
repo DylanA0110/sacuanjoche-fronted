@@ -23,6 +23,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ClienteDireccion } from '@/cliente/types/direccion.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
 import type { Carrito } from '../types/carrito.interface';
+import {
+  formatTelefono,
+  validateTelefono,
+  formatTelefonoForBackend,
+} from '@/shared/utils/validation';
 
 interface CompletarPedidoFormData {
   idDireccion: string;
@@ -90,6 +95,15 @@ export default function CompletarPedidoPage() {
     setValue('direccionTxt', data.formattedAddress);
     setUsarDireccionGuardada(false);
   }, [setValue]);
+
+  // Handler para formatear teléfono
+  const handleContactoTelefonoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatTelefono(e.target.value);
+      setValue('contactoTelefono', formatted);
+    },
+    [setValue]
+  );
 
   // Actualizar dirección de texto cuando se selecciona una dirección guardada
   useEffect(() => {
@@ -333,11 +347,21 @@ export default function CompletarPedidoPage() {
         throw new Error('Debes seleccionar o crear una dirección de entrega');
       }
 
+      // Validar teléfono
+      const telefonoError = validateTelefono(data.contactoTelefono);
+      if (telefonoError) {
+        toast.error(telefonoError);
+        return;
+      }
+
+      // Formatear teléfono para backend (agregar 505 internamente)
+      const telefonoBackend = formatTelefonoForBackend(data.contactoTelefono);
+
       // Crear contacto de entrega
       const contacto = await createContactoEntrega({
         nombre: data.contactoNombre,
         apellido: data.contactoApellido,
-        telefono: data.contactoTelefono,
+        telefono: telefonoBackend,
       });
       
       if (!contacto.idContactoEntrega) {
@@ -572,19 +596,27 @@ export default function CompletarPedidoPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contactoTelefono">Teléfono *</Label>
-                    <Input
-                      id="contactoTelefono"
-                      type="tel"
-                      {...register('contactoTelefono', {
-                        required: 'El teléfono es requerido',
-                        pattern: {
-                          value: /^[0-9+\-\s()]+$/,
-                          message: 'Teléfono inválido',
-                        },
-                      })}
-                      placeholder="8888-8888"
-                    />
+                    <Label htmlFor="contactoTelefono">Teléfono * (8 dígitos)</Label>
+                    <div className="flex items-center">
+                      <div className="flex items-center justify-center h-11 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-medium text-gray-700">
+                        +505
+                      </div>
+                      <Input
+                        id="contactoTelefono"
+                        type="tel"
+                        {...register('contactoTelefono', {
+                          required: 'El teléfono es requerido',
+                          pattern: {
+                            value: /^\d{8}$/,
+                            message: 'El teléfono debe tener 8 dígitos',
+                          },
+                        })}
+                        onChange={handleContactoTelefonoChange}
+                        className="bg-white border-gray-300 text-gray-900 h-11 text-base rounded-l-none"
+                        placeholder="12345678"
+                        maxLength={8}
+                      />
+                    </div>
                     {errors.contactoTelefono && (
                       <p className="text-sm text-red-600 mt-1">{errors.contactoTelefono.message}</p>
                     )}

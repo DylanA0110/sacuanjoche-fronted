@@ -67,42 +67,78 @@ const NuevaFacturaPage = () => {
       }
     },
     onError: (error: any) => {
-      console.error('Error al crear factura desde pedido:', error);
-      console.error('Error response:', error?.response?.data);
-
-      // Extraer el mensaje del error directamente del backend
+      // Extraer información del error
       const errorData = error?.response?.data;
-      let errorMessage = 'Ocurrió un error inesperado al crear la factura';
+      const errorMessageArray = Array.isArray(errorData?.message) 
+        ? errorData.message 
+        : typeof errorData?.message === 'string'
+        ? [errorData.message]
+        : [];
+      
+      // Obtener el mensaje completo (sin limpiar aún, para poder extraer información)
+      const rawMessage = errorMessageArray.join('. ') || error?.message || 'Ocurrió un error inesperado';
+      
+      // Detectar si ya existe una factura (diferentes formatos posibles)
+      // Formato 1: "Key (num_factura)=(FAC-2025-0012) already exists."
+      const numFacturaKeyMatch = rawMessage.match(/num_factura.*?=.*?\(([^)]+)\)/i);
+      // Formato 2: "El pedido X ya tiene una factura asociada (ID: Y)."
+      const facturaExistenteMatch = rawMessage.match(/\(ID:\s*(\d+)\)/i);
+      // Formato 3: Cualquier mención de "already exists" o "ya existe"
+      const alreadyExistsMatch = rawMessage.match(/already exists|ya existe/i);
+      // Formato 4: Número de factura en formato FAC-YYYY-XXXX
+      const numFacturaMatch = rawMessage.match(/(FAC-[\d-]+)/i);
 
-      if (errorData) {
-        // Priorizar el mensaje del backend
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
+      // Si el error indica que ya existe una factura
+      if (facturaExistenteMatch || numFacturaKeyMatch || (alreadyExistsMatch && numFacturaMatch)) {
+        let idFacturaExistente: number | null = null;
+        let numFactura: string | null = null;
+        
+        // Extraer ID de factura si está disponible
+        if (facturaExistenteMatch) {
+          idFacturaExistente = parseInt(facturaExistenteMatch[1], 10);
+        } else {
+          // Buscar en el array de mensajes
+          const idMatch = errorMessageArray.find((msg: string) => 
+            typeof msg === 'string' && msg.match(/\(ID:\s*(\d+)\)/i)
+          );
+          if (idMatch) {
+            const match = (idMatch as string).match(/\(ID:\s*(\d+)\)/i);
+            if (match) {
+              idFacturaExistente = parseInt(match[1], 10);
+            }
+          }
+        }
 
-      // Si el error indica que ya existe una factura, extraer el ID
-      // Formato esperado: "El pedido 13 ya tiene una factura asociada (ID: 21)."
-      const facturaExistenteMatch = errorMessage.match(/\(ID:\s*(\d+)\)/i);
-      if (facturaExistenteMatch) {
-        const idFacturaExistente = parseInt(facturaExistenteMatch[1], 10);
+        // Extraer número de factura
+        if (numFacturaKeyMatch) {
+          numFactura = numFacturaKeyMatch[1];
+        } else if (numFacturaMatch) {
+          numFactura = numFacturaMatch[1];
+        }
 
-        // Actualizar URL con el idFactura para mostrar el botón de descargar PDF
-        const newSearchParams = new URLSearchParams(searchParams);
-        newSearchParams.set('idFactura', String(idFacturaExistente));
-        setSearchParams(newSearchParams, { replace: true });
+        // Actualizar URL con el idFactura si se encontró
+        if (idFacturaExistente) {
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.set('idFactura', String(idFacturaExistente));
+          setSearchParams(newSearchParams, { replace: true });
+        }
 
-        // Mostrar mensaje informativo en lugar de error
+        // Mostrar mensaje informativo
         toast.info('El pedido ya tiene una factura asociada', {
-          description: `La factura #${idFacturaExistente} ya existe para este pedido. Puedes descargar el PDF usando el botón de arriba.`,
+          description: idFacturaExistente
+            ? `La factura #${idFacturaExistente}${numFactura ? ` (${numFactura})` : ''} ya existe para este pedido. Puedes descargar el PDF usando el botón de arriba.`
+            : numFactura
+            ? `Ya existe una factura con el número ${numFactura} para este pedido.`
+            : 'Este pedido ya tiene una factura asociada.',
           duration: 5000,
         });
       } else {
-        // Para otros errores, mostrar como error
-      toast.error('Error al crear la factura', {
+        // Para otros errores, usar cleanErrorMessage y mostrar como error
+        const errorMessage = cleanErrorMessage(error);
+        toast.error('Error al crear la factura', {
           description: errorMessage,
-        duration: 5000,
-      });
+          duration: 5000,
+        });
       }
     },
   });
@@ -149,14 +185,14 @@ const NuevaFacturaPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/admin/pedidos')}
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/admin/pedidos')}
             className="text-gray-600 hover:text-gray-900 shrink-0"
-        >
-          <MdArrowBack className="h-5 w-5 mr-2" />
-          Volver
-        </Button>
+          >
+            <MdArrowBack className="h-5 w-5 mr-2" />
+            Volver
+          </Button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 text-gray-900 truncate">
               {idFactura ? 'Factura Creada' : 'Nueva Factura'}
@@ -205,9 +241,9 @@ const NuevaFacturaPage = () => {
                 <p className="text-sm text-gray-600">
                   La factura #{idFactura} ha sido creada. Puedes descargar el
                   PDF usando el botón de arriba.
-          </p>
-        </div>
-      </div>
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -282,32 +318,32 @@ const NuevaFacturaPage = () => {
                       generarán automáticamente.
                     </p>
                   </div>
-            </div>
-            </div>
+                </div>
+              </div>
             )}
 
             {/* Botones */}
             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+              {!idFactura && (
+                <Button
+                  type="button"
+                  onClick={handleCrearFactura}
+                  disabled={createFacturaMutation.isPending}
+                  className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto order-2 sm:order-1"
+                >
+                  {createFacturaMutation.isPending
+                    ? 'Creando...'
+                    : 'Crear Factura desde Pedido'}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/admin/pedidos')}
-                className="border-gray-300 text-gray-700 hover:bg-gray-100 w-full sm:w-auto"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100 w-full sm:w-auto order-1 sm:order-2"
               >
                 {idFactura ? 'Volver a Pedidos' : 'Cancelar'}
               </Button>
-              {!idFactura && (
-              <Button
-                  type="button"
-                  onClick={handleCrearFactura}
-                  disabled={createFacturaMutation.isPending}
-                  className="bg-[#50C878] hover:bg-[#50C878]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                >
-                {createFacturaMutation.isPending
-                    ? 'Creando...'
-                    : 'Crear Factura desde Pedido'}
-              </Button>
-              )}
               {idFactura && (
                 <Button
                   type="button"

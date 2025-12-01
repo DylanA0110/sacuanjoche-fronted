@@ -1,4 +1,7 @@
-import type { PagoEstado, MetodoPagoEstado } from '@/shared/types/estados.types';
+import type {
+  PagoEstado,
+  MetodoPagoEstado,
+} from '@/shared/types/estados.types';
 
 export interface Pago {
   idPago: number;
@@ -59,4 +62,3 @@ export interface CreatePagoDto {
   referencia?: string;
   gateway?: string | null;
 }
-

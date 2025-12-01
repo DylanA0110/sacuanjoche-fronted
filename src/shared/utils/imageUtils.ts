@@ -74,11 +74,46 @@ export function validateImageDimensions(
   maxHeight: number = 4000
 ): Promise<ImageValidationResult> {
   return new Promise((resolve) => {
+    // Verificar que el archivo tenga contenido
+    if (file.size === 0) {
+      resolve({
+        valid: false,
+        error: 'El archivo está vacío',
+      });
+      return;
+    }
+
     const img = new Image();
     const url = URL.createObjectURL(file);
+    let resolved = false;
+
+    // Timeout de seguridad (10 segundos)
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        URL.revokeObjectURL(url);
+        resolve({
+          valid: false,
+          error: 'Tiempo de espera agotado al leer la imagen. Verifica que el archivo sea una imagen válida.',
+        });
+      }
+    }, 10000);
 
     img.onload = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
       URL.revokeObjectURL(url);
+
+      // Verificar que la imagen tenga dimensiones válidas
+      if (img.width === 0 || img.height === 0) {
+        resolve({
+          valid: false,
+          error: 'La imagen no tiene dimensiones válidas',
+        });
+        return;
+      }
+
       if (img.width > maxWidth || img.height > maxHeight) {
         resolve({
           valid: false,
@@ -89,12 +124,65 @@ export function validateImageDimensions(
       }
     };
 
-    img.onerror = () => {
+    img.onerror = (error) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
       URL.revokeObjectURL(url);
-      resolve({
-        valid: false,
-        error: 'No se pudo leer la imagen',
-      });
+
+      // Verificar el tipo MIME real del archivo
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const arr = new Uint8Array(reader.result as ArrayBuffer).subarray(0, 4);
+        let header = '';
+        for (let i = 0; i < arr.length; i++) {
+          header += arr[i].toString(16);
+        }
+
+        // Verificar firmas de archivos de imagen
+        let isValidImage = false;
+        let detectedType = 'desconocido';
+
+        // JPEG: FF D8 FF
+        if (header.startsWith('ffd8ff')) {
+          isValidImage = true;
+          detectedType = 'JPEG';
+        }
+        // PNG: 89 50 4E 47
+        else if (header.startsWith('89504e47')) {
+          isValidImage = true;
+          detectedType = 'PNG';
+        }
+        // GIF: 47 49 46 38
+        else if (header.startsWith('47494638')) {
+          isValidImage = true;
+          detectedType = 'GIF';
+        }
+        // WEBP: RIFF...WEBP
+        else if (header.startsWith('52494646')) {
+          isValidImage = true;
+          detectedType = 'WEBP';
+        }
+
+        if (!isValidImage) {
+          resolve({
+            valid: false,
+            error: `El archivo no es una imagen válida. Tipo detectado: ${detectedType}. Asegúrate de que el archivo sea JPG, PNG o WEBP.`,
+          });
+        } else {
+          resolve({
+            valid: false,
+            error: `No se pudo leer la imagen (${detectedType}). El archivo puede estar corrupto o dañado. Intenta con otra imagen.`,
+          });
+        }
+      };
+      reader.onerror = () => {
+        resolve({
+          valid: false,
+          error: 'No se pudo leer el archivo. Verifica que sea una imagen válida.',
+        });
+      };
+      reader.readAsArrayBuffer(file.slice(0, 4));
     };
 
     img.src = url;
@@ -112,12 +200,32 @@ export async function compressImage(
   maxSizeKB: number = 500
 ): Promise<CompressedImageResult> {
   return new Promise((resolve, reject) => {
+    // Verificar que el archivo tenga contenido
+    if (file.size === 0) {
+      reject(new Error('El archivo está vacío'));
+      return;
+    }
+
     const reader = new FileReader();
+    let timeout: NodeJS.Timeout | null = null;
 
     reader.onload = (e) => {
       const img = new Image();
 
+      // Timeout de seguridad (15 segundos)
+      timeout = setTimeout(() => {
+        reject(new Error('Tiempo de espera agotado al procesar la imagen'));
+      }, 15000);
+
       img.onload = () => {
+        if (timeout) clearTimeout(timeout);
+
+        // Verificar que la imagen tenga dimensiones válidas
+        if (img.width === 0 || img.height === 0) {
+          reject(new Error('La imagen no tiene dimensiones válidas'));
+          return;
+        }
+
         // Calcular nuevas dimensiones manteniendo aspect ratio
         let width = img.width;
         let height = img.height;
@@ -219,14 +327,16 @@ export async function compressImage(
       };
 
       img.onerror = () => {
-        reject(new Error('Error al cargar la imagen'));
+        if (timeout) clearTimeout(timeout);
+        reject(new Error('Error al cargar la imagen. Verifica que el archivo sea una imagen válida y no esté corrupto.'));
       };
 
       img.src = e.target?.result as string;
     };
 
     reader.onerror = () => {
-      reject(new Error('Error al leer el archivo'));
+      if (timeout) clearTimeout(timeout);
+      reject(new Error('Error al leer el archivo. Verifica que el archivo no esté dañado.'));
     };
 
     reader.readAsDataURL(file);
