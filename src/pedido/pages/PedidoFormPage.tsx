@@ -639,13 +639,6 @@ export default function PedidoFormPage() {
     // Enviar la fecha tal cual viene del input
     const fechaISO = data.fechaEntregaEstimada;
 
-    // Debug: mostrar la fecha que se envía al backend
-    console.log('=== FECHA ENVIADA AL BACKEND ===');
-    console.log('Fecha del input (date):', data.fechaEntregaEstimada);
-    console.log('Fecha que se envía:', fechaISO);
-    console.log('Formato esperado: YYYY-MM-DD');
-    console.log('================================');
-
     // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)
     // El costoEnvio NO va en el pedido, va en el envío
     const pedidoBase = {
