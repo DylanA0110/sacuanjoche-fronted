@@ -47,18 +47,34 @@ export function CarritoArreglos({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onActualizarCantidad(arr.idArreglo, arr.cantidad - 1)}
-                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                    onClick={() => {
+                      const nuevaCantidad = arr.cantidad - 1;
+                      // Si la cantidad sería 0, no hacer nada (el botón de eliminar se encarga)
+                      if (nuevaCantidad >= 1) {
+                        onActualizarCantidad(arr.idArreglo, nuevaCantidad);
+                      }
+                    }}
+                    disabled={arr.cantidad <= 1}
+                    className="h-7 w-7 p-0 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <MdRemove className="h-4 w-4" />
                   </Button>
-                  <span className="w-8 text-center font-semibold text-gray-900">{arr.cantidad}</span>
+                  <span className="w-8 text-center font-semibold text-gray-900">
+                    {arr.cantidad}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => onActualizarCantidad(arr.idArreglo, arr.cantidad + 1)}
-                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                    onClick={() => {
+                      const nuevaCantidad = arr.cantidad + 1;
+                      // Validar que no exceda el máximo (100)
+                      if (nuevaCantidad <= 100) {
+                        onActualizarCantidad(arr.idArreglo, nuevaCantidad);
+                      }
+                    }}
+                    disabled={arr.cantidad >= 100}
+                    className="h-7 w-7 p-0 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <MdAdd className="h-4 w-4" />
                   </Button>
@@ -85,4 +101,3 @@ export function CarritoArreglos({
     </div>
   );
 }
-

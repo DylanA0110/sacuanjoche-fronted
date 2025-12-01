@@ -168,6 +168,34 @@ export const validatePrecioAccesorio = (precio: number): string | null => {
 };
 
 /**
+ * Valida y normaliza una cantidad de producto
+ * - Mínimo: 1 (nunca puede ser 0)
+ * - Máximo: 100 (cantidad razonable para pedidos)
+ */
+export const validateAndNormalizeCantidad = (
+  cantidad: number
+): { cantidad: number; error: string | null } => {
+  // Convertir a número entero
+  const cantidadNum = Math.floor(Number(cantidad));
+
+  // Validar que sea un número válido
+  if (isNaN(cantidadNum) || cantidadNum < 1) {
+    return { cantidad: 1, error: 'La cantidad mínima es 1' };
+  }
+
+  // Validar máximo (100 es una cantidad razonable para pedidos)
+  const MAX_CANTIDAD = 100;
+  if (cantidadNum > MAX_CANTIDAD) {
+    return {
+      cantidad: MAX_CANTIDAD,
+      error: `La cantidad máxima es ${MAX_CANTIDAD}`,
+    };
+  }
+
+  return { cantidad: cantidadNum, error: null };
+};
+
+/**
  * Valida una descripción (solo texto, máximo caracteres)
  */
 export const validateDescripcion = (

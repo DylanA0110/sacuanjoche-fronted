@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getArregloMedia } from '@/arreglo/actions/arregloMedia/getArregloMedia';
 import type { ArregloMedia } from '@/arreglo/types/arreglo-media.interface';
 import { logger } from '@/shared/utils/logger';
+import { validateAndNormalizeCantidad } from '@/shared/utils/validation';
 import type {
   ReactElement,
   JSXElementConstructor,
@@ -209,11 +210,22 @@ export default function CartPage() {
   }
 
   const handleQuantityChange = (idCarritoArreglo: number, cantidad: number) => {
-    if (cantidad <= 0) {
+    // Si la cantidad es menor a 1, eliminar el producto
+    if (cantidad < 1) {
       removeProducto(idCarritoArreglo);
-    } else {
-      updateCantidad({ idCarritoArreglo, cantidad });
+      return;
     }
+
+    // Validar cantidad (mínimo 1, máximo 100)
+    const validacion = validateAndNormalizeCantidad(cantidad);
+
+    if (validacion.error) {
+      toast.error(validacion.error);
+      return;
+    }
+
+    // Actualizar con la cantidad validada
+    updateCantidad({ idCarritoArreglo, cantidad: validacion.cantidad });
   };
 
   const handleCheckout = () => {
@@ -394,7 +406,11 @@ export default function CartPage() {
                                             cantidad - 1
                                           )
                                         }
-                                        disabled={isUpdating || isRemoving}
+                                        disabled={
+                                          isUpdating ||
+                                          isRemoving ||
+                                          cantidad <= 1
+                                        }
                                         className="p-1.5 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         aria-label="Reducir cantidad"
                                       >
@@ -410,7 +426,11 @@ export default function CartPage() {
                                             cantidad + 1
                                           )
                                         }
-                                        disabled={isUpdating || isRemoving}
+                                        disabled={
+                                          isUpdating ||
+                                          isRemoving ||
+                                          cantidad >= 100
+                                        }
                                         className="p-1.5 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                         aria-label="Aumentar cantidad"
                                       >

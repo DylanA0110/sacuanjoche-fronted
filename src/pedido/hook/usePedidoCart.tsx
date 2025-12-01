@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import type { Arreglo } from '@/arreglo/types/arreglo.interface';
+import { validateAndNormalizeCantidad } from '@/shared/utils/validation';
 
 export interface ArregloSeleccionado {
   idArreglo: number;
@@ -15,7 +16,11 @@ interface UsePedidoCartReturn {
   subtotal: number;
   addItem: (arreglo: Arreglo, silent?: boolean) => void;
   removeItem: (idArreglo: number, silent?: boolean) => void;
-  updateQuantity: (idArreglo: number, cantidad: number, silent?: boolean) => void;
+  updateQuantity: (
+    idArreglo: number,
+    cantidad: number,
+    silent?: boolean
+  ) => void;
   clear: () => void;
   getItemCount: () => number;
 }
@@ -55,21 +60,30 @@ export function usePedidoCart(): UsePedidoCartReturn {
     setItems((prev) => {
       const existe = prev.find((a) => a.idArreglo === nuevoArreglo.idArreglo);
       if (existe) {
+        // Validar cantidad antes de incrementar
+        const nuevaCantidad = existe.cantidad + 1;
+        const validacion = validateAndNormalizeCantidad(nuevaCantidad);
+
+        if (validacion.error) {
+          if (!silent) {
+            toast.error(validacion.error);
+          }
+          return prev; // No actualizar si hay error
+        }
+
         // Actualizar cantidad
         const updated = prev.map((a) =>
           a.idArreglo === nuevoArreglo.idArreglo
             ? {
                 ...a,
-                cantidad: a.cantidad + 1,
-                subtotal: a.precioUnitario * (a.cantidad + 1),
+                cantidad: validacion.cantidad,
+                subtotal: a.precioUnitario * validacion.cantidad,
               }
             : a
         );
         if (!silent) {
           toast.success('Cantidad actualizada', {
-            description: `${arreglo.nombre} ahora tiene ${
-              existe.cantidad + 1
-            } unidades`,
+            description: `${arreglo.nombre} ahora tiene ${validacion.cantidad} unidades`,
           });
         }
         return updated;
@@ -85,25 +99,40 @@ export function usePedidoCart(): UsePedidoCartReturn {
   }, []);
 
   // Remover arreglo del carrito
-  const removeItem = useCallback((idArreglo: number, silent: boolean = false) => {
-    setItems((prev) => {
-      const item = prev.find((a) => a.idArreglo === idArreglo);
-      const filtered = prev.filter((a) => a.idArreglo !== idArreglo);
-      if (item && !silent) {
-        toast.info('Arreglo eliminado', {
-          description: `${item.nombre} eliminado del carrito`,
-        });
-      }
-      return filtered;
-    });
-  }, []);
+  const removeItem = useCallback(
+    (idArreglo: number, silent: boolean = false) => {
+      setItems((prev) => {
+        const item = prev.find((a) => a.idArreglo === idArreglo);
+        const filtered = prev.filter((a) => a.idArreglo !== idArreglo);
+        if (item && !silent) {
+          toast.info('Arreglo eliminado', {
+            description: `${item.nombre} eliminado del carrito`,
+          });
+        }
+        return filtered;
+      });
+    },
+    []
+  );
 
   // Actualizar cantidad de un arreglo
   const updateQuantity = useCallback(
     (idArreglo: number, cantidad: number, silent: boolean = false) => {
-      if (cantidad <= 0) {
+      // Validar cantidad
+      const validacion = validateAndNormalizeCantidad(cantidad);
+
+      // Si la cantidad es menor a 1, eliminar el item
+      if (cantidad < 1) {
         removeItem(idArreglo, silent);
         return;
+      }
+
+      // Si hay error de validación (por ejemplo, excede el máximo)
+      if (validacion.error) {
+        if (!silent) {
+          toast.error(validacion.error);
+        }
+        return; // No actualizar si hay error
       }
 
       setItems((prev) =>
@@ -111,8 +140,8 @@ export function usePedidoCart(): UsePedidoCartReturn {
           a.idArreglo === idArreglo
             ? {
                 ...a,
-                cantidad,
-                subtotal: a.precioUnitario * cantidad,
+                cantidad: validacion.cantidad,
+                subtotal: a.precioUnitario * validacion.cantidad,
               }
             : a
         )
@@ -141,4 +170,3 @@ export function usePedidoCart(): UsePedidoCartReturn {
     getItemCount,
   };
 }
-
