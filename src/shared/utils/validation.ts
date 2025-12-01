@@ -234,6 +234,48 @@ export const validateFechaFutura = (fecha: string | Date): string | null => {
 };
 
 /**
+ * Valida la cantidad total de flores en un arreglo
+ * - Mínimo: 3 flores
+ * - Máximo: 50 flores
+ */
+export const validateCantidadTotalFlores = (
+  flores: Array<{ cantidad: number }>
+): string | null => {
+  const totalFlores = flores.reduce((sum, f) => sum + f.cantidad, 0);
+  
+  if (totalFlores < 3) {
+    return 'Un arreglo debe tener mínimo 3 flores';
+  }
+  
+  if (totalFlores > 50) {
+    return 'Un arreglo puede tener máximo 50 flores';
+  }
+  
+  return null;
+};
+
+/**
+ * Valida la cantidad total de accesorios en un arreglo
+ * - Mínimo: 1 accesorio
+ * - Máximo: 15 accesorios
+ */
+export const validateCantidadTotalAccesorios = (
+  accesorios: Array<{ cantidad: number }>
+): string | null => {
+  const totalAccesorios = accesorios.reduce((sum, a) => sum + a.cantidad, 0);
+  
+  if (totalAccesorios < 1) {
+    return 'Un arreglo debe tener mínimo 1 accesorio';
+  }
+  
+  if (totalAccesorios > 15) {
+    return 'Un arreglo puede tener máximo 15 accesorios';
+  }
+  
+  return null;
+};
+
+/**
  * Calcula el precio sugerido de un arreglo basado en flores y accesorios
  */
 export const calcularPrecioSugeridoArreglo = (

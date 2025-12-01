@@ -2,6 +2,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { getArregloFlores, getArregloAccesorios } from '../actions';
 import type { Flor } from '@/catalogo/types/flor.interface';
 import type { Accesorio } from '@/catalogo/types/accesorio.interface';
+import {
+  validateCantidadTotalFlores,
+  validateCantidadTotalAccesorios,
+} from '@/shared/utils/validation';
 
 interface AssociationsState {
   flores: {
@@ -82,31 +86,39 @@ export function useArregloAssociations({
   }, [arregloId]);
 
   // Agregar flor
-  const addFlor = useCallback(() => {
-    if (!associations.flores.selectedId) return;
+  const addFlor = useCallback((): string | null => {
+    if (!associations.flores.selectedId) return null;
     const idFlor = parseInt(associations.flores.selectedId, 10);
-    if (!idFlor || associations.flores.cantidad <= 0) return;
+    if (!idFlor || associations.flores.cantidad <= 0) return null;
     const flor = flores.find((f) => f.idFlor === idFlor);
-    if (!flor) return;
+    if (!flor) return null;
 
-    setAssociations((prev) => {
-      const existing = prev.flores.list.find((i) => i.idFlor === idFlor);
-      const newList = existing
-        ? prev.flores.list.map((i) =>
-            i.idFlor === idFlor
-              ? { ...i, cantidad: i.cantidad + prev.flores.cantidad }
-              : i
-          )
-        : [
-            ...prev.flores.list,
-            { idFlor, nombre: flor.nombre, cantidad: prev.flores.cantidad },
-          ];
-      return {
-        ...prev,
-        flores: { selectedId: undefined, cantidad: 1, list: newList },
-      };
-    });
-  }, [associations.flores.selectedId, associations.flores.cantidad, flores]);
+    // Calcular la nueva lista temporal para validar
+    const existing = associations.flores.list.find((i) => i.idFlor === idFlor);
+    const newList = existing
+      ? associations.flores.list.map((i) =>
+          i.idFlor === idFlor
+            ? { ...i, cantidad: i.cantidad + associations.flores.cantidad }
+            : i
+        )
+      : [
+          ...associations.flores.list,
+          { idFlor, nombre: flor.nombre, cantidad: associations.flores.cantidad },
+        ];
+
+    // Validar cantidad total de flores (3-50)
+    const error = validateCantidadTotalFlores(newList);
+    if (error) {
+      return error;
+    }
+
+    setAssociations((prev) => ({
+      ...prev,
+      flores: { selectedId: undefined, cantidad: 1, list: newList },
+    }));
+
+    return null;
+  }, [associations.flores.selectedId, associations.flores.cantidad, flores, associations.flores.list]);
 
   // Remover flor
   const removeFlor = useCallback((idFlor: number) => {
@@ -120,38 +132,47 @@ export function useArregloAssociations({
   }, []);
 
   // Agregar accesorio (con validación mejorada)
-  const addAccesorio = useCallback(() => {
-    if (!associations.accesorios.selectedId) return;
+  const addAccesorio = useCallback((): string | null => {
+    if (!associations.accesorios.selectedId) return null;
     const idAccesorio = parseInt(associations.accesorios.selectedId, 10);
     // Validación: cantidad debe ser mayor que 0
     const cantidad = Math.max(1, associations.accesorios.cantidad);
-    if (!idAccesorio || cantidad <= 0) return;
+    if (!idAccesorio || cantidad <= 0) return null;
     const acc = accesorios.find((a) => a.idAccesorio === idAccesorio);
-    if (!acc) return;
+    if (!acc) return null;
 
-    setAssociations((prev) => {
-      const existing = prev.accesorios.list.find(
-        (i) => i.idAccesorio === idAccesorio
-      );
-      const newList = existing
-        ? prev.accesorios.list.map((i) =>
-            i.idAccesorio === idAccesorio
-              ? { ...i, cantidad: i.cantidad + cantidad }
-              : i
-          )
-        : [
-            ...prev.accesorios.list,
-            { idAccesorio, nombre: acc.descripcion, cantidad },
-          ];
-      return {
-        ...prev,
-        accesorios: { selectedId: undefined, cantidad: 1, list: newList },
-      };
-    });
+    // Calcular la nueva lista temporal para validar
+    const existing = associations.accesorios.list.find(
+      (i) => i.idAccesorio === idAccesorio
+    );
+    const newList = existing
+      ? associations.accesorios.list.map((i) =>
+          i.idAccesorio === idAccesorio
+            ? { ...i, cantidad: i.cantidad + cantidad }
+            : i
+        )
+      : [
+          ...associations.accesorios.list,
+          { idAccesorio, nombre: acc.descripcion, cantidad },
+        ];
+
+    // Validar cantidad total de accesorios (1-15)
+    const error = validateCantidadTotalAccesorios(newList);
+    if (error) {
+      return error;
+    }
+
+    setAssociations((prev) => ({
+      ...prev,
+      accesorios: { selectedId: undefined, cantidad: 1, list: newList },
+    }));
+
+    return null;
   }, [
     associations.accesorios.selectedId,
     associations.accesorios.cantidad,
     accesorios,
+    associations.accesorios.list,
   ]);
 
   // Remover accesorio

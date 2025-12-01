@@ -29,6 +29,8 @@ import {
   validatePrecioArreglo,
   validateDescripcion,
   calcularPrecioSugeridoArreglo,
+  validateCantidadTotalFlores,
+  validateCantidadTotalAccesorios,
 } from '@/shared/utils/validation';
 
 interface ArregloFormProps {
@@ -252,6 +254,22 @@ export function ArregloForm({
 
     if (associations.flores.list.length === 0) {
       toast.error('Agrega al menos una flor al arreglo');
+      return;
+    }
+
+    // Validar cantidad total de flores (3-50)
+    const errorFlores = validateCantidadTotalFlores(associations.flores.list);
+    if (errorFlores) {
+      toast.error(errorFlores);
+      return;
+    }
+
+    // Validar cantidad total de accesorios (1-15)
+    const errorAccesorios = validateCantidadTotalAccesorios(
+      associations.accesorios.list
+    );
+    if (errorAccesorios) {
+      toast.error(errorAccesorios);
       return;
     }
 
@@ -512,7 +530,16 @@ export function ArregloForm({
                 />
               </div>
               <div className="sm:col-span-2">
-                <Button type="button" onClick={addFlor} className="w-full">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const error = addFlor();
+                    if (error) {
+                      toast.error(error);
+                    }
+                  }}
+                  className="w-full"
+                >
                   Agregar
                 </Button>
               </div>
@@ -622,7 +649,16 @@ export function ArregloForm({
                 />
               </div>
               <div className="sm:col-span-2">
-                <Button type="button" onClick={addAccesorio} className="w-full">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const error = addAccesorio();
+                    if (error) {
+                      toast.error(error);
+                    }
+                  }}
+                  className="w-full"
+                >
                   Agregar
                 </Button>
               </div>
