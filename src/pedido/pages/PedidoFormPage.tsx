@@ -1,7 +1,14 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -15,48 +22,34 @@ import { toast } from 'sonner';
 import { ClienteSelect } from '../components/ClienteSelect';
 import { ArregloCard } from '../components/ArregloCard';
 import { CarritoArreglos } from '../components/CarritoArreglos';
-import {
-  MdLocationOn,
-  MdPerson,
-  MdShoppingCart,
-  MdSave,
-  MdArrowBack,
-} from 'react-icons/md';
-import type {
-  CreatePedidoDto,
-  UpdatePedidoDto,
-} from '../types/pedido.interface';
+import { MdLocationOn, MdPerson, MdShoppingCart, MdSave } from 'react-icons/md';
+import type { CreatePedidoDto } from '../types/pedido.interface';
 import type { Arreglo } from '@/arreglo/types/arreglo.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
 import { usePedidoCart } from '../hook/usePedidoCart';
-import {
-  createPedido,
-  updatePedido,
-  createDetallePedido,
-  createContactoEntrega,
-  updateContactoEntrega,
-  getPedidoById,
-} from '../actions';
-import { createEnvio } from '../actions/createEnvio';
-import { getDetallePedidoByPedidoId } from '../actions/getDetallePedidoByPedidoId';
-import { createDireccion, updateDireccion } from '@/cliente/actions';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
 import { useUserIdEmpleado } from '@/shared/utils/getUserId';
-import {
-  sanitizeName,
-  validateName,
-  formatTelefono,
-  validateTelefono,
-  formatTelefonoForBackend,
-  formatTelefonoForInput,
-} from '@/shared/utils/validation';
+
+interface PedidoFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: {
+    pedido: CreatePedidoDto;
+    direccion?: CreateDireccionDto;
+    contactoEntrega: {
+      nombre: string;
+      apellido: string;
+      telefono: string;
+    };
+    detalles: Array<{
+      idArreglo: number;
+      cantidad: number;
+      precioUnitario: number;
+      subtotal: number;
+    }>;
+  }) => void;
+  isLoading?: boolean;
+  pedido?: import('../types/pedido.interface').Pedido | null;
+}
 
 interface FormValues {
   idCliente: string;
@@ -68,13 +61,13 @@ interface FormValues {
   direccionTexto: string;
 }
 
-export default function PedidoFormPage() {
-  const navigate = useNavigate();
-  const { idPedido } = useParams<{ idPedido?: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const queryClient = useQueryClient();
-  const isEdit = !!idPedido;
-
+export function PedidoForm({
+  open,
+  onOpenChange,
+  onSubmit,
+  isLoading = false,
+  pedido,
+}: PedidoFormProps) {
   // Obtener el idEmpleado del usuario autenticado
   const idEmpleado = useUserIdEmpleado();
 
@@ -106,7 +99,6 @@ export default function PedidoFormPage() {
     null
   );
   const [mapboxSearchValue, setMapboxSearchValue] = useState('');
-  const detallesCargadosRef = useRef(false);
 
   // Hook del carrito de pedidos
   const {
@@ -118,157 +110,84 @@ export default function PedidoFormPage() {
     clear: clearCart,
   } = usePedidoCart();
 
-  // Paginación de arreglos usando URL params - Similar a useQueryParameters
-  const arregloPage = useMemo(
-    () => parseInt(searchParams.get('page') || '1', 10),
-    [searchParams]
-  );
-  const arregloLimit = 3; // Siempre 3 arreglos por página
-  const arregloOffset = useMemo(
-    () => (arregloPage - 1) * arregloLimit,
-    [arregloPage, arregloLimit]
-  );
-
-  // Estado de búsqueda de arreglos
-  const [searchArreglo, setSearchArreglo] = useState(
-    searchParams.get('q') || ''
-  );
+  // Estado de búsqueda de arreglos (optimizado)
+  const [searchArreglo, setSearchArreglo] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3; // Mostrar solo 3 arreglos por página
   const debouncedSearch = useDebounce(searchArreglo, 300);
-  const isUserTypingRef = useRef(false);
   const previousSearchRef = useRef<string | null>(null);
+  const isInitialMountRef = useRef(true);
 
-  // Inicializar el ref con el valor actual de la URL
+  // Obtener arreglos usando el hook (filtra por estado activo en el frontend)
+  const { arreglos } = useArreglo({
+    limit: 100, // Obtener más para poder paginar
+    q: debouncedSearch || undefined,
+    estado: 'activo', // El hook filtra por estado en el frontend usando ArregloEstado
+  });
+
+  // Paginación de arreglos - asegurar que siempre muestre exactamente itemsPerPage o menos
+  const paginatedArreglos = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const sliced = arreglos.slice(startIndex, endIndex);
+    return sliced;
+  }, [arreglos, currentPage, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(arreglos.length / itemsPerPage));
+
+  // Inicializar el ref en el primer render
   useEffect(() => {
-    if (previousSearchRef.current === null) {
-      previousSearchRef.current = searchParams.get('q') || '';
+    if (isInitialMountRef.current) {
+      previousSearchRef.current = debouncedSearch || '';
+      isInitialMountRef.current = false;
     }
   }, []);
 
-  // Actualizar URL cuando cambia el debounced search
+  // Resetear página SOLO cuando cambia la búsqueda (no cuando el usuario navega)
   useEffect(() => {
-    const currentUrlQuery = searchParams.get('q') || '';
-    const currentDebounced = debouncedSearch || '';
-    
-    // Si el valor en la URL ya coincide con el debounced, no hacer nada
-    if (currentDebounced === currentUrlQuery) {
-      isUserTypingRef.current = false;
-      // Actualizar el ref para mantener sincronizado
-      if (previousSearchRef.current !== currentDebounced) {
-        previousSearchRef.current = currentDebounced;
-      }
+    // Saltar en el primer render
+    if (isInitialMountRef.current) {
       return;
     }
 
-    // Solo actualizar si la búsqueda realmente cambió desde la última vez
-    const previousSearch = previousSearchRef.current;
-    const searchChanged = currentDebounced !== previousSearch;
-
-    if (searchChanged) {
-      isUserTypingRef.current = true;
-      const newParams = new URLSearchParams(searchParams);
-      
-      if (debouncedSearch) {
-        newParams.set('q', debouncedSearch);
-      } else {
-        newParams.delete('q');
-      }
-      
-      // Solo eliminar page si la búsqueda cambió (resetear a página 1)
-      newParams.delete('page');
-      previousSearchRef.current = currentDebounced;
-      setSearchParams(newParams, { replace: true });
+    const currentSearch = debouncedSearch || '';
+    const previousSearch = previousSearchRef.current || '';
+    
+    // Solo resetear si la búsqueda realmente cambió
+    if (currentSearch !== previousSearch) {
+      previousSearchRef.current = currentSearch;
+      // Solo resetear a página 1 si realmente cambió la búsqueda
+      setCurrentPage(1);
     }
-  }, [debouncedSearch, searchParams, setSearchParams]);
+  }, [debouncedSearch]);
 
-  // Sincronizar searchInput cuando cambia la URL desde fuera
+  // Asegurar que currentPage no exceda totalPages cuando cambian los arreglos
   useEffect(() => {
-    if (!isUserTypingRef.current) {
-      const urlQuery = searchParams.get('q') || '';
-      if (urlQuery !== searchArreglo) {
-        setSearchArreglo(urlQuery);
-        // Actualizar el ref cuando cambia desde fuera
-        previousSearchRef.current = urlQuery;
-      }
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
-  }, [searchParams, searchArreglo]);
+  }, [totalPages, currentPage]);
 
-  // Obtener arreglos usando el hook con paginación real
-  const {
-    arreglos,
-    totalItems: totalArreglos,
-    isLoading: isLoadingArreglos,
-  } = useArreglo({
-    usePagination: true,
-    limit: arregloLimit,
-    offset: arregloOffset,
-    q: debouncedSearch || undefined,
-    estado: 'activo',
-  });
-
-  const totalPages = Math.ceil(totalArreglos / arregloLimit);
-
-  // Cargar pedido si es edición
-  const { data: pedido, isLoading: isLoadingPedido } = useQuery({
-    queryKey: ['pedido', idPedido],
-    queryFn: () => getPedidoById(Number(idPedido!)),
-    enabled: isEdit && !!idPedido,
-  });
-
-  // Cargar detalles del pedido (solo si no vienen en el pedido)
-  // Los detalles normalmente vienen incluidos en el pedido, así que solo los cargamos si no están
-  const { data: detallesPedido } = useQuery({
-    queryKey: ['detalle-pedido', idPedido],
-    queryFn: () => getDetallePedidoByPedidoId(Number(idPedido!)),
-    enabled:
-      isEdit &&
-      !!idPedido &&
-      (!pedido || !pedido.detalles || pedido.detalles.length === 0),
-    retry: false, // No reintentar si falla
-    refetchOnWindowFocus: false, // No refetch al cambiar de ventana
-  });
-
-  // Prellenar formulario cuando se carga el pedido
+  // Prellenar formulario cuando se edita un pedido
   useEffect(() => {
-    if (pedido && isEdit) {
-      // Formatear fecha para date input (YYYY-MM-DD)
-      let fechaEntrega = '';
-      if (pedido.fechaEntregaEstimada) {
-        try {
-          const fecha = new Date(pedido.fechaEntregaEstimada);
-          // Verificar que la fecha sea válida
-          if (!isNaN(fecha.getTime())) {
-            // Formatear a YYYY-MM-DD para date input
-            const year = fecha.getFullYear();
-            const month = String(fecha.getMonth() + 1).padStart(2, '0');
-            const day = String(fecha.getDate()).padStart(2, '0');
-            fechaEntrega = `${year}-${month}-${day}`;
-          }
-        } catch (error) {
-          fechaEntrega = '';
-        }
-      }
+    if (pedido && open) {
+      const fechaEntrega = pedido.fechaEntregaEstimada
+        ? new Date(pedido.fechaEntregaEstimada).toISOString().slice(0, 16)
+        : '';
       const costoEnvio =
         typeof pedido.costoEnvio === 'string'
           ? pedido.costoEnvio
           : String(pedido.costoEnvio || '0');
 
-      reset(
-        {
-          idCliente: String(pedido.idCliente),
-          fechaEntregaEstimada: fechaEntrega,
-          costoEnvio: costoEnvio,
-          contactoNombre: pedido.contactoEntrega?.nombre || '',
-          contactoApellido: pedido.contactoEntrega?.apellido || '',
-          contactoTelefono: formatTelefonoForInput(
-            pedido.contactoEntrega?.telefono || ''
-          ),
-          direccionTexto: pedido.direccionTxt || '',
-        },
-        {
-          // Asegurar que los valores se establezcan correctamente
-          keepDefaultValues: false,
-        }
-      );
+      reset({
+        idCliente: String(pedido.idCliente),
+        fechaEntregaEstimada: fechaEntrega,
+        costoEnvio: costoEnvio,
+        contactoNombre: pedido.contactoEntrega?.nombre || '',
+        contactoApellido: pedido.contactoEntrega?.apellido || '',
+        contactoTelefono: pedido.contactoEntrega?.telefono || '',
+        direccionTexto: pedido.direccionTxt || '',
+      });
 
       // Prellenar dirección del mapa si existe
       if (pedido.direccion) {
@@ -293,303 +212,97 @@ export default function PedidoFormPage() {
         setMapboxSearchValue(direccionMapbox.formattedAddress);
       }
 
-      // Prellenar carrito con detalles del pedido
-      // Priorizar detalles del pedido directamente, luego los de la query separada
-      const detalles =
-        pedido.detalles && pedido.detalles.length > 0
-          ? pedido.detalles
-          : detallesPedido && detallesPedido.length > 0
-          ? detallesPedido
-          : [];
-
-      // Solo cargar detalles si el carrito está vacío y no se han cargado ya (evitar recargas innecesarias)
-      if (
-        detalles.length > 0 &&
-        arreglosSeleccionados.length === 0 &&
-        !detallesCargadosRef.current
-      ) {
-        detallesCargadosRef.current = true;
+      // Prellenar carrito con detalles del pedido (SILENT - sin toasts)
+      if (pedido.detalles && pedido.detalles.length > 0) {
         clearCart();
+        // Usar setTimeout para asegurar que clearCart se complete antes de agregar items
         setTimeout(() => {
-          detalles.forEach((detalle) => {
-            // Verificar que el detalle tenga arreglo o al menos idArreglo
-            if (detalle.arreglo || detalle.idArreglo) {
-              // Si no tiene el objeto arreglo completo, crear uno mínimo
-              const arreglo: Arreglo = detalle.arreglo
-                ? {
-                    idArreglo: detalle.arreglo.idArreglo,
-                    idFormaArreglo: detalle.arreglo.idFormaArreglo || 0,
-                    nombre: detalle.arreglo.nombre,
-                    descripcion: detalle.arreglo.descripcion || '',
-                    precioUnitario:
-                      typeof detalle.precioUnitario === 'string'
-                        ? parseFloat(detalle.precioUnitario)
-                        : typeof detalle.precioUnitario === 'number'
-                        ? detalle.precioUnitario
-                        : typeof detalle.arreglo.precioUnitario === 'string'
-                        ? parseFloat(detalle.arreglo.precioUnitario)
-                        : detalle.arreglo.precioUnitario || 0,
-                    estado: detalle.arreglo.estado || 'activo',
-                    url: detalle.arreglo.url,
-                  }
-                : {
-                    // Si no tiene arreglo completo, crear uno básico con los datos disponibles
-                    idArreglo: detalle.idArreglo,
-                    idFormaArreglo: 0,
-                    nombre: `Arreglo #${detalle.idArreglo}`,
-                    descripcion: '',
-                    precioUnitario:
-                      typeof detalle.precioUnitario === 'string'
-                        ? parseFloat(detalle.precioUnitario)
-                        : detalle.precioUnitario || 0,
-                    estado: 'activo',
-                    url: undefined,
-                  };
-
-              // Agregar con un pequeño delay entre items para evitar problemas de estado
-              setTimeout(() => {
-                addItemToCart(arreglo, true);
-
-                // Actualizar cantidad después de agregar (si la cantidad es diferente de 1)
-                const cantidad = detalle.cantidad || 1;
-                if (cantidad > 1) {
-                  setTimeout(() => {
-                    updateItemQuantity(detalle.idArreglo, cantidad, true);
-                  }, 200);
-                }
-              }, 150 * detalles.indexOf(detalle));
+          pedido.detalles?.forEach((detalle) => {
+            if (detalle.arreglo) {
+              const arreglo: Arreglo = {
+                idArreglo: detalle.arreglo.idArreglo,
+                idFormaArreglo: detalle.arreglo.idFormaArreglo || 0,
+                nombre: detalle.arreglo.nombre,
+                descripcion: detalle.arreglo.descripcion || '',
+                precioUnitario:
+                  typeof detalle.precioUnitario === 'string'
+                    ? parseFloat(detalle.precioUnitario)
+                    : detalle.precioUnitario,
+                estado: detalle.arreglo.estado || 'activo',
+                url: detalle.arreglo.url,
+              };
+              // Agregar el arreglo al carrito SILENT (sin toast)
+              addItemToCart(arreglo, true);
+              // Actualizar cantidad después de agregar (si la cantidad es diferente de 1) - SILENT
+              if (detalle.cantidad > 1) {
+                setTimeout(() => {
+                  updateItemQuantity(detalle.idArreglo, detalle.cantidad, true);
+                }, 100);
+              }
             }
           });
-        }, 100);
-      } else if (
-        detalles.length === 0 &&
-        arreglosSeleccionados.length === 0 &&
-        isEdit
-      ) {
-        // Si no hay detalles pero estamos editando, limpiar el carrito
-        clearCart();
-        detallesCargadosRef.current = true;
+        }, 50);
       }
-    } else if (!isEdit) {
-      // Si no es edición, resetear el flag
-      detallesCargadosRef.current = false;
+    } else if (!pedido && open) {
+      // Resetear cuando se crea un nuevo pedido
+      reset({
+        idCliente: '',
+        fechaEntregaEstimada: '',
+        costoEnvio: '0',
+        contactoNombre: '',
+        contactoApellido: '',
+        contactoTelefono: '',
+        direccionTexto: '',
+      });
+      setDireccionData(null);
+      clearCart();
+      setSearchArreglo('');
+      setCurrentPage(1);
+      previousSearchRef.current = '';
+      isInitialMountRef.current = true; // Permitir reinicialización
     }
-  }, [
-    pedido,
-    detallesPedido,
-    isEdit,
-    reset,
-    clearCart,
-    addItemToCart,
-    updateItemQuantity,
-    arreglosSeleccionados.length,
-  ]);
+  }, [pedido, open, reset, clearCart, addItemToCart, updateItemQuantity]);
 
   const costoEnvioNum = parseFloat(formValues.costoEnvio) || 0;
   const totalPedido = subtotalProductos + costoEnvioNum;
 
-  // Manejar selección de dirección del mapa
+  // Manejar selección de dirección del mapa (NO sobrescribe el texto)
   const handleDireccionChange = useCallback((data: MapboxAddressData) => {
     setDireccionData(data);
+    // NO sobrescribir direccionTexto - son campos independientes
+    // El usuario puede escribir "2 cuadras al sur" aunque el mapa diga otra cosa
   }, []);
 
-  // Handlers para nombre y apellido (sanitización)
-  const handleContactoNombreChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const sanitized = sanitizeName(e.target.value, 30);
-      setValue('contactoNombre', sanitized);
-    },
-    [setValue]
-  );
-
-  const handleContactoApellidoChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const sanitized = sanitizeName(e.target.value, 30);
-      setValue('contactoApellido', sanitized);
-    },
-    [setValue]
-  );
-
-  // Handler para teléfono (formateo)
-  const handleContactoTelefonoChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTelefono(e.target.value);
-      setValue('contactoTelefono', formatted);
-    },
-    [setValue]
-  );
-
-  // Handlers del carrito
+  // Handlers del carrito (delegados al hook - ya están memoizados en el hook)
   const handleAgregarArreglo = addItemToCart;
   const handleRemoverArreglo = removeItemFromCart;
   const handleActualizarCantidad = updateItemQuantity;
 
-  // Mutation para guardar pedido
-  const savePedidoMutation = useMutation({
-    mutationFn: async (data: {
-      pedido: any;
-      direccion?: any;
-      contactoEntrega: { nombre: string; apellido: string; telefono: string };
-      detalles: Array<{
-        idArreglo: number;
-        cantidad: number;
-        precioUnitario: number;
-        subtotal: number;
-      }>;
-    }) => {
-      let idDireccion = data.pedido.idDireccion || 0;
-      let idContactoEntrega = data.pedido.idContactoEntrega || 0;
-
-      // 1. Actualizar o crear dirección si es necesario
-      if (data.direccion) {
-        if (isEdit && pedido?.idDireccion) {
-          await updateDireccion(pedido.idDireccion, data.direccion);
-          idDireccion = pedido.idDireccion;
-        } else {
-          const direccionCreada = await createDireccion(data.direccion);
-          if (!direccionCreada.idDireccion) {
-            throw new Error('La dirección creada no tiene idDireccion');
-          }
-          idDireccion = direccionCreada.idDireccion;
-        }
-      }
-
-      // 2. Actualizar o crear contacto de entrega
-      if (isEdit && pedido?.idContactoEntrega) {
-        await updateContactoEntrega(
-          pedido.idContactoEntrega,
-          data.contactoEntrega
-        );
-        idContactoEntrega = pedido.idContactoEntrega;
-      } else {
-        const contactoCreado = await createContactoEntrega(
-          data.contactoEntrega
-        );
-        if (!contactoCreado.idContactoEntrega) {
-          throw new Error(
-            'El contacto de entrega creado no tiene idContactoEntrega'
-          );
-        }
-        idContactoEntrega = contactoCreado.idContactoEntrega;
-      }
-
-      // 3. Crear o actualizar pedido
-      const pedidoDto: CreatePedidoDto = {
-        canal: 'interno', // Siempre interno
-        idPago: null, // Siempre null para canal interno
-        idCliente: data.pedido.idCliente,
-        idEmpleado: data.pedido.idEmpleado,
-        idFolio: 2, // Siempre 2
-        fechaEntregaEstimada: data.pedido.fechaEntregaEstimada,
-        direccionTxt: data.pedido.direccionTxt,
-        idDireccion,
-        idContactoEntrega,
-      };
-
-      let pedidoResultado;
-      if (isEdit && idPedido) {
-        // Para actualizar, usar UpdatePedidoDto con la misma lógica
-        const updateDto: UpdatePedidoDto = {
-          canal: 'interno' as const,
-          idPago: null,
-          idCliente: pedidoDto.idCliente,
-          idEmpleado: pedidoDto.idEmpleado,
-          idFolio: 2,
-          fechaEntregaEstimada: pedidoDto.fechaEntregaEstimada,
-          direccionTxt: pedidoDto.direccionTxt,
-          idDireccion,
-          idContactoEntrega,
-        };
-        pedidoResultado = await updatePedido(Number(idPedido), updateDto);
-      } else {
-        pedidoResultado = await createPedido(pedidoDto);
-        if (!pedidoResultado.idPedido) {
-          throw new Error('El pedido creado no tiene idPedido');
-        }
-      }
-
-      // 4. Actualizar o crear detalles del pedido
-      if (data.detalles && data.detalles.length > 0) {
-        const detallesPromises = data.detalles.map((detalle) =>
-          createDetallePedido({
-            idPedido: pedidoResultado.idPedido,
-            idArreglo: detalle.idArreglo,
-            cantidad: detalle.cantidad,
-            precioUnitario: 0, // Siempre 0 según requerimientos
-            subtotal: 0, // Siempre 0 según requerimientos
-          })
-        );
-        await Promise.all(detallesPromises);
-      }
-
-      // 5. Crear envío con el costo de envío (solo para nuevos pedidos)
-      if (!isEdit && pedidoResultado.idPedido && data.pedido.costoEnvio > 0) {
-        try {
-          await createEnvio({
-            idPedido: pedidoResultado.idPedido,
-            idEmpleado: data.pedido.idEmpleado,
-            estadoEnvio: 'Programado',
-            fechaProgramada: data.pedido.fechaEntregaEstimada,
-            costoEnvio: data.pedido.costoEnvio,
-          });
-        } catch (error) {
-          // No fallar el pedido si falla el envío
-        }
-      }
-
-      return pedidoResultado;
-    },
-    onSuccess: () => {
-      toast.success(
-        isEdit
-          ? 'Pedido actualizado exitosamente'
-          : 'Pedido creado exitosamente'
-      );
-      queryClient.invalidateQueries({ queryKey: ['pedidos'] });
-      navigate('/admin/pedidos');
-    },
-    onError: (error: any) => {
-      toast.error(
-        isEdit ? 'Error al actualizar el pedido' : 'Error al crear el pedido',
-        {
-          description: cleanErrorMessage(error),
-          duration: 5000,
-        }
-      );
-    },
-  });
-
   // Manejar envío del formulario
   const onSubmitForm = async (data: FormValues) => {
-    if (arreglosSeleccionados.length === 0) {
-      toast.error('Carrito vacío', {
-        description: 'Debes agregar al menos un arreglo al carrito',
+    // Validar que el usuario tenga idEmpleado
+    if (!idEmpleado) {
+      toast.error('Error de autenticación', {
+        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
       });
       return;
     }
 
-    // Validar nombre
-    const nombreError = validateName(data.contactoNombre, 'El nombre');
-    if (nombreError) {
-      toast.error(nombreError);
-      return;
+    // Validaciones adicionales
+    // Permitir guardar pedido sin arreglos si se está editando y no tenía arreglos
+    if (arreglosSeleccionados.length === 0) {
+      // Si es edición y el pedido original no tenía detalles, permitir continuar
+      const pedidoSinDetalles =
+        pedido && (!pedido.detalles || pedido.detalles.length === 0);
+      if (!pedidoSinDetalles) {
+        toast.error('Carrito vacío', {
+          description: 'Debes agregar al menos un arreglo al carrito',
+        });
+        return;
+      }
     }
 
-    // Validar apellido
-    const apellidoError = validateName(data.contactoApellido, 'El apellido');
-    if (apellidoError) {
-      toast.error(apellidoError);
-      return;
-    }
-
-    // Validar teléfono
-    const telefonoError = validateTelefono(data.contactoTelefono);
-    if (telefonoError) {
-      toast.error(telefonoError);
-      return;
-    }
-
-    // Preparar datos de dirección
+    // Preparar datos de dirección (solo si hay direccionData o si es edición con dirección existente)
     let direccionDto: CreateDireccionDto | undefined = undefined;
 
     if (direccionData) {
@@ -625,613 +338,514 @@ export default function PedidoFormPage() {
             timestamp: Date.now(),
             coordinates: [lng, lat],
           }),
+        activo: true,
       };
-    }
-
-    // Validar que el usuario tenga idEmpleado
-    if (!idEmpleado) {
-      toast.error('Error de autenticación', {
-        description:
-          'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+    } else if (!pedido) {
+      // Solo requerir dirección si es un nuevo pedido
+      toast.error('Dirección requerida', {
+        description: 'Debes seleccionar una dirección de entrega',
       });
       return;
     }
 
-    // Validar que la fecha esté presente
-    if (!data.fechaEntregaEstimada || !data.fechaEntregaEstimada.trim()) {
-      toast.error('Fecha de entrega requerida', {
-        description: 'Debes seleccionar una fecha de entrega estimada.',
-      });
-      return;
-    }
-
-    // Validar formato de fecha (debe ser YYYY-MM-DD)
-    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!fechaRegex.test(data.fechaEntregaEstimada)) {
-      toast.error('Formato de fecha inválido', {
-        description: 'La fecha debe tener el formato YYYY-MM-DD.',
-      });
-      return;
-    }
-
-    // Verificar que la fecha sea válida
-    const fechaTest = new Date(data.fechaEntregaEstimada);
-    if (isNaN(fechaTest.getTime())) {
-      toast.error('Fecha inválida', {
-        description: 'La fecha seleccionada no es válida.',
-      });
-      return;
-    }
-
-    // El backend espera solo la fecha en formato YYYY-MM-DD (sin hora)
-    // Enviar la fecha tal cual viene del input
-    const fechaISO = data.fechaEntregaEstimada;
-
-    // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)
-    // El costoEnvio NO va en el pedido, va en el envío
-    const pedidoBase = {
-      canal: 'interno' as const, // Siempre interno según la interfaz
-      idCliente: Number(data.idCliente),
+    // Preparar datos del pedido (sin idDireccion e idContactoEntrega aún)
+    // Si el canal es "interno", nunca enviar idPago
+    const pedidoDto: CreatePedidoDto = {
+      canal: 'interno',
       idEmpleado,
-      fechaEntregaEstimada: fechaISO,
-      costoEnvio: parseFloat(data.costoEnvio) || 0, // Se guarda temporalmente para el envío
-      direccionTxt:
-        data.direccionTexto || direccionData?.formattedAddress || '',
-      // idDireccion e idContactoEntrega se asignarán en la mutation después de crearlos
-      idDireccion: isEdit && pedido?.idDireccion ? pedido.idDireccion : 0,
-      idContactoEntrega:
-        isEdit && pedido?.idContactoEntrega ? pedido.idContactoEntrega : 0,
+      idCliente: parseInt(data.idCliente),
+      idDireccion: 0, // Se asignará después de crear la dirección
+      idContactoEntrega: 0, // Se asignará después de crear el contacto
+      fechaEntregaEstimada: new Date(data.fechaEntregaEstimada).toISOString(),
+      direccionTxt: data.direccionTexto, // Usar el texto que el usuario escribió, no el del mapa
     };
 
+    // Preparar detalles
     const detalles = arreglosSeleccionados.map((arr) => ({
       idArreglo: arr.idArreglo,
       cantidad: arr.cantidad,
       precioUnitario: arr.precioUnitario,
-      subtotal: arr.subtotal,
+      subtotal: 0,
     }));
 
-    // Formatear teléfono para backend (agregar 505 internamente)
-    const telefonoBackend = formatTelefonoForBackend(data.contactoTelefono);
-
-    savePedidoMutation.mutate({
-      pedido: pedidoBase,
+    onSubmit({
+      pedido: pedidoDto,
       direccion: direccionDto,
       contactoEntrega: {
         nombre: data.contactoNombre,
         apellido: data.contactoApellido,
-        telefono: telefonoBackend,
+        telefono: data.contactoTelefono,
       },
       detalles,
     });
   };
 
-  // Manejar cambio de página de arreglos
-  const handleArregloPageChange = useCallback(
-    (page: number) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (page === 1) {
-        newParams.delete('page');
-      } else {
-        newParams.set('page', String(page));
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (!newOpen) {
+        reset({
+          idCliente: '',
+          fechaEntregaEstimada: '',
+          costoEnvio: '0',
+          contactoNombre: '',
+          contactoApellido: '',
+          contactoTelefono: '',
+          direccionTexto: '',
+        });
+        setDireccionData(null);
+        setMapboxSearchValue('');
+        clearCart();
+        setSearchArreglo('');
+        setCurrentPage(1);
+        previousSearchRef.current = '';
+        isInitialMountRef.current = true; // Permitir reinicialización
       }
-      setSearchParams(newParams, { replace: true });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      onOpenChange(newOpen);
     },
-    [searchParams, setSearchParams]
+    [reset, clearCart, onOpenChange]
   );
 
-  if (isLoadingPedido) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  const newLocal =
+    'bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200';
   return (
-    <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full overflow-x-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/pedidos')}
-            className="mb-2"
-          >
-            <MdArrowBack className="h-5 w-5 mr-2" />
-            Volver
-          </Button>
-          <h1 className="text-4xl font-bold text-gray-900">
-            {isEdit ? 'Editar Pedido' : 'Nuevo Pedido'}
-          </h1>
-        </div>
-      </div>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="bg-white border-gray-200 shadow-2xl max-w-6xl max-h-[90vh] overflow-y-auto p-0">
+        <div className="p-6 sm:p-8">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-bold text-gray-900">
+              {pedido ? 'Editar Pedido' : 'Nuevo Pedido'}
+            </DialogTitle>
+            <DialogDescription className="text-base text-gray-600 mt-2">
+              {pedido
+                ? `Edita los datos del pedido #${pedido.idPedido}`
+                : 'Completa los datos para crear un nuevo pedido'}
+            </DialogDescription>
+          </DialogHeader>
 
-      <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Columna izquierda: Formulario */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Información del Cliente */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MdPerson className="h-5 w-5 text-[#50C878]" />
-                  1. Información del Cliente *
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
+            {/* PASO 1: Sección: Cliente */}
+            <div className="bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="p-1.5 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg">
+                  <MdPerson className="h-5 w-5 text-white" />
+                </div>
+                <span>1. Cliente</span>
+              </h3>
+              <ClienteSelect
+                value={formValues.idCliente}
+                onChange={(value: string) => setValue('idCliente', value)}
+                required
+              />
+              {errors.idCliente && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.idCliente.message}
+                </p>
+              )}
+            </div>
+
+            {/* PASO 2: Sección: Arreglos - Carrito de Compra */}
+            <div className="bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <MdShoppingCart className="h-5 w-5 text-[#50C878]" />
+                  Catálogo de Arreglos *
+                </h3>
+                {arreglosSeleccionados.length > 0 && (
+                  <Badge className="bg-[#50C878] text-white">
+                    {arreglosSeleccionados.length}{' '}
+                    {arreglosSeleccionados.length === 1
+                      ? 'arreglo'
+                      : 'arreglos'}{' '}
+                    en el carrito
+                  </Badge>
+                )}
+              </div>
+
+              {/* Buscador de arreglos */}
+              <div className="relative mb-4">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10"></div>
+                <Input
+                  type="text"
+                  value={searchArreglo || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setSearchArreglo(newValue);
+                  }}
+                  placeholder="Buscar arreglos por nombre..."
+                  className="bg-white border-gray-300 text-gray-900 h-11 text-base pl-10 pr-4"
+                />
+              </div>
+
+              {/* Grid de arreglos disponibles con paginación */}
+              {arreglos.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {paginatedArreglos.map((arreglo: Arreglo) => {
+                      const enCarrito = arreglosSeleccionados.find(
+                        (a) => a.idArreglo === arreglo.idArreglo
+                      );
+                      const cantidadEnCarrito = enCarrito?.cantidad || 0;
+
+                      return (
+                        <ArregloCard
+                          key={arreglo.idArreglo}
+                          arreglo={arreglo}
+                          cantidadEnCarrito={cantidadEnCarrito}
+                          onAgregar={handleAgregarArreglo}
+                          onEliminar={handleRemoverArreglo}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Paginación */}
+                  {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 mb-6 px-4 py-3 bg-gray-50 border-t border-gray-200 rounded-lg">
+                      <p className="text-sm text-gray-600 order-2 sm:order-1">
+                        Mostrando{' '}
+                        <span className="font-semibold text-gray-900">
+                          {paginatedArreglos.length > 0
+                            ? (currentPage - 1) * itemsPerPage + 1
+                            : 0}
+                        </span>{' '}
+                        a{' '}
+                        <span className="font-semibold text-gray-900">
+                          {Math.min(currentPage * itemsPerPage, arreglos.length)}
+                        </span>{' '}
+                        de{' '}
+                        <span className="font-semibold text-gray-900">
+                          {arreglos.length}
+                        </span>{' '}
+                        arreglos
+                        {searchArreglo && ` para "${searchArreglo}"`}
+                      </p>
+                      <div className="flex items-center gap-2 order-1 sm:order-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={currentPage === 1}
+                          className="h-9 px-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                          aria-label="Página anterior"
+                        >
+                          Anterior
+                        </Button>
+                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-[80px] text-center">
+                          {currentPage} / {totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          disabled={currentPage === totalPages}
+                          className="h-9 px-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                          aria-label="Página siguiente"
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchArreglo ? (
+                    <p>No se encontraron arreglos con "{searchArreglo}"</p>
+                  ) : (
+                    <p>No hay arreglos disponibles</p>
+                  )}
+                </div>
+              )}
+
+              {/* Carrito de compra - Arreglos seleccionados */}
+              <CarritoArreglos
+                arreglos={arreglosSeleccionados}
+                onActualizarCantidad={handleActualizarCantidad}
+                onEliminar={handleRemoverArreglo}
+              />
+            </div>
+
+            {/* PASO 3: Sección: Contacto de Entrega */}
+            <div className={newLocal}>
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="p-1.5 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg">
+                  <MdPerson className="h-5 w-5 text-white" />
+                </div>
+                <span>3. Contacto de Entrega *</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label
-                    htmlFor="idCliente"
+                    htmlFor="contactoNombre"
                     className="text-sm font-semibold text-gray-700"
                   >
-                    Cliente *
+                    Nombre *
                   </Label>
-                  <ClienteSelect
-                    value={formValues.idCliente}
-                    onChange={(value) => setValue('idCliente', value)}
-                    required
+                  <Input
+                    id="contactoNombre"
+                    {...register('contactoNombre', {
+                      required: 'El nombre es requerido',
+                    })}
+                    placeholder="Juan"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
                   />
-                  {errors.idCliente && (
-                    <p className="text-sm text-red-500">
-                      {errors.idCliente.message}
+                  {errors.contactoNombre && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.contactoNombre.message}
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Catálogo de Arreglos */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <MdShoppingCart className="h-5 w-5 text-[#50C878]" />
-                    2. Catálogo de Arreglos *
-                  </CardTitle>
-                  {arreglosSeleccionados.length > 0 && (
-                    <Badge className="bg-[#50C878] text-white">
-                      {arreglosSeleccionados.length}{' '}
-                      {arreglosSeleccionados.length === 1
-                        ? 'arreglo'
-                        : 'arreglos'}{' '}
-                      en el carrito
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Buscador */}
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={searchArreglo}
-                    onChange={(e) => setSearchArreglo(e.target.value)}
-                    placeholder="Buscar arreglos por nombre..."
-                    className="bg-white border-gray-300 text-gray-700 placeholder:text-gray-500 focus:border-[#50C878] focus:ring-[#50C878]/40"
-                  />
-                </div>
-
-                {/* Grid de arreglos */}
-                {isLoadingArreglos ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
-                  </div>
-                ) : arreglos.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {arreglos.map((arreglo: Arreglo) => {
-                        const enCarrito = arreglosSeleccionados.find(
-                          (a) => a.idArreglo === arreglo.idArreglo
-                        );
-                        const cantidadEnCarrito = enCarrito?.cantidad || 0;
-
-                        return (
-                          <ArregloCard
-                            key={arreglo.idArreglo}
-                            arreglo={arreglo}
-                            cantidadEnCarrito={cantidadEnCarrito}
-                            onAgregar={handleAgregarArreglo}
-                            onEliminar={handleRemoverArreglo}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Paginación */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <p className="text-sm text-gray-600">
-                          Mostrando {arreglos.length} de {totalArreglos}{' '}
-                          arreglos
-                          {debouncedSearch && ` para "${debouncedSearch}"`}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleArregloPageChange(arregloPage - 1)
-                            }
-                            disabled={arregloPage === 1}
-                          >
-                            Anterior
-                          </Button>
-                          <span className="text-sm text-gray-600 px-2">
-                            Página {arregloPage} de {totalPages}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleArregloPageChange(arregloPage + 1)
-                            }
-                            disabled={arregloPage === totalPages}
-                          >
-                            Siguiente
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    {debouncedSearch ? (
-                      <p>No se encontraron arreglos con "{debouncedSearch}"</p>
-                    ) : (
-                      <p>No hay arreglos disponibles</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Carrito */}
-                <CarritoArreglos
-                  arreglos={arreglosSeleccionados}
-                  onActualizarCantidad={handleActualizarCantidad}
-                  onEliminar={handleRemoverArreglo}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Contacto de Entrega */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MdPerson className="h-5 w-5 text-[#50C878]" />
-                  3. Contacto de Entrega *
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="contactoNombre"
-                      className="text-sm font-semibold text-gray-700"
-                    >
-                      Nombre * (2-30 letras, sin espacios)
-                    </Label>
-                    <Input
-                      id="contactoNombre"
-                      {...register('contactoNombre', {
-                        required: 'El nombre es requerido',
-                        minLength: {
-                          value: 2,
-                          message: 'El nombre debe tener al menos 2 caracteres',
-                        },
-                        maxLength: {
-                          value: 30,
-                          message: 'El nombre debe tener máximo 30 caracteres',
-                        },
-                      })}
-                      onChange={handleContactoNombreChange}
-                      onKeyDown={(e) => {
-                        // Bloquear espacios y cualquier carácter que no sea letra
-                        if (e.key === ' ' || e.key === 'Spacebar') {
-                          e.preventDefault();
-                          return;
-                        }
-                        // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
-                        if (
-                          e.key.length === 1 &&
-                          !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
-                        ) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onPaste={(e) => {
-                        e.preventDefault();
-                        const text = e.clipboardData.getData('text');
-                        const sanitized = sanitizeName(text, 30);
-                        setValue('contactoNombre', sanitized);
-                      }}
-                      placeholder="Juan"
-                      maxLength={30}
-                    />
-                    {errors.contactoNombre && (
-                      <p className="text-sm text-red-500">
-                        {errors.contactoNombre.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="contactoApellido"
-                      className="text-sm font-semibold text-gray-700"
-                    >
-                      Apellido * (2-30 letras, sin espacios)
-                    </Label>
-                    <Input
-                      id="contactoApellido"
-                      {...register('contactoApellido', {
-                        required: 'El apellido es requerido',
-                        minLength: {
-                          value: 2,
-                          message:
-                            'El apellido debe tener al menos 2 caracteres',
-                        },
-                        maxLength: {
-                          value: 30,
-                          message:
-                            'El apellido debe tener máximo 30 caracteres',
-                        },
-                      })}
-                      onChange={handleContactoApellidoChange}
-                      onKeyDown={(e) => {
-                        // Bloquear espacios y cualquier carácter que no sea letra
-                        if (e.key === ' ' || e.key === 'Spacebar') {
-                          e.preventDefault();
-                          return;
-                        }
-                        // Permitir teclas de control (Backspace, Delete, Arrow keys, etc.)
-                        if (
-                          e.key.length === 1 &&
-                          !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
-                        ) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onPaste={(e) => {
-                        e.preventDefault();
-                        const text = e.clipboardData.getData('text');
-                        const sanitized = sanitizeName(text, 30);
-                        setValue('contactoApellido', sanitized);
-                      }}
-                      placeholder="Pérez"
-                      maxLength={30}
-                    />
-                    {errors.contactoApellido && (
-                      <p className="text-sm text-red-500">
-                        {errors.contactoApellido.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="contactoTelefono"
-                      className="text-sm font-semibold text-gray-700"
-                    >
-                      Teléfono * (8 dígitos)
-                    </Label>
-                    <div className="flex items-center">
-                      <div className="flex items-center justify-center h-11 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-medium text-gray-700">
-                        +505
-                      </div>
-                      <Input
-                        id="contactoTelefono"
-                        type="tel"
-                        {...register('contactoTelefono', {
-                          required: 'El teléfono es requerido',
-                          pattern: {
-                            value: /^\d{8}$/,
-                            message: 'El teléfono debe tener 8 dígitos',
-                          },
-                        })}
-                        onChange={handleContactoTelefonoChange}
-                        className="bg-white border-gray-300 text-gray-900 h-11 text-base rounded-l-none"
-                        placeholder="12345678"
-                        maxLength={8}
-                      />
-                    </div>
-                    {errors.contactoTelefono && (
-                      <p className="text-sm text-red-500">
-                        {errors.contactoTelefono.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Dirección y Fecha */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MdLocationOn className="h-5 w-5 text-[#50C878]" />
-                  4. Dirección y Fecha de Entrega *
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label
-                    htmlFor="fechaEntregaEstimada"
+                    htmlFor="contactoApellido"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Apellido *
+                  </Label>
+                  <Input
+                    id="contactoApellido"
+                    {...register('contactoApellido', {
+                      required: 'El apellido es requerido',
+                    })}
+                    placeholder="Pérez"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                  />
+                  {errors.contactoApellido && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.contactoApellido.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="contactoTelefono"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Teléfono *
+                  </Label>
+                  <Input
+                    id="contactoTelefono"
+                    {...register('contactoTelefono', {
+                      required: 'El teléfono es requerido',
+                    })}
+                    placeholder="+505 1234 5678"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                  />
+                  {errors.contactoTelefono && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.contactoTelefono.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* PASO 4: Sección: Dirección */}
+            <div className="bg-linear-to-br from-blue-50/30 to-green-50/30 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-6">
+              <div className="flex items-center gap-3">
+                <div
+                  className={
+                    'p-2 bg-linear-to-br from-[#50C878] to-[#3aa85c] rounded-lg shadow-md'
+                  }
+                >
+                  <MdLocationOn className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <Label className="text-lg font-bold text-gray-900">
+                    4. Dirección de Entrega *
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    Busca y selecciona la ubicación de entrega
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label
+                  htmlFor="direccionTexto"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Dirección de Entrega (Texto) *
+                </Label>
+                <Input
+                  id="direccionTexto"
+                  type="text"
+                  {...register('direccionTexto', {
+                    required: 'La dirección es requerida',
+                  })}
+                  placeholder="Ej: 2 cuadras al sur del Metrocentro, Barrio Centro"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Escribe la dirección completa con referencias, cuadras, etc.
+                </p>
+                {errors.direccionTexto && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.direccionTexto.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label
+                  htmlFor="mapboxSearch"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Buscar Ubicación en Mapa (Opcional - Solo para coordenadas)
+                </Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Busca en el mapa para obtener coordenadas. El texto de arriba
+                  es independiente.
+                </p>
+                <MapboxAddressSearch
+                  value={mapboxSearchValue}
+                  onChange={setMapboxSearchValue}
+                  onSelect={handleDireccionChange}
+                  placeholder="Busca una ubicación en el mapa..."
+                  className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"
+                  showMap={true}
+                  mapHeight="250px"
+                />
+              </div>
+
+              {direccionData && (
+                <div className="p-4 bg-white rounded-lg border-2 border-[#50C878]/30 shadow-md">
+                  <p className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <MdLocationOn className="h-5 w-5 text-[#50C878]" />
+                    {direccionData.formattedAddress}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* PASO 5: Sección: Información Adicional */}
+            <div className="bg-linear-to-br from-white to-gray-50/50 rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <h3 className={'text-lg font-bold text-gray-900 mb-4'}>
+                5. Información Adicional
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="fechaEntrega"
                     className="text-sm font-semibold text-gray-700"
                   >
                     Fecha de Entrega Estimada *
                   </Label>
                   <Input
-                    id="fechaEntregaEstimada"
-                    type="date"
+                    id="fechaEntrega"
+                    type="datetime-local"
                     {...register('fechaEntregaEstimada', {
                       required: 'La fecha de entrega es requerida',
                     })}
-                    value={formValues.fechaEntregaEstimada || ''}
-                    onChange={(e) => {
-                      setValue('fechaEntregaEstimada', e.target.value, {
-                        shouldValidate: true,
-                      });
-                    }}
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
                   />
                   {errors.fechaEntregaEstimada && (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-red-500 mt-1">
                       {errors.fechaEntregaEstimada.message}
                     </p>
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">
-                    Dirección en el Mapa
-                  </Label>
-                  <MapboxAddressSearch
-                    value={mapboxSearchValue}
-                    onChange={setMapboxSearchValue}
-                    onSelect={handleDireccionChange}
-                    placeholder="Buscar dirección..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="direccionTexto"
-                    className="text-sm font-semibold text-gray-700"
-                  >
-                    Dirección de Texto (Referencia adicional)
-                  </Label>
-                  <Input
-                    id="direccionTexto"
-                    {...register('direccionTexto')}
-                    placeholder="Ej: 2 cuadras al sur del parque central"
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label
                     htmlFor="costoEnvio"
                     className="text-sm font-semibold text-gray-700"
                   >
-                    Costo de Envío (0 - 1000)
+                    Costo de Envío (C$)
                   </Label>
                   <Input
                     id="costoEnvio"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="1000"
+                    type="text"
+                    inputMode="decimal"
                     {...register('costoEnvio', {
-                      validate: (value) => {
-                        const numValue = parseFloat(value) || 0;
-                        if (numValue < 0) {
-                          return 'El costo de envío no puede ser menor a 0';
-                        }
-                        if (numValue > 1000) {
-                          return 'El costo de envío no puede ser mayor a 1000';
-                        }
-                        return true;
+                      pattern: {
+                        value: /^\d*\.?\d*$/,
+                        message: 'Solo números y punto decimal',
+                      },
+                      min: {
+                        value: 0,
+                        message: 'El costo no puede ser negativo',
                       },
                     })}
-                    onKeyDown={(e) => {
-                      // Bloquear el signo negativo y otros caracteres no permitidos
-                      if (
-                        e.key === '-' ||
-                        e.key === '+' ||
-                        e.key === 'e' ||
-                        e.key === 'E'
-                      ) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onChange={(e) => {
-                      // Solo permitir números y punto decimal, sin signos negativos
-                      let value = e.target.value.replace(/[^0-9.]/g, '');
-                      // Remover signos negativos si se pegan
-                      value = value.replace(/-/g, '');
-                      // Evitar múltiples puntos decimales
-                      const parts = value.split('.');
-                      const formattedValue =
-                        parts.length > 2
-                          ? parts[0] + '.' + parts.slice(1).join('')
-                          : value;
-                      setValue('costoEnvio', formattedValue, {
-                        shouldValidate: true,
-                      });
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pastedText = e.clipboardData.getData('text');
-                      // Solo permitir números y punto decimal
-                      let value = pastedText.replace(/[^0-9.]/g, '');
-                      // Remover signos negativos
-                      value = value.replace(/-/g, '');
-                      setValue('costoEnvio', value, {
-                        shouldValidate: true,
-                      });
-                    }}
                     placeholder="0.00"
-                    className="text-gray-700"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base focus:border-[#50C878] focus:ring-[#50C878]/40"
                   />
                   {errors.costoEnvio && (
-                    <p className="text-sm text-red-500">
+                    <p className="text-sm text-red-500 mt-1">
                       {errors.costoEnvio.message}
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
 
-          {/* Columna derecha: Resumen */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-6">
-              <CardHeader>
-                <CardTitle>Resumen del Pedido</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-700 font-medium">
-                      Subtotal:
-                    </span>
-                    <span className="text-base font-bold text-gray-900">
-                      C${subtotalProductos.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-700 font-medium">
-                      Costo de Envío:
-                    </span>
-                    <span className="text-base font-bold text-gray-900">
-                      C${costoEnvioNum.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                    <span className="text-lg font-bold text-gray-900">
-                      Total:
-                    </span>
-                    <span className="text-xl font-bold text-[#50C878]">
-                      C${totalPedido.toFixed(2)}
-                    </span>
-                  </div>
+            {/* Resumen de Totales */}
+            <div className="bg-linear-to-br from-[#50C878]/10 via-[#50C878]/5 to-[#3aa85c]/10 rounded-xl p-6 border-2 border-[#50C878]/30 shadow-lg">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="w-1 h-6 bg-linear-to-b from-[#50C878] to-[#3aa85c] rounded-full" />
+                Resumen del Pedido
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-gray-700">
+                  <span>Subtotal de Productos:</span>
+                  <span className="font-semibold">
+                    C${subtotalProductos.toFixed(2)}
+                  </span>
                 </div>
+                <div className="flex justify-between text-gray-700">
+                  <span>Costo de Envío:</span>
+                  <span className="font-semibold">
+                    C${costoEnvioNum.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-300">
+                  <span>Total:</span>
+                  <span className="text-[#50C878]">
+                    C${totalPedido.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-[#50C878] hover:bg-[#63d68b] text-white"
-                  disabled={savePedidoMutation.isPending}
-                >
-                  <MdSave className="h-5 w-5 mr-2" />
-                  {savePedidoMutation.isPending
+            <DialogFooter className="gap-3 pt-6 border-t border-gray-200 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="border-gray-300 text-gray-700 hover:bg-gray-100 h-11 px-6 text-base font-medium"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  (arreglosSeleccionados.length === 0 &&
+                    !(
+                      pedido &&
+                      (!pedido.detalles || pedido.detalles.length === 0)
+                    ))
+                }
+                className="bg-linear-to-r from-[#50C878] to-[#3aa85c] hover:from-[#50C878]/90 hover:to-[#3aa85c]/90 text-white shadow-md shadow-[#50C878]/20 gap-2 h-11 px-6 text-base font-semibold transition-colors duration-150 font-sans rounded-lg"
+              >
+                <MdSave className="h-5 w-5" />
+                {isLoading
+                  ? pedido
                     ? 'Guardando...'
-                    : isEdit
-                    ? 'Actualizar Pedido'
-                    : 'Crear Pedido'}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+                    : 'Creando...'
+                  : pedido
+                  ? 'Guardar Cambios'
+                  : 'Crear Pedido'}
+              </Button>
+            </DialogFooter>
+          </form>
         </div>
-      </form>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
