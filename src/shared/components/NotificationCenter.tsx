@@ -35,9 +35,25 @@ const notificationColors: Record<NotificationType, string> = {
   error: 'bg-red-50 border-red-200',
 };
 
-const formatTimeAgo = (date: Date): string => {
+const formatTimeAgo = (date: Date | string): string => {
+  // Asegurar que date sea un objeto Date
+  let dateObj: Date;
+  if (date instanceof Date) {
+    dateObj = date;
+  } else if (typeof date === 'string') {
+    dateObj = new Date(date);
+  } else {
+    // Fallback: si no es válido, usar fecha actual
+    dateObj = new Date();
+  }
+
+  // Validar que la fecha sea válida
+  if (isNaN(dateObj.getTime())) {
+    return 'ahora';
+  }
+
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
+  const diff = now.getTime() - dateObj.getTime();
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);

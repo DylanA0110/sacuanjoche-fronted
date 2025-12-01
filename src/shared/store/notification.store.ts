@@ -89,12 +89,32 @@ const loadNotificationsFromStorage = (): Notification[] => {
     const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
-    // Convertir timestamps de string a Date
-    return parsed.map((n: any) => ({
-      ...n,
-      timestamp: new Date(n.timestamp),
-    }));
+    // Convertir timestamps de string a Date y validar
+    return parsed
+      .map((n: any) => {
+        let timestamp: Date;
+        if (n.timestamp instanceof Date) {
+          timestamp = n.timestamp;
+        } else if (typeof n.timestamp === 'string' || typeof n.timestamp === 'number') {
+          timestamp = new Date(n.timestamp);
+        } else {
+          // Si no hay timestamp válido, usar fecha actual
+          timestamp = new Date();
+        }
+        
+        // Validar que la fecha sea válida
+        if (isNaN(timestamp.getTime())) {
+          timestamp = new Date();
+        }
+        
+        return {
+          ...n,
+          timestamp,
+        };
+      })
+      .filter((n: any) => n.timestamp instanceof Date && !isNaN(n.timestamp.getTime()));
   } catch (error) {
+    console.error('Error loading notifications from storage:', error);
     return [];
   }
 };
