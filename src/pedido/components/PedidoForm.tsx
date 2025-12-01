@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import {
@@ -115,6 +115,7 @@ export function PedidoForm({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 3; // Mostrar solo 3 arreglos por página
   const debouncedSearch = useDebounce(searchArreglo, 300);
+  const previousSearchRef = useRef<string>(debouncedSearch);
 
   // Obtener arreglos usando el hook (filtra por estado activo en el frontend)
   const { arreglos } = useArreglo({
@@ -123,19 +124,31 @@ export function PedidoForm({
     estado: 'activo', // El hook filtra por estado en el frontend usando ArregloEstado
   });
 
-  // Paginación de arreglos
+  // Paginación de arreglos - asegurar que siempre muestre exactamente itemsPerPage o menos
   const paginatedArreglos = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return arreglos.slice(startIndex, endIndex);
+    const sliced = arreglos.slice(startIndex, endIndex);
+    return sliced;
   }, [arreglos, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(arreglos.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(arreglos.length / itemsPerPage));
 
-  // Resetear página cuando cambia la búsqueda
+  // Resetear página solo cuando cambia la búsqueda (no cuando el usuario navega)
   useEffect(() => {
-    setCurrentPage(1);
+    // Solo resetear si la búsqueda realmente cambió (no es el mismo valor)
+    if (previousSearchRef.current !== debouncedSearch) {
+      previousSearchRef.current = debouncedSearch;
+      setCurrentPage(1);
+    }
   }, [debouncedSearch]);
+
+  // Asegurar que currentPage no exceda totalPages cuando cambian los arreglos
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [arreglos.length, totalPages, currentPage]);
 
   // Prellenar formulario cuando se edita un pedido
   useEffect(() => {
@@ -227,6 +240,7 @@ export function PedidoForm({
       clearCart();
       setSearchArreglo('');
       setCurrentPage(1);
+      previousSearchRef.current = ''; // Resetear también el ref de búsqueda
     }
   }, [pedido, open, reset, clearCart, addItemToCart, updateItemQuantity]);
 
@@ -364,6 +378,7 @@ export function PedidoForm({
         clearCart();
         setSearchArreglo('');
         setCurrentPage(1);
+        previousSearchRef.current = ''; // Resetear también el ref de búsqueda
       }
       onOpenChange(newOpen);
     },
