@@ -78,8 +78,23 @@ export function ArregloForm({
 
   const formValues = watch();
   const [precioInput, setPrecioInput] = useState('');
+  const [florCantidadInput, setFlorCantidadInput] = useState<string>('');
+  const [accesorioCantidadInput, setAccesorioCantidadInput] = useState<string>('');
 
   const { formasArreglo } = useFormaArreglo({ activo: true });
+  
+  // Inicializar estados locales cuando associations cambien (solo si no están siendo editados)
+  useEffect(() => {
+    if (florCantidadInput === '') {
+      setFlorCantidadInput(String(associations.flores.cantidad));
+    }
+  }, [associations.flores.cantidad]);
+  
+  useEffect(() => {
+    if (accesorioCantidadInput === '') {
+      setAccesorioCantidadInput(String(associations.accesorios.cantidad));
+    }
+  }, [associations.accesorios.cantidad]);
   const { flores } = useFlor({ estado: 'activo' });
   const { accesorios } = useAccesorio({ estado: 'activo' });
 
@@ -519,12 +534,28 @@ export function ArregloForm({
                 <Input
                   type="number"
                   min={1}
-                  value={associations.flores.cantidad}
-                  onChange={(e) =>
-                    updateFlorCantidad(
-                      Math.max(1, parseInt(e.target.value || '1', 10))
-                    )
-                  }
+                  value={florCantidadInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFlorCantidadInput(value);
+                    if (value !== '') {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue >= 1) {
+                        updateFlorCantidad(numValue);
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value, 10)) || parseInt(value, 10) < 1) {
+                      setFlorCantidadInput('1');
+                      updateFlorCantidad(1);
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      setFlorCantidadInput(String(numValue));
+                      updateFlorCantidad(numValue);
+                    }
+                  }}
                   placeholder="Cant."
                   className="bg-white border-gray-300 text-gray-900"
                 />
@@ -638,12 +669,28 @@ export function ArregloForm({
                 <Input
                   type="number"
                   min={1}
-                  value={associations.accesorios.cantidad}
-                  onChange={(e) =>
-                    updateAccesorioCantidad(
-                      Math.max(1, parseInt(e.target.value || '1', 10))
-                    )
-                  }
+                  value={accesorioCantidadInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setAccesorioCantidadInput(value);
+                    if (value !== '') {
+                      const numValue = parseInt(value, 10);
+                      if (!isNaN(numValue) && numValue >= 1) {
+                        updateAccesorioCantidad(numValue);
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value, 10)) || parseInt(value, 10) < 1) {
+                      setAccesorioCantidadInput('1');
+                      updateAccesorioCantidad(1);
+                    } else {
+                      const numValue = parseInt(value, 10);
+                      setAccesorioCantidadInput(String(numValue));
+                      updateAccesorioCantidad(numValue);
+                    }
+                  }}
                   placeholder="Cant."
                   className="bg-white border-gray-300 text-gray-900"
                 />

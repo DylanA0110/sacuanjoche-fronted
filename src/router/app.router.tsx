@@ -224,7 +224,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'reportes',
-        element: <ReportesPage />,
+        element: (
+          <ProtectedRoute requiredRoles={['admin']}>
+            <ReportesPage />
+          </ProtectedRoute>
+        ),
         errorElement: <RouteErrorBoundary />,
       },
       {

@@ -51,8 +51,18 @@ export function AppSidebar({
   // Determinar si el usuario es conductor
   const isConductor = user && hasRole('conductor') && !hasRole('admin') && !hasRole('vendedor');
   
+  // Determinar si el usuario es vendedor
+  const isVendedor = user && hasRole('vendedor') && !hasRole('admin');
+  
   // Seleccionar el menú según el rol
-  const menuItems = isConductor ? menuItemsConductor : menuItemsAdmin;
+  let menuItems = isConductor ? menuItemsConductor : menuItemsAdmin;
+  
+  // Si es vendedor, filtrar "Empleados" y "Reportes" del menú
+  if (isVendedor && !isConductor) {
+    menuItems = menuItemsAdmin.filter(
+      (item) => item.title !== 'Empleados' && item.title !== 'Reportes'
+    );
+  }
 
   return (
     <aside
