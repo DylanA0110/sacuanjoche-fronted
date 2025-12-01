@@ -33,7 +33,9 @@ interface NotificationState {
   disconnect: () => void;
 
   // Acciones de notificaciones
-  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  addNotification: (
+    notification: Omit<Notification, 'id' | 'timestamp' | 'read'>
+  ) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearAll: () => void;
@@ -41,7 +43,9 @@ interface NotificationState {
 }
 
 // Mapear tipos del backend a tipos del frontend
-const mapNotificationType = (tipo: AdminNotificationPayload['tipo']): NotificationType => {
+const mapNotificationType = (
+  tipo: AdminNotificationPayload['tipo']
+): NotificationType => {
   switch (tipo) {
     case 'nuevo_pedido_web':
       return 'success';
@@ -63,7 +67,9 @@ const mapNotificationContent = (
     case 'nuevo_pedido_web':
       return {
         title: 'Nuevo Pedido Web',
-        message: `Se ha recibido un nuevo pedido web${data?.numeroPedido ? ` #${data.numeroPedido}` : ''}${nombreCliente ? ` de ${cliente}` : ''}`,
+        message: `Se ha recibido un nuevo pedido web${
+          data?.numeroPedido ? ` #${data.numeroPedido}` : ''
+        }${nombreCliente ? ` de ${cliente}` : ''}`,
         link: idRegistro ? `/admin/pedidos` : '/admin/pedidos',
       };
     default:
@@ -113,7 +119,9 @@ export const useNotificationStore = create<NotificationState>()(
 
       // Cargar notificaciones iniciales desde localStorage
       const initialNotifications = loadNotificationsFromStorage();
-      const initialUnreadCount = initialNotifications.filter((n) => !n.read).length;
+      const initialUnreadCount = initialNotifications.filter(
+        (n) => !n.read
+      ).length;
 
       // Inicializar audio para sonido de notificación
       const initAudio = () => {
@@ -171,11 +179,11 @@ export const useNotificationStore = create<NotificationState>()(
 
           // Obtener token del localStorage (el auth store puede no estar inicializado aún)
           const token = localStorage.getItem('token');
-          
+
           if (!token) {
-            set({ 
+            set({
               connectionError: 'No hay token de autenticación disponible',
-              connected: false 
+              connected: false,
             });
             return;
           }
@@ -211,47 +219,53 @@ export const useNotificationStore = create<NotificationState>()(
               connected: false,
               socketId: null,
             });
-            
+
             // Si fue desconectado por el servidor (ej: token inválido), no intentar reconectar
             if (reason === 'io server disconnect') {
-              set({ connectionError: 'Desconectado por el servidor. Verifica tu autenticación.' });
+              set({
+                connectionError:
+                  'Desconectado por el servidor. Verifica tu autenticación.',
+              });
             }
           });
 
           socket.on('connect_error', (error) => {
             const errorMessage = error?.message ?? String(error);
-            set({ 
-              connectionError: errorMessage, 
-              connected: false 
+            set({
+              connectionError: errorMessage,
+              connected: false,
             });
           });
 
           // Escuchar errores de autenticación
           socket.on('unauthorized', () => {
-            set({ 
+            set({
               connectionError: 'No autorizado. Token inválido o expirado.',
-              connected: false 
+              connected: false,
             });
             socket.disconnect();
           });
 
           // Escuchar notificaciones del admin (namespace /admin)
-          socket.on('adminNotification', (payload: AdminNotificationPayload) => {
-            const { title, message, link } = mapNotificationContent(
-              payload.tipo,
-              payload.id_registro,
-              payload.data,
-              payload.nombre_cliente
-            );
+          socket.on(
+            'adminNotification',
+            (payload: AdminNotificationPayload) => {
+              const { title, message, link } = mapNotificationContent(
+                payload.tipo,
+                payload.id_registro,
+                payload.data,
+                payload.nombre_cliente
+              );
 
-            get().addNotification({
-              type: mapNotificationType(payload.tipo),
-              title,
-              message,
-              link,
-              originalPayload: payload,
-            });
-          });
+              get().addNotification({
+                type: mapNotificationType(payload.tipo),
+                title,
+                message,
+                link,
+                originalPayload: payload,
+              });
+            }
+          );
 
           set({ socket });
         },
@@ -281,7 +295,10 @@ export const useNotificationStore = create<NotificationState>()(
           };
 
           set((state) => {
-            const updated = [newNotification, ...state.notifications].slice(0, 50); // Mantener solo las últimas 50
+            const updated = [newNotification, ...state.notifications].slice(
+              0,
+              50
+            ); // Mantener solo las últimas 50
             // Guardar en localStorage
             saveNotificationsToStorage(updated);
             return {
@@ -294,7 +311,9 @@ export const useNotificationStore = create<NotificationState>()(
           playNotificationSound();
 
           // Emitir evento personalizado para toast
-          window.dispatchEvent(new CustomEvent('newNotification', { detail: newNotification }));
+          window.dispatchEvent(
+            new CustomEvent('newNotification', { detail: newNotification })
+          );
         },
 
         // Marcar como leída
@@ -315,7 +334,10 @@ export const useNotificationStore = create<NotificationState>()(
         // Marcar todas como leídas
         markAllAsRead: () => {
           set((state) => {
-            const updated = state.notifications.map((n) => ({ ...n, read: true }));
+            const updated = state.notifications.map((n) => ({
+              ...n,
+              read: true,
+            }));
             // Guardar en localStorage
             saveNotificationsToStorage(updated);
             return {
@@ -359,12 +381,3 @@ export const useNotificationStore = create<NotificationState>()(
     }
   )
 );
-
-
-
-
-
-
-
-
-
