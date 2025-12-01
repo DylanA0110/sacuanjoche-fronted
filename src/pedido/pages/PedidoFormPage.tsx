@@ -151,7 +151,11 @@ export default function PedidoFormPage() {
     
     // Si el valor en la URL ya coincide con el debounced, no hacer nada
     if (currentDebounced === currentUrlQuery) {
-      isUserTypingRef.current = false;
+      // Solo marcar como no escribiendo si realmente coinciden
+      // No resetear el flag si el usuario está escribiendo
+      if (previousSearchRef.current === currentDebounced) {
+        isUserTypingRef.current = false;
+      }
       // Actualizar el ref para mantener sincronizado
       if (previousSearchRef.current !== currentDebounced) {
         previousSearchRef.current = currentDebounced;
@@ -164,6 +168,7 @@ export default function PedidoFormPage() {
     const searchChanged = currentDebounced !== previousSearch;
 
     if (searchChanged) {
+      // Marcar que estamos actualizando desde el usuario (no desde la URL)
       isUserTypingRef.current = true;
       const newParams = new URLSearchParams(searchParams);
       
@@ -177,20 +182,33 @@ export default function PedidoFormPage() {
       newParams.delete('page');
       previousSearchRef.current = currentDebounced;
       setSearchParams(newParams, { replace: true });
+      
+      // Resetear el flag después de actualizar la URL
+      setTimeout(() => {
+        isUserTypingRef.current = false;
+      }, 100);
     }
   }, [debouncedSearch, searchParams, setSearchParams]);
 
-  // Sincronizar searchInput cuando cambia la URL desde fuera
+  // Sincronizar searchInput cuando cambia la URL desde fuera (navegación del navegador, etc.)
+  // Este efecto solo debe ejecutarse cuando la URL cambia desde fuera, no cuando el usuario escribe
   useEffect(() => {
-    if (!isUserTypingRef.current) {
-      const urlQuery = searchParams.get('q') || '';
-      if (urlQuery !== searchArreglo) {
-        setSearchArreglo(urlQuery);
-        // Actualizar el ref cuando cambia desde fuera
-        previousSearchRef.current = urlQuery;
-      }
+    // Solo sincronizar si el usuario NO está escribiendo
+    if (isUserTypingRef.current) {
+      return;
     }
-  }, [searchParams, searchArreglo]);
+    
+    const urlQuery = searchParams.get('q') || '';
+    const currentSearch = searchArreglo || '';
+    
+    // Solo actualizar si el valor en la URL es diferente al estado local
+    // Esto evita loops infinitos
+    if (urlQuery !== currentSearch) {
+      setSearchArreglo(urlQuery);
+      // Actualizar el ref cuando cambia desde fuera
+      previousSearchRef.current = urlQuery;
+    }
+  }, [searchParams]); // Solo depender de searchParams
 
   // Obtener arreglos usando el hook con paginación real
   const {
