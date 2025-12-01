@@ -202,24 +202,46 @@ export default function EmpleadosPage() {
 
   const registerUsuarioMutation = useMutation({
     mutationFn: registerEmployeeUser,
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Usuario creado correctamente');
       setUsuarioForm({ email: '', password: '', empleadoId: '' });
-      queryClient.invalidateQueries({ queryKey: ['empleados'] });
+      // Invalidar y refetch inmediatamente para actualizar la tabla
+      await queryClient.invalidateQueries({ queryKey: ['empleados'] });
+      await queryClient.refetchQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
-      toast.error(cleanErrorMessage(error));
+      // Manejar errores de autorización específicamente
+      if (error?.response?.status === 401) {
+        toast.error('No autorizado', {
+          description:
+            'Tu sesión ha expirado o no tienes permisos para crear usuarios. Por favor, inicia sesión nuevamente.',
+          duration: 6000,
+        });
+      } else if (error?.response?.status === 403) {
+        toast.error('Acceso denegado', {
+          description:
+            'No tienes permisos para crear usuarios. Solo los administradores pueden realizar esta acción.',
+          duration: 6000,
+        });
+      } else {
+        toast.error('Error al crear usuario', {
+          description: cleanErrorMessage(error),
+          duration: 5000,
+        });
+      }
     },
   });
 
   const updateRolesMutation = useMutation({
     mutationFn: ({ userId, roles }: { userId: string; roles: string[] }) =>
       updateUserRoles(userId, { roles }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Roles actualizados correctamente');
       setSelectedUserId('');
       setSelectedRoles([]);
-      queryClient.invalidateQueries({ queryKey: ['empleados'] });
+      // Invalidar y refetch inmediatamente para actualizar la tabla
+      await queryClient.invalidateQueries({ queryKey: ['empleados'] });
+      await queryClient.refetchQueries({ queryKey: ['empleados'] });
     },
     onError: (error: any) => {
       toast.error(cleanErrorMessage(error));

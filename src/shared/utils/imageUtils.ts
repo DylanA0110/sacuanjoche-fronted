@@ -130,49 +130,83 @@ export function validateImageDimensions(
       clearTimeout(timeout);
       URL.revokeObjectURL(url);
 
-      // Verificar el tipo MIME real del archivo
+      // Verificar el tipo MIME real del archivo usando magic numbers
       const reader = new FileReader();
       reader.onloadend = () => {
-        const arr = new Uint8Array(reader.result as ArrayBuffer).subarray(0, 4);
-        let header = '';
-        for (let i = 0; i < arr.length; i++) {
-          header += arr[i].toString(16);
-        }
+        try {
+          const arr = new Uint8Array(reader.result as ArrayBuffer).subarray(0, 4);
+          let header = '';
+          for (let i = 0; i < arr.length; i++) {
+            header += arr[i].toString(16).padStart(2, '0');
+          }
 
-        // Verificar firmas de archivos de imagen
-        let isValidImage = false;
-        let detectedType = 'desconocido';
+          // Verificar firmas de archivos de imagen
+          let isValidImage = false;
+          let detectedType = 'desconocido';
 
-        // JPEG: FF D8 FF
-        if (header.startsWith('ffd8ff')) {
-          isValidImage = true;
-          detectedType = 'JPEG';
-        }
-        // PNG: 89 50 4E 47
-        else if (header.startsWith('89504e47')) {
-          isValidImage = true;
-          detectedType = 'PNG';
-        }
-        // GIF: 47 49 46 38
-        else if (header.startsWith('47494638')) {
-          isValidImage = true;
-          detectedType = 'GIF';
-        }
-        // WEBP: RIFF...WEBP
-        else if (header.startsWith('52494646')) {
-          isValidImage = true;
-          detectedType = 'WEBP';
-        }
+          // JPEG: FF D8 FF
+          if (header.startsWith('ffd8ff')) {
+            isValidImage = true;
+            detectedType = 'JPEG';
+          }
+          // PNG: 89 50 4E 47
+          else if (header.startsWith('89504e47')) {
+            isValidImage = true;
+            detectedType = 'PNG';
+          }
+          // GIF: 47 49 46 38
+          else if (header.startsWith('47494638')) {
+            isValidImage = true;
+            detectedType = 'GIF';
+          }
+          // WEBP: RIFF...WEBP (necesita más bytes para verificar completamente)
+          else if (header.startsWith('52494646')) {
+            // Verificar más bytes para WEBP
+            const webpReader = new FileReader();
+            webpReader.onloadend = () => {
+              const webpArr = new Uint8Array(webpReader.result as ArrayBuffer);
+              const webpHeader = Array.from(webpArr.slice(8, 12))
+                .map(b => String.fromCharCode(b))
+                .join('');
+              if (webpHeader === 'WEBP') {
+                isValidImage = true;
+                detectedType = 'WEBP';
+              }
+              // Si tiene magic numbers válidos, permitir que pase
+              // La compresión intentará cargarla de nuevo
+              if (isValidImage) {
+                resolve({ valid: true });
+              } else {
+                resolve({
+                  valid: false,
+                  error: `El archivo no es una imagen válida. Asegúrate de que el archivo sea JPG, PNG o WEBP.`,
+                });
+              }
+            };
+            webpReader.onerror = () => {
+              resolve({
+                valid: false,
+                error: 'No se pudo leer el archivo. Verifica que sea una imagen válida.',
+              });
+            };
+            webpReader.readAsArrayBuffer(file.slice(0, 12));
+            return;
+          }
 
-        if (!isValidImage) {
+          // Si tiene magic numbers válidos, permitir que pase la validación
+          // La compresión intentará cargarla de nuevo y si realmente está corrupta, fallará ahí
+          if (isValidImage) {
+            resolve({ valid: true });
+          } else {
+            resolve({
+              valid: false,
+              error: `El archivo no es una imagen válida. Tipo detectado: ${detectedType}. Asegúrate de que el archivo sea JPG, PNG o WEBP.`,
+            });
+          }
+        } catch (error) {
           resolve({
             valid: false,
-            error: `El archivo no es una imagen válida. Tipo detectado: ${detectedType}. Asegúrate de que el archivo sea JPG, PNG o WEBP.`,
-          });
-        } else {
-          resolve({
-            valid: false,
-            error: `No se pudo leer la imagen (${detectedType}). El archivo puede estar corrupto o dañado. Intenta con otra imagen.`,
+            error: 'No se pudo leer el archivo. Verifica que sea una imagen válida.',
           });
         }
       };

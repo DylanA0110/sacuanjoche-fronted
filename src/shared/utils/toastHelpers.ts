@@ -5,11 +5,11 @@
 export function cleanErrorMessage(error: any): string {
   // Intentar obtener el mensaje de diferentes formas
   let message: string | null = null;
-  
+
   // 1. Intentar desde error.response.data (formato más común del backend)
   if (error?.response?.data) {
     const errorData = error.response.data;
-    
+
     // Si es un array de mensajes (validaciones de NestJS)
     if (Array.isArray(errorData.message)) {
       message = errorData.message.join(', ');
@@ -27,22 +27,25 @@ export function cleanErrorMessage(error: any): string {
       message = errorData;
     }
   }
-  
+
   // 2. Si no se encontró, intentar desde error.message
   if (!message && error?.message) {
     message = error.message;
   }
-  
+
   // 3. Si es un string directo
   if (!message && typeof error === 'string') {
     message = error;
   }
-  
+
   // 4. Si el mensaje es un objeto, intentar extraer el mensaje
   if (message && typeof message === 'object' && message !== null) {
-    message = (message as any).message || (message as any).error || 'Ocurrió un error inesperado';
+    message =
+      (message as any).message ||
+      (message as any).error ||
+      'Ocurrió un error inesperado';
   }
-  
+
   // 5. Si aún no hay mensaje, usar uno por defecto
   if (!message || typeof message !== 'string') {
     message = 'Ocurrió un error inesperado';
@@ -57,8 +60,32 @@ export function cleanErrorMessage(error: any): string {
     message = message.replace(/\b(id|ID|Id)\s+\d+\b/gi, '');
   }
 
+  // Manejar errores de autorización específicamente
+  if (error?.response?.status === 401) {
+    if (
+      !message ||
+      message.toLowerCase().includes('unauthorized') ||
+      message.toLowerCase().includes('no autorizado')
+    ) {
+      return 'Tu sesión ha expirado o no tienes permisos. Por favor, inicia sesión nuevamente.';
+    }
+  }
+
+  if (error?.response?.status === 403) {
+    if (
+      !message ||
+      message.toLowerCase().includes('forbidden') ||
+      message.toLowerCase().includes('prohibido')
+    ) {
+      return 'No tienes permisos para realizar esta acción.';
+    }
+  }
+
   // Reemplazar términos técnicos con lenguaje amigable
   const replacements: [RegExp, string][] = [
+    [/unauthorized/gi, 'No autorizado'],
+    [/forbidden/gi, 'Acceso prohibido'],
+    [/no\s+autorizado/gi, 'No autorizado'],
     [/subir\s+(?:a|en|al)\s+Supabase/gi, 'agregar'],
     [/subir\s+(?:a|en|al)\s+backend/gi, 'guardar'],
     [/subir\s+(?:a|en|al)\s+servidor/gi, 'guardar'],
@@ -112,4 +139,3 @@ export function cleanFileName(fileName: string): string {
   }
   return name;
 }
-

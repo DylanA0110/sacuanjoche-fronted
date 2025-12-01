@@ -147,26 +147,36 @@ const createResponseInterceptor = () => {
         return Promise.reject(error);
       }
 
-      // Solo para rutas protegidas: limpiar token y redirigir a login
+      // Solo para rutas protegidas: permitir que el error se propague primero
+      // para que los componentes puedan mostrar el mensaje de error
       const isProtectedPath =
         currentPath.startsWith('/admin') ||
         currentPath.startsWith('/carrito') ||
         currentPath.startsWith('/pedido');
 
       if (isProtectedPath) {
-        localStorage.removeItem('token');
-        clearTokenCache();
-        lastExpirationCheck = null;
+        // NO limpiar el token ni redirigir inmediatamente
+        // Dejar que el componente maneje el error y muestre el mensaje
+        // Solo limpiar y redirigir después de que el usuario vea el error
+        // Esto se hace con un delay más largo para que el toast se muestre
+        setTimeout(async () => {
+          // Verificar si el token sigue siendo inválido antes de redirigir
+          const token = localStorage.getItem('token');
+          if (!token || isTokenExpired(token)) {
+            localStorage.removeItem('token');
+            clearTokenCache();
+            lastExpirationCheck = null;
 
-        // Importar y usar el store de forma dinámica para evitar dependencias circulares
-        try {
-          const { useAuthStore } = await import('@/auth/store/auth.store');
-          useAuthStore.getState().logout();
-        } catch (err) {
-          // Si falla la importación, solo limpiar localStorage
-        }
+            try {
+              const { useAuthStore } = await import('@/auth/store/auth.store');
+              useAuthStore.getState().logout();
+            } catch (err) {
+              // Si falla la importación, solo limpiar localStorage
+            }
 
-        window.location.href = '/login';
+            window.location.href = '/login';
+          }
+        }, 3000); // 3 segundos para que el usuario vea el error
       }
     }
 
@@ -234,9 +244,22 @@ export const setupResponseInterceptor = () => {
  */
 const isPublicEndpoint = (url: string): boolean => {
   if (!url) return false;
-  // Normalizar la URL para comparar solo la ruta (sin baseURL)
-  const normalizedUrl = url.replace(/^https?:\/\/[^/]+/, ''); // Remover protocolo y dominio
-  return PUBLIC_ENDPOINTS.some((endpoint) => normalizedUrl.includes(endpoint));
+  // Normalizar la URL para comparar solo la ruta (sin baseURL y sin query params)
+  const normalizedUrl = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0]; // Remover protocolo, dominio y query params
+
+  // Verificar si la URL coincide exactamente con algún endpoint público
+  // Esto evita que /auth/register/employee sea tratado como público (solo /auth/register es público)
+  return PUBLIC_ENDPOINTS.some((endpoint) => {
+    // Coincidencia exacta
+    if (normalizedUrl === endpoint) return true;
+    // También permitir si la URL comienza con el endpoint seguido de fin de string o query params
+    // Pero NO si tiene más rutas después (ej: /auth/register/employee NO es público)
+    return (
+      normalizedUrl.startsWith(endpoint) &&
+      (normalizedUrl.length === endpoint.length ||
+        normalizedUrl[endpoint.length] === '?')
+    );
+  });
 };
 
 /**
