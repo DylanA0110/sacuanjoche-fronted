@@ -82,19 +82,6 @@ export function ArregloForm({
   const [accesorioCantidadInput, setAccesorioCantidadInput] = useState<string>('');
 
   const { formasArreglo } = useFormaArreglo({ activo: true });
-  
-  // Inicializar estados locales cuando associations cambien (solo si no están siendo editados)
-  useEffect(() => {
-    if (florCantidadInput === '') {
-      setFlorCantidadInput(String(associations.flores.cantidad));
-    }
-  }, [associations.flores.cantidad]);
-  
-  useEffect(() => {
-    if (accesorioCantidadInput === '') {
-      setAccesorioCantidadInput(String(associations.accesorios.cantidad));
-    }
-  }, [associations.accesorios.cantidad]);
   const { flores } = useFlor({ estado: 'activo' });
   const { accesorios } = useAccesorio({ estado: 'activo' });
 
@@ -131,6 +118,19 @@ export function ArregloForm({
     flores,
     accesorios,
   });
+
+  // Inicializar estados locales cuando associations cambien (solo si no están siendo editados)
+  useEffect(() => {
+    if (florCantidadInput === '') {
+      setFlorCantidadInput(String(associations.flores.cantidad));
+    }
+  }, [associations.flores.cantidad]);
+  
+  useEffect(() => {
+    if (accesorioCantidadInput === '') {
+      setAccesorioCantidadInput(String(associations.accesorios.cantidad));
+    }
+  }, [associations.accesorios.cantidad]);
 
   // Calcular precio sugerido cuando se edita (después de que associations esté inicializado)
   const precioSugerido = useMemo(() => {
