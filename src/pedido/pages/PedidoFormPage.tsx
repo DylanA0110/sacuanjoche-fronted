@@ -635,9 +635,16 @@ export default function PedidoFormPage() {
       return;
     }
 
-    // Enviar la fecha tal cual viene del input (YYYY-MM-DD)
-    // El backend la procesará según sus validaciones
+    // El backend espera solo la fecha en formato YYYY-MM-DD (sin hora)
+    // Enviar la fecha tal cual viene del input
     const fechaISO = data.fechaEntregaEstimada;
+
+    // Debug: mostrar la fecha que se envía al backend
+    console.log('=== FECHA ENVIADA AL BACKEND ===');
+    console.log('Fecha del input (date):', data.fechaEntregaEstimada);
+    console.log('Fecha que se envía:', fechaISO);
+    console.log('Formato esperado: YYYY-MM-DD');
+    console.log('================================');
 
     // Preparar datos básicos del pedido (sin idDireccion e idContactoEntrega que se crearán en la mutation)
     // El costoEnvio NO va en el pedido, va en el envío
