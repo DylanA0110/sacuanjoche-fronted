@@ -85,14 +85,14 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
     <div className="group relative w-full bg-white rounded-[15px] shadow-[0_5px_20px_rgba(0,0,0,0.1)] transition-all duration-300 overflow-hidden hover:-translate-y-[5px] hover:shadow-[0_10px_25px_rgba(0,0,0,0.15)]">
       {/* Badge */}
       {arreglo.estado === 'activo' && (
-        <div className="absolute top-[10px] right-[10px] z-20 bg-linear-to-r from-[#A90329] via-[#C44848] to-[#AA2238] text-white px-[10px] py-[5px] text-[11px] font-semibold tracking-wider uppercase rounded-[10px] shadow-[0_3px_10px_rgba(0,0,0,0.2)]">
+        <div className="absolute top-2.5 right-2.5 z-20 bg-linear-to-r from-[#A90329] via-[#C44848] to-[#AA2238] text-white px-2.5 py-[5px] text-[11px] font-semibold tracking-wider uppercase rounded-[10px] shadow-[0_3px_10px_rgba(0,0,0,0.2)]">
           Disponible
         </div>
       )}
 
       {/* Carrusel de imágenes */}
       <div className="relative overflow-hidden">
-        <div className="h-[280px] sm:h-[240px] md:h-[260px] lg:h-[280px] overflow-hidden bg-linear-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
+        <div className="h-[280px] sm:h-60 md:h-[260px] lg:h-[280px] overflow-hidden bg-linear-to-br from-[#F4F4F5] to-[#E4E4E7] flex items-center justify-center">
           {currentImage ? (
             <>
               <img
@@ -159,7 +159,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
         </div>
 
         {/* Título */}
-        <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#18181B] mb-2 sm:mb-[10px] tracking-[-0.5px] line-clamp-2 min-h-10">
+        <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#18181B] mb-2 sm:mb-2.5 tracking-[-0.5px] line-clamp-2 min-h-10">
           {arreglo.nombre}
         </h3>
 
@@ -169,7 +169,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
         </p>
 
         {/* Features */}
-        <div className="flex flex-wrap gap-[6px] mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {arreglo.formaArreglo && (
             <span className="text-[10px] bg-[#F4F4F5] text-[#71717A] px-2 py-[3px] rounded-[10px] font-medium">
               {arreglo.formaArreglo.descripcion}
@@ -244,7 +244,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
                 arreglo.estado !== 'activo' &&
                 arreglo.estado !== null)
             }
-            className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-5 py-2.5 sm:px-4 sm:py-2 text-sm sm:text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-2 sm:gap-[6px] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] active:scale-95 group/btn overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            className="relative w-full sm:w-auto bg-linear-to-r from-[#18181B] to-[#27272A] text-white border-none rounded-[10px] px-5 py-2.5 sm:px-4 sm:py-2 text-sm sm:text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-2 sm:gap-1.5 transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.1)] hover:bg-linear-to-r hover:from-[#27272A] hover:to-[#3F3F46] hover:-translate-y-0.5 hover:shadow-[0_5px_15px_rgba(0,0,0,0.15)] active:scale-95 group/btn overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="relative z-10">
               {isAdding ? 'Agregando...' : 'Añadir al carrito'}
@@ -255,7 +255,7 @@ export const ArregloCard = ({ arreglo }: ArregloCardProps) => {
 
         {/* Meta información */}
         <div className="flex justify-between items-center border-t border-[#F4F4F5] pt-3">
-          <div className="flex items-center gap-[2px]">
+          <div className="flex items-center gap-0.5">
             {[1, 2, 3, 4, 5].map((star) => (
               <svg
                 key={star}
