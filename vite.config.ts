@@ -24,11 +24,14 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router'],
           'animation-vendor': ['framer-motion'],
           'ui-vendor': ['lucide-react'],
+          // Mapbox es grande; mantenerlo aislado del chunk principal
+          'mapbox-vendor': ['mapbox-gl', 'react-map-gl'],
         },
       },
     },
     // Chunk size warnings
-    chunkSizeWarningLimit: 1000,
+    // Mapbox suele generar chunks > 1MB; subir el umbral para evitar warnings ruidosos.
+    chunkSizeWarningLimit: 2000,
     // Minificación (esbuild es más rápido que terser)
     minify: 'esbuild',
   },
