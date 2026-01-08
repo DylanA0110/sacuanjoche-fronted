@@ -3,7 +3,12 @@ import { useAuthStore } from '@/auth/store/auth.store';
 import { hasAdminPanelAccess } from '@/shared/api/interceptors';
 import { useEffect, useState } from 'react';
 import { checkAuthAction } from '@/auth/actions/check-status';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { AlertCircle, ShieldX } from 'lucide-react';
 import { isTokenExpired } from '@/shared/utils/tokenUtils';
@@ -14,7 +19,10 @@ interface ProtectedRouteProps {
   requiredRoles?: string[];
 }
 
-export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  requiredRoles,
+}: ProtectedRouteProps) {
   const location = useLocation();
   const { user, isAuthenticated, setUser, logout } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
@@ -33,7 +41,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       // Verificar si el token está vencido
       if (token && isTokenExpired(token)) {
         // Token vencido, limpiar y redirigir
@@ -42,7 +50,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
         setIsChecking(false);
         return;
       }
-      
+
       if (token && !isAuthenticated) {
         try {
           const userData = await checkAuthAction();
@@ -52,7 +60,7 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
           logout();
         }
       }
-      
+
       setIsChecking(false);
     };
 
@@ -64,7 +72,9 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-2 border-[#50C878]/30 border-t-[#50C878] rounded-full animate-spin" />
-          <p className="text-sm font-medium text-gray-600">Verificando acceso...</p>
+          <p className="text-sm font-medium text-gray-600">
+            Verificando acceso...
+          </p>
         </div>
       </div>
     );
@@ -85,12 +95,15 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   }
 
   // Verificar si es empleado sin rol de acceso
-  const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
+  const roles = Array.isArray(user.roles)
+    ? user.roles.map((r) => String(r).toLowerCase())
+    : [];
   const isEmpleado = roles.includes('empleado') || user.empleado !== undefined;
-  const hasAccessRole = roles.some(role => 
+  const hasAccessRole = roles.some((role) =>
     ['admin', 'vendedor', 'conductor', 'gerente', 'superuser'].includes(role)
   );
-  const isEmpleadoSinAcceso = isEmpleado && !hasAccessRole && location.pathname.startsWith('/admin');
+  const isEmpleadoSinAcceso =
+    isEmpleado && !hasAccessRole && location.pathname.startsWith('/admin');
 
   // Si es empleado sin rol de acceso, mostrar mensaje personalizado
   if (isEmpleadoSinAcceso) {
@@ -117,11 +130,13 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
               </div>
               <div className="bg-muted/50 rounded-lg p-6 space-y-3">
                 <p className="text-base text-foreground">
-                  Tu cuenta de empleado aún no se le ha asignado un rol (como vendedor, admin o conductor) 
-                  para poder acceder al sistema administrativo.
+                  Tu cuenta de empleado aún no se le ha asignado un rol (como
+                  vendedor, admin o conductor) para poder acceder al sistema
+                  administrativo.
                 </p>
                 <p className="text-base text-foreground font-semibold">
-                  Por favor, contacta con el administrador para que te asignen los permisos necesarios.
+                  Por favor, contacta con el administrador para que te asignen
+                  los permisos necesarios.
                 </p>
               </div>
             </div>
@@ -145,7 +160,9 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
 
   // Si se requieren roles específicos, verificar
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some((role) => user.roles.includes(role));
+    const hasRequiredRole = requiredRoles.some((role) =>
+      user.roles.includes(role)
+    );
     if (!hasRequiredRole) {
       // Si no tiene el rol requerido, redirigir según el tipo de usuario
       const esConductor = user.roles?.includes('conductor');
@@ -173,4 +190,3 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
 
   return <>{children}</>;
 }
-

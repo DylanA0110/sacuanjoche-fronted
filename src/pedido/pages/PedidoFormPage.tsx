@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { useForm } from 'react-hook-form';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import {
   Dialog,
@@ -19,15 +21,31 @@ import {
 } from '@/shared/components/Custom/MapboxAddressSearch';
 import { Badge } from '@/shared/components/ui/badge';
 import { toast } from 'sonner';
+import { cleanErrorMessage } from '@/shared/utils/toastHelpers';
+import {
+  validateTelefono,
+  formatTelefonoForBackend,
+} from '@/shared/utils/validation';
 import { ClienteSelect } from '../components/ClienteSelect';
 import { ArregloCard } from '../components/ArregloCard';
 import { CarritoArreglos } from '../components/CarritoArreglos';
 import { MdLocationOn, MdPerson, MdShoppingCart, MdSave } from 'react-icons/md';
-import type { CreatePedidoDto } from '../types/pedido.interface';
+import type { CreatePedidoDto, Pedido } from '../types/pedido.interface';
 import type { Arreglo } from '@/arreglo/types/arreglo.interface';
 import type { CreateDireccionDto } from '@/cliente/types/direccion.interface';
 import { usePedidoCart } from '../hook/usePedidoCart';
 import { useUserIdEmpleado } from '@/shared/utils/getUserId';
+import {
+  createContactoEntrega,
+  createDetallePedido,
+  createPedido,
+  updateContactoEntrega,
+  updateDetallePedido,
+  updatePedido,
+} from '../actions';
+import { getPedidoById } from '../actions/getPedidoById';
+import { getDetallePedidoByPedidoId } from '../actions/getDetallePedidoByPedidoId';
+import { createDireccion, updateDireccion } from '@/cliente/actions';
 
 interface PedidoFormProps {
   open: boolean;
@@ -61,7 +79,201 @@ interface FormValues {
   direccionTexto: string;
 }
 
-export function PedidoForm({
+type PedidoFormSubmitPayload = Parameters<PedidoFormProps['onSubmit']>[0];
+
+export default function PedidoFormPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { idPedido } = useParams<{ idPedido?: string }>();
+  const isEditing = Boolean(idPedido);
+
+  const [open, setOpen] = useState(true);
+
+  const pedidoQuery = useQuery({
+    queryKey: ['pedido', idPedido],
+    queryFn: () => getPedidoById(Number(idPedido)),
+    enabled: isEditing && Boolean(idPedido),
+  });
+
+  const detallesQuery = useQuery({
+    queryKey: ['detalle-pedido', idPedido],
+    queryFn: () => getDetallePedidoByPedidoId(Number(idPedido)),
+    enabled: isEditing && Boolean(idPedido),
+  });
+
+  const pedido: Pedido | null = useMemo(() => {
+    if (!pedidoQuery.data) return null;
+    const base = pedidoQuery.data;
+    const detalles = detallesQuery.data;
+    if (Array.isArray(detalles) && detalles.length > 0) {
+      return { ...base, detalles };
+    }
+    return base;
+  }, [pedidoQuery.data, detallesQuery.data]);
+
+  const handleClose = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen) {
+        navigate('/admin/pedidos', { replace: true });
+      }
+    },
+    [navigate]
+  );
+
+  const submitMutation = useMutation({
+    mutationFn: async (payload: PedidoFormSubmitPayload) => {
+      // Validar teléfono (mismo patrón que checkout)
+      const telefonoError = validateTelefono(payload.contactoEntrega.telefono);
+      if (telefonoError) {
+        throw new Error(telefonoError);
+      }
+
+      const telefonoBackend = formatTelefonoForBackend(
+        payload.contactoEntrega.telefono
+      );
+
+      // Dirección: si viene en payload, crear o actualizar
+      let idDireccionFinal = pedido?.idDireccion ?? 0;
+      if (payload.direccion) {
+        if (isEditing && idDireccionFinal) {
+          await updateDireccion(idDireccionFinal, payload.direccion);
+        } else {
+          const direccionCreada = await createDireccion(payload.direccion);
+          if (!direccionCreada.idDireccion) {
+            throw new Error('No se pudo crear la dirección');
+          }
+          idDireccionFinal = direccionCreada.idDireccion;
+        }
+      }
+
+      // Contacto de entrega: crear o actualizar
+      let idContactoEntregaFinal = pedido?.idContactoEntrega ?? 0;
+      if (isEditing && idContactoEntregaFinal) {
+        await updateContactoEntrega(idContactoEntregaFinal, {
+          nombre: payload.contactoEntrega.nombre,
+          apellido: payload.contactoEntrega.apellido,
+          telefono: telefonoBackend,
+        });
+      } else {
+        const contactoCreado = await createContactoEntrega({
+          nombre: payload.contactoEntrega.nombre,
+          apellido: payload.contactoEntrega.apellido,
+          telefono: telefonoBackend,
+        });
+        if (!contactoCreado.idContactoEntrega) {
+          throw new Error('No se pudo crear el contacto de entrega');
+        }
+        idContactoEntregaFinal = contactoCreado.idContactoEntrega;
+      }
+
+      // Crear o actualizar pedido
+      let idPedidoFinal = pedido?.idPedido ?? 0;
+      if (isEditing && pedido?.idPedido) {
+        await updatePedido(pedido.idPedido, {
+          canal: payload.pedido.canal,
+          idPago: null,
+          idEmpleado: payload.pedido.idEmpleado,
+          idCliente: payload.pedido.idCliente,
+          idDireccion: idDireccionFinal,
+          idContactoEntrega: idContactoEntregaFinal,
+          idFolio: payload.pedido.idFolio ?? 2,
+          fechaEntregaEstimada: payload.pedido.fechaEntregaEstimada,
+          direccionTxt: payload.pedido.direccionTxt,
+        });
+        idPedidoFinal = pedido.idPedido;
+      } else {
+        const pedidoCreado = await createPedido({
+          ...payload.pedido,
+          idPago: null,
+          idDireccion: idDireccionFinal,
+          idContactoEntrega: idContactoEntregaFinal,
+          idFolio: payload.pedido.idFolio ?? 2,
+        });
+        idPedidoFinal = pedidoCreado.idPedido;
+      }
+
+      // Detalles: crear/actualizar (y best-effort para removidos)
+      const existingDetalles = Array.isArray(detallesQuery.data)
+        ? detallesQuery.data
+        : Array.isArray(pedido?.detalles)
+        ? pedido!.detalles!
+        : [];
+
+      const existingByArreglo = new Map(
+        existingDetalles.map((d) => [d.idArreglo, d])
+      );
+      const nextByArreglo = new Map(
+        payload.detalles.map((d) => [d.idArreglo, d])
+      );
+
+      for (const detalle of payload.detalles) {
+        const existing = existingByArreglo.get(detalle.idArreglo);
+        if (existing?.idDetallePedido) {
+          await updateDetallePedido(existing.idDetallePedido, {
+            cantidad: detalle.cantidad,
+            precioUnitario: detalle.precioUnitario,
+            subtotal: detalle.subtotal,
+          });
+        } else {
+          await createDetallePedido({
+            idPedido: idPedidoFinal,
+            idArreglo: detalle.idArreglo,
+            cantidad: detalle.cantidad,
+            precioUnitario: detalle.precioUnitario,
+            subtotal: detalle.subtotal,
+          });
+        }
+      }
+
+      // Intentar “eliminar” detalles removidos seteando cantidad=0
+      for (const existing of existingDetalles) {
+        if (
+          !nextByArreglo.has(existing.idArreglo) &&
+          existing.idDetallePedido
+        ) {
+          try {
+            await updateDetallePedido(existing.idDetallePedido, {
+              cantidad: 0,
+              subtotal: 0,
+            });
+          } catch {
+            // best-effort: si el backend no permite 0, no bloquear el guardado
+          }
+        }
+      }
+
+      return idPedidoFinal;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['pedidos'] });
+      toast.success(isEditing ? 'Pedido actualizado' : 'Pedido creado');
+      navigate('/admin/pedidos', { replace: true });
+    },
+    onError: (error: any) => {
+      toast.error('No se pudo guardar el pedido', {
+        description: cleanErrorMessage(error),
+        duration: 5000,
+      });
+    },
+  });
+
+  // Mientras carga un pedido en edición, dejar el modal abierto pero deshabilitar submit
+  const isLoading =
+    submitMutation.isPending || (isEditing && pedidoQuery.isLoading);
+
+  return (
+    <PedidoFormPageDialog
+      open={open}
+      onOpenChange={handleClose}
+      onSubmit={(data) => submitMutation.mutate(data)}
+      isLoading={isLoading}
+      pedido={pedido}
+    />
+  );
+}
+
+function PedidoFormPageDialog({
   open,
   onOpenChange,
   onSubmit,
@@ -152,7 +364,7 @@ export function PedidoForm({
 
     const currentSearch = debouncedSearch || '';
     const previousSearch = previousSearchRef.current || '';
-    
+
     // Solo resetear si la búsqueda realmente cambió
     if (currentSearch !== previousSearch) {
       previousSearchRef.current = currentSearch;
@@ -283,7 +495,8 @@ export function PedidoForm({
     // Validar que el usuario tenga idEmpleado
     if (!idEmpleado) {
       toast.error('Error de autenticación', {
-        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+        description:
+          'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
       });
       return;
     }
@@ -510,7 +723,10 @@ export function PedidoForm({
                         </span>{' '}
                         a{' '}
                         <span className="font-semibold text-gray-900">
-                          {Math.min(currentPage * itemsPerPage, arreglos.length)}
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            arreglos.length
+                          )}
                         </span>{' '}
                         de{' '}
                         <span className="font-semibold text-gray-900">
@@ -533,7 +749,7 @@ export function PedidoForm({
                         >
                           Anterior
                         </Button>
-                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-[80px] text-center">
+                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-20 text-center">
                           {currentPage} / {totalPages}
                         </span>
                         <Button

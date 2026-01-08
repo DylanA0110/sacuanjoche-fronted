@@ -530,7 +530,7 @@ export function PedidoForm({
                         >
                           Anterior
                         </Button>
-                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-[80px] text-center">
+                        <span className="px-3 sm:px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-md min-w-20 text-center">
                           {currentPage} / {totalPages}
                         </span>
                         <Button

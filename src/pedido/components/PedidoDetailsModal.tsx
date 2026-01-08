@@ -132,7 +132,7 @@ export function PedidoDetailsModal({
           <DialogHeader className="mb-4 sm:mb-6">
             <div className="flex items-start sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 break-words">
+                <DialogTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 wrap-break-word">
                   Detalles del Pedido #{pedidoId}
                 </DialogTitle>
                 <div className="mt-2">
@@ -357,14 +357,14 @@ export function PedidoDetailsModal({
                               />
                             </div>
                           ) : (
-                            <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-[#50C878]/20 to-[#45b86a]/20 rounded-lg border-2 border-gray-200 flex items-center justify-center">
+                            <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-linear-to-br from-[#50C878]/20 to-[#45b86a]/20 rounded-lg border-2 border-gray-200 flex items-center justify-center">
                               <MdShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-[#50C878]" />
                             </div>
                           )}
                           
                           {/* Información del arreglo */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 break-words">
+                            <h4 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 wrap-break-word">
                               {detalle.arreglo?.nombre || 'Arreglo sin nombre'}
                             </h4>
                             {detalle.arreglo?.descripcion && (
