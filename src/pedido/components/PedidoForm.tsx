@@ -83,7 +83,7 @@ export function PedidoForm({
     defaultValues: {
       idCliente: '',
       fechaEntregaEstimada: '',
-      costoEnvio: '0',
+      costoEnvio: '',
       contactoNombre: '',
       contactoApellido: '',
       contactoTelefono: '',
@@ -248,7 +248,7 @@ export function PedidoForm({
       reset({
         idCliente: '',
         fechaEntregaEstimada: '',
-        costoEnvio: '0',
+        costoEnvio: '',
         contactoNombre: '',
         contactoApellido: '',
         contactoTelefono: '',

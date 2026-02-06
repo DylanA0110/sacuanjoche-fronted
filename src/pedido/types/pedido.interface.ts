@@ -1,4 +1,8 @@
-import type { PedidoEstado, PedidoCanal, ArregloEstado } from '@/shared/types/estados.types';
+import type {
+  PedidoEstado,
+  PedidoCanal,
+  ArregloEstado,
+} from '@/shared/types/estados.types';
 import type { Envio } from './envio.interface';
 
 export interface Pedido {
