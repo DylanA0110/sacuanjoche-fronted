@@ -96,7 +96,7 @@ export function PedidoForm({
 
   // Estado de dirección (Mapbox data)
   const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(
-    null
+    null,
   );
   const [mapboxSearchValue, setMapboxSearchValue] = useState('');
 
@@ -152,7 +152,7 @@ export function PedidoForm({
 
     const currentSearch = debouncedSearch || '';
     const previousSearch = previousSearchRef.current || '';
-    
+
     // Solo resetear si la búsqueda realmente cambió
     if (currentSearch !== previousSearch) {
       previousSearchRef.current = currentSearch;
@@ -283,7 +283,8 @@ export function PedidoForm({
     // Validar que el usuario tenga idEmpleado
     if (!idEmpleado) {
       toast.error('Error de autenticación', {
-        description: 'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
+        description:
+          'No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.',
       });
       return;
     }
@@ -340,12 +341,6 @@ export function PedidoForm({
           }),
         activo: true,
       };
-    } else if (!pedido) {
-      // Solo requerir dirección si es un nuevo pedido
-      toast.error('Dirección requerida', {
-        description: 'Debes seleccionar una dirección de entrega',
-      });
-      return;
     }
 
     // Preparar datos del pedido (sin idDireccion e idContactoEntrega aún)
@@ -402,7 +397,7 @@ export function PedidoForm({
       }
       onOpenChange(newOpen);
     },
-    [reset, clearCart, onOpenChange]
+    [reset, clearCart, onOpenChange],
   );
 
   const newLocal =
@@ -479,7 +474,7 @@ export function PedidoForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {paginatedArreglos.map((arreglo: Arreglo) => {
                       const enCarrito = arreglosSeleccionados.find(
-                        (a) => a.idArreglo === arreglo.idArreglo
+                        (a) => a.idArreglo === arreglo.idArreglo,
                       );
                       const cantidadEnCarrito = enCarrito?.cantidad || 0;
 
@@ -507,7 +502,10 @@ export function PedidoForm({
                         </span>{' '}
                         a{' '}
                         <span className="font-semibold text-gray-900">
-                          {Math.min(currentPage * itemsPerPage, arreglos.length)}
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            arreglos.length,
+                          )}
                         </span>{' '}
                         de{' '}
                         <span className="font-semibold text-gray-900">
@@ -836,8 +834,8 @@ export function PedidoForm({
                     ? 'Guardando...'
                     : 'Creando...'
                   : pedido
-                  ? 'Guardar Cambios'
-                  : 'Crear Pedido'}
+                    ? 'Guardar Cambios'
+                    : 'Crear Pedido'}
               </Button>
             </DialogFooter>
           </form>
