@@ -295,7 +295,7 @@ function PedidoFormPageDialog({
     defaultValues: {
       idCliente: '',
       fechaEntregaEstimada: '',
-      costoEnvio: '0',
+      costoEnvio: '',
       contactoNombre: '',
       contactoApellido: '',
       contactoTelefono: '',
@@ -593,7 +593,7 @@ function PedidoFormPageDialog({
         reset({
           idCliente: '',
           fechaEntregaEstimada: '',
-          costoEnvio: '0',
+          costoEnvio: '',
           contactoNombre: '',
           contactoApellido: '',
           contactoTelefono: '',
