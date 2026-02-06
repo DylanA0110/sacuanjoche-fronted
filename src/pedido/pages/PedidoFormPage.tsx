@@ -118,7 +118,7 @@ export default function PedidoFormPage() {
         navigate('/admin/pedidos', { replace: true });
       }
     },
-    [navigate]
+    [navigate],
   );
 
   const submitMutation = useMutation({
@@ -130,7 +130,7 @@ export default function PedidoFormPage() {
       }
 
       const telefonoBackend = formatTelefonoForBackend(
-        payload.contactoEntrega.telefono
+        payload.contactoEntrega.telefono,
       );
 
       // Dirección: si viene en payload, crear o actualizar
@@ -197,14 +197,14 @@ export default function PedidoFormPage() {
       const existingDetalles = Array.isArray(detallesQuery.data)
         ? detallesQuery.data
         : Array.isArray(pedido?.detalles)
-        ? pedido!.detalles!
-        : [];
+          ? pedido!.detalles!
+          : [];
 
       const existingByArreglo = new Map(
-        existingDetalles.map((d) => [d.idArreglo, d])
+        existingDetalles.map((d) => [d.idArreglo, d]),
       );
       const nextByArreglo = new Map(
-        payload.detalles.map((d) => [d.idArreglo, d])
+        payload.detalles.map((d) => [d.idArreglo, d]),
       );
 
       for (const detalle of payload.detalles) {
@@ -308,7 +308,7 @@ function PedidoFormPageDialog({
 
   // Estado de dirección (Mapbox data)
   const [direccionData, setDireccionData] = useState<MapboxAddressData | null>(
-    null
+    null,
   );
   const [mapboxSearchValue, setMapboxSearchValue] = useState('');
 
@@ -553,12 +553,6 @@ function PedidoFormPageDialog({
           }),
         activo: true,
       };
-    } else if (!pedido) {
-      // Solo requerir dirección si es un nuevo pedido
-      toast.error('Dirección requerida', {
-        description: 'Debes seleccionar una dirección de entrega',
-      });
-      return;
     }
 
     // Preparar datos del pedido (sin idDireccion e idContactoEntrega aún)
@@ -615,7 +609,7 @@ function PedidoFormPageDialog({
       }
       onOpenChange(newOpen);
     },
-    [reset, clearCart, onOpenChange]
+    [reset, clearCart, onOpenChange],
   );
 
   const newLocal =
@@ -695,7 +689,7 @@ function PedidoFormPageDialog({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {paginatedArreglos.map((arreglo: Arreglo) => {
                       const enCarrito = arreglosSeleccionados.find(
-                        (a) => a.idArreglo === arreglo.idArreglo
+                        (a) => a.idArreglo === arreglo.idArreglo,
                       );
                       const cantidadEnCarrito = enCarrito?.cantidad || 0;
 
@@ -725,7 +719,7 @@ function PedidoFormPageDialog({
                         <span className="font-semibold text-gray-900">
                           {Math.min(
                             currentPage * itemsPerPage,
-                            arreglos.length
+                            arreglos.length,
                           )}
                         </span>{' '}
                         de{' '}
@@ -1055,8 +1049,8 @@ function PedidoFormPageDialog({
                     ? 'Guardando...'
                     : 'Creando...'
                   : pedido
-                  ? 'Guardar Cambios'
-                  : 'Crear Pedido'}
+                    ? 'Guardar Cambios'
+                    : 'Crear Pedido'}
               </Button>
             </DialogFooter>
           </form>
