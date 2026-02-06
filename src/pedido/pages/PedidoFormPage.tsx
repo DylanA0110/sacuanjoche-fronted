@@ -460,7 +460,7 @@ function PedidoFormPageDialog({
       reset({
         idCliente: '',
         fechaEntregaEstimada: '',
-        costoEnvio: '0',
+        costoEnvio: '',
         contactoNombre: '',
         contactoApellido: '',
         contactoTelefono: '',
