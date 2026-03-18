@@ -108,7 +108,7 @@ export function ArregloCard({
 
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl font-bold text-[#50C878]">
-              ${precio.toFixed(2)}
+              C${precio.toFixed(2)}
             </span>
             {cantidadEnCarrito > 0 && (
               <Badge className="bg-[#50C878] text-white">

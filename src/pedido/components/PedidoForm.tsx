@@ -329,7 +329,7 @@ export function PedidoForm({
         referencia: direccionData.referencia || '',
         lat: lat,
         lng: lng,
-        provider: direccionData.provider || 'MAP BOX',
+        provider: direccionData.provider || 'GOOGLE MAPS',
         placeId: direccionData.placeId || '',
         accuracy: direccionData.accuracy || 'ROOFTOP',
         geolocation:

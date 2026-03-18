@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from '@/shared/hooks/useDebounce';
@@ -67,6 +67,9 @@ interface PedidoFormProps {
   }) => void;
   isLoading?: boolean;
   pedido?: import('../types/pedido.interface').Pedido | null;
+  onCreateNewClient?: () => void;
+  preselectedClienteId?: string;
+  onPreselectedClienteApplied?: () => void;
 }
 
 interface FormValues {
@@ -83,11 +86,23 @@ type PedidoFormSubmitPayload = Parameters<PedidoFormProps['onSubmit']>[0];
 
 export default function PedidoFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { idPedido } = useParams<{ idPedido?: string }>();
   const isEditing = Boolean(idPedido);
 
   const [open, setOpen] = useState(true);
+  const [preselectedClienteId, setPreselectedClienteId] = useState('');
+
+  useEffect(() => {
+    const selectedClientId = (location.state as { selectedClientId?: number } | null)
+      ?.selectedClientId;
+
+    if (selectedClientId) {
+      setPreselectedClienteId(String(selectedClientId));
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const pedidoQuery = useQuery({
     queryKey: ['pedido', idPedido],
@@ -120,6 +135,17 @@ export default function PedidoFormPage() {
     },
     [navigate],
   );
+
+  const handleCreateNewClient = useCallback(() => {
+    navigate('/admin/clientes', {
+      state: {
+        openForm: true,
+        returnTo: isEditing
+          ? `/admin/pedidos/${idPedido}/editar`
+          : '/admin/pedidos/nuevo',
+      },
+    });
+  }, [idPedido, isEditing, navigate]);
 
   const submitMutation = useMutation({
     mutationFn: async (payload: PedidoFormSubmitPayload) => {
@@ -269,6 +295,9 @@ export default function PedidoFormPage() {
       onSubmit={(data) => submitMutation.mutate(data)}
       isLoading={isLoading}
       pedido={pedido}
+      onCreateNewClient={handleCreateNewClient}
+      preselectedClienteId={preselectedClienteId}
+      onPreselectedClienteApplied={() => setPreselectedClienteId('')}
     />
   );
 }
@@ -279,6 +308,9 @@ function PedidoFormPageDialog({
   onSubmit,
   isLoading = false,
   pedido,
+  onCreateNewClient,
+  preselectedClienteId,
+  onPreselectedClienteApplied,
 }: PedidoFormProps) {
   // Obtener el idEmpleado del usuario autenticado
   const idEmpleado = useUserIdEmpleado();
@@ -379,6 +411,15 @@ function PedidoFormPageDialog({
       setCurrentPage(totalPages);
     }
   }, [totalPages, currentPage]);
+
+  useEffect(() => {
+    if (!open || !!pedido || !preselectedClienteId) {
+      return;
+    }
+
+    setValue('idCliente', preselectedClienteId);
+    onPreselectedClienteApplied?.();
+  }, [onPreselectedClienteApplied, open, pedido, preselectedClienteId, setValue]);
 
   // Prellenar formulario cuando se edita un pedido
   useEffect(() => {
@@ -541,7 +582,7 @@ function PedidoFormPageDialog({
         referencia: direccionData.referencia || '',
         lat: lat,
         lng: lng,
-        provider: direccionData.provider || 'MAP BOX',
+        provider: direccionData.provider || 'GOOGLE MAPS',
         placeId: direccionData.placeId || '',
         accuracy: direccionData.accuracy || 'ROOFTOP',
         geolocation:
@@ -642,6 +683,7 @@ function PedidoFormPageDialog({
                 value={formValues.idCliente}
                 onChange={(value: string) => setValue('idCliente', value)}
                 required
+                onCreateNewClient={onCreateNewClient}
               />
               {errors.idCliente && (
                 <p className="text-sm text-red-500 mt-1">
@@ -915,7 +957,12 @@ function PedidoFormPageDialog({
                 </p>
                 <MapboxAddressSearch
                   value={mapboxSearchValue}
-                  onChange={setMapboxSearchValue}
+                  onChange={(value) => {
+                    setMapboxSearchValue(value);
+                    if (!value.trim()) {
+                      setDireccionData(null);
+                    }
+                  }}
                   onSelect={handleDireccionChange}
                   placeholder="Busca una ubicación en el mapa..."
                   className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"

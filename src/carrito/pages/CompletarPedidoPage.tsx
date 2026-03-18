@@ -287,7 +287,7 @@ export default function CompletarPedidoPage() {
           referencia: (direccionData.referencia || '').trim(),
           lat: lat,
           lng: lng,
-          provider: (direccionData.provider || 'MAP BOX').trim(),
+          provider: (direccionData.provider || 'GOOGLE MAPS').trim(),
           placeId: (direccionData.placeId || '').trim(),
           accuracy: (direccionData.accuracy || 'ROOFTOP').trim(),
           geolocation: direccionData.geolocation || JSON.stringify({

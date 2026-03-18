@@ -4,19 +4,21 @@ import { useQuery } from '@tanstack/react-query';
 import { getClientes } from '@/cliente/actions';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { MdPerson, MdCheck } from 'react-icons/md';
+import { MdPerson, MdCheck, MdPersonAdd } from 'react-icons/md';
 import type { Cliente } from '@/cliente/types/cliente.interface';
 
 interface ClienteSelectProps {
   value: string;
   onChange: (clienteId: string) => void;
   required?: boolean;
+  onCreateNewClient?: () => void;
 }
 
 export function ClienteSelect({
   value,
   onChange,
   required = false,
+  onCreateNewClient,
 }: ClienteSelectProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchCliente, setSearchCliente] = useState('');
@@ -143,29 +145,44 @@ export function ClienteSelect({
         Buscar y Seleccionar Cliente {required && '*'}
       </Label>
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10"></div>
-        <Input
-          type="text"
-          value={searchCliente}
-          onChange={(e) => {
-            setSearchCliente(e.target.value);
-            setHasInteracted(true);
-            setShowResults(true);
-          }}
-          onFocus={() => {
-            if (hasInteracted || searchCliente.length > 0) {
-              setShowResults(true);
-            }
-          }}
-          onClick={() => {
-            setHasInteracted(true);
-            if (searchCliente.length > 0) {
-              setShowResults(true);
-            }
-          }}
-          placeholder="Buscar cliente por nombre o teléfono..."
-          className="bg-white border-gray-300 text-gray-900 h-11 text-base pl-10 pr-4"
-        />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10"></div>
+            <Input
+              type="text"
+              value={searchCliente}
+              onChange={(e) => {
+                setSearchCliente(e.target.value);
+                setHasInteracted(true);
+                setShowResults(true);
+              }}
+              onFocus={() => {
+                if (hasInteracted || searchCliente.length > 0) {
+                  setShowResults(true);
+                }
+              }}
+              onClick={() => {
+                setHasInteracted(true);
+                if (searchCliente.length > 0) {
+                  setShowResults(true);
+                }
+              }}
+              placeholder="Buscar cliente por nombre o teléfono..."
+              className="bg-white border-gray-300 text-gray-900 h-11 text-base pl-10 pr-4"
+            />
+          </div>
+
+          {onCreateNewClient && (
+            <button
+              type="button"
+              onClick={onCreateNewClient}
+              className="h-11 px-3.5 shrink-0 bg-[#50C878] hover:bg-[#45b86a] text-white rounded-lg transition-colors flex items-center justify-center"
+              title="Crear nuevo cliente"
+            >
+              <MdPersonAdd className="h-5 w-5" />
+            </button>
+          )}
+        </div>
 
         {/* Lista de resultados - solo mostrar cuando hay focus o búsqueda */}
         {showResults && (

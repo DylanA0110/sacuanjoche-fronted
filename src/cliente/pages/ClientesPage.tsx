@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useTablePagination } from '@/shared/hooks/useTablePagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -71,18 +71,27 @@ const columns: Column[] = [
 
 const ClientesPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const queryClient = useQueryClient();
+  const returnToRef = useRef<string | null>(null);
 
   // Abrir formulario automáticamente si viene desde acciones rápidas
   useEffect(() => {
-    if (location.state && (location.state as { openForm?: boolean }).openForm) {
-      setIsFormOpen(true);
-      // Limpiar el estado para evitar que se abra cada vez que se renderice
-      window.history.replaceState({}, '');
+    const navState = location.state as
+      | { openForm?: boolean; returnTo?: string }
+      | null;
+
+    if (navState?.returnTo) {
+      returnToRef.current = navState.returnTo;
     }
-  }, [location.state]);
+
+    if (navState?.openForm) {
+      setIsFormOpen(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   // Hook de paginación general
   const pagination = useTablePagination(0);
@@ -153,7 +162,7 @@ const ClientesPage = () => {
             referencia: data.direccion.referencia || '',
             lat: lat, // Número, no string
             lng: lng, // Número, no string
-            provider: data.direccion.provider || 'MAP BOX',
+            provider: data.direccion.provider || 'GOOGLE MAPS',
             placeId: data.direccion.placeId || '',
             accuracy: data.direccion.accuracy || 'ROOFTOP',
             geolocation: data.direccion.geolocation || JSON.stringify({
@@ -226,6 +235,15 @@ const ClientesPage = () => {
       }
       
       setIsFormOpen(false);
+
+      if (returnToRef.current && nuevoCliente?.idCliente) {
+        const destination = returnToRef.current;
+        returnToRef.current = null;
+        navigate(destination, {
+          replace: true,
+          state: { selectedClientId: nuevoCliente.idCliente },
+        });
+      }
     },
     onError: (error: any) => {
       toast.error('Error al crear el cliente', {
@@ -273,7 +291,7 @@ const ClientesPage = () => {
             referencia: direccion.referencia || '',
             lat: lat,
             lng: lng,
-            provider: direccion.provider || 'MAP BOX',
+            provider: direccion.provider || 'GOOGLE MAPS',
             placeId: direccion.placeId || '',
             accuracy: direccion.accuracy || 'ROOFTOP',
             geolocation: direccion.geolocation || JSON.stringify({

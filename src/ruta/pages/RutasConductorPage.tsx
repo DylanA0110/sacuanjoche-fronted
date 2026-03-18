@@ -590,7 +590,7 @@ export default function RutasConductorPage() {
                     Paradas de la Ruta ({pedidosOrdenados.length})
                   </h3>
                   <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded self-start sm:self-auto whitespace-nowrap">
-                    Orden optimizado por Mapbox
+                    Orden optimizado por el motor de rutas
                   </span>
                 </div>
                 <div className="space-y-4 sm:space-y-5 lg:space-y-6">

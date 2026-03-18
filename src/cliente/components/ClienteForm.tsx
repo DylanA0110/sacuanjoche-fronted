@@ -384,7 +384,12 @@ export function ClienteForm({
                 </Label>
                 <MapboxAddressSearch
                   value={formValues.direccionTexto}
-                  onChange={(value) => setValue('direccionTexto', value)}
+                  onChange={(value) => {
+                    setValue('direccionTexto', value);
+                    if (!value.trim()) {
+                      setDireccionData(null);
+                    }
+                  }}
                   onSelect={handleDireccionChange}
                   placeholder="Escribe una dirección en Nicaragua..."
                   className="bg-white border-gray-300 text-gray-900 focus:border-[#50C878] focus:ring-[#50C878]/40"

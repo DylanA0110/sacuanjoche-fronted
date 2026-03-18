@@ -11,10 +11,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  optimizeDeps: {
-    include: ['react-map-gl', 'mapbox-gl'],
-    exclude: [],
-  },
   build: {
     // Optimizaciones de build
     rollupOptions: {
@@ -24,14 +20,11 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom', 'react-router'],
           'animation-vendor': ['framer-motion'],
           'ui-vendor': ['lucide-react'],
-          // Mapbox es grande; mantenerlo aislado del chunk principal
-          'mapbox-vendor': ['mapbox-gl', 'react-map-gl'],
         },
       },
     },
     // Chunk size warnings
-    // Mapbox suele generar chunks > 1MB; subir el umbral para evitar warnings ruidosos.
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 1500,
     // Minificación (esbuild es más rápido que terser)
     minify: 'esbuild',
   },
