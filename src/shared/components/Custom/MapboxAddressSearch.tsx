@@ -135,6 +135,7 @@ export function MapboxAddressSearch({
   const reverseGeocodeFnRef = useRef<(lat: number, lng: number) => void>(() => {
     // noop until reverseGeocode is initialized.
   });
+  const hasInitializedDefaultLocationRef = useRef(false);
   const lastSearchQueryRef = useRef<string>('');
   const lastReverseGeocodeRef = useRef<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +323,22 @@ export function MapboxAddressSearch({
       void reverseGeocode(lat, lng);
     };
   }, [reverseGeocode]);
+
+  useEffect(() => {
+    if (!apiReady || !showMap || hasInitializedDefaultLocationRef.current) {
+      return;
+    }
+
+    if (value.trim() || selectedLocation) {
+      hasInitializedDefaultLocationRef.current = true;
+      return;
+    }
+
+    hasInitializedDefaultLocationRef.current = true;
+    setSelectedLocation(DEFAULT_CENTER);
+    updateMarkerAndMap(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
+    void reverseGeocode(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
+  }, [apiReady, reverseGeocode, selectedLocation, showMap, updateMarkerAndMap, value]);
 
   const attachMapClickListener = useCallback(() => {
     if (!mapRef.current) {
