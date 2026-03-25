@@ -42,6 +42,45 @@ export function RouteMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
+  const decodeRouteGeometry = (
+    encodedGeometry: string,
+    fallbackCenter: { lat: number; lng: number }
+  ): Array<{ lat: number; lng: number }> => {
+    const decodeWithPrecision = (precision: number) => {
+      try {
+        return (polyline.decode(encodedGeometry, precision) as Array<[number, number]>).map(
+          ([lat, lng]) => ({ lat, lng })
+        );
+      } catch {
+        return [];
+      }
+    };
+
+    const route5 = decodeWithPrecision(5);
+    const route6 = decodeWithPrecision(6);
+
+    if (!route5.length && !route6.length) {
+      return [];
+    }
+    if (route5.length && !route6.length) {
+      return route5;
+    }
+    if (route6.length && !route5.length) {
+      return route6;
+    }
+
+    const distanceToCenter = (point: { lat: number; lng: number }) =>
+      Math.abs(point.lat - fallbackCenter.lat) + Math.abs(point.lng - fallbackCenter.lng);
+
+    const first5 = route5[0];
+    const first6 = route6[0];
+    if (!first5 || !first6) {
+      return route5.length ? route5 : route6;
+    }
+
+    return distanceToCenter(first5) <= distanceToCenter(first6) ? route5 : route6;
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current) {
       return;
@@ -128,13 +167,10 @@ export function RouteMap({
 
     let decodedRoute: Array<{ lat: number; lng: number }> = [];
     if (geometry) {
-      try {
-        decodedRoute = (polyline.decode(geometry, 6) as Array<[number, number]>).map(
-          ([lat, lng]) => ({ lat, lng })
-        );
-      } catch (_error) {
-        decodedRoute = [];
-      }
+      decodedRoute = decodeRouteGeometry(geometry, {
+        lat: origenLat,
+        lng: origenLng,
+      });
     }
 
     const pedidosParaBounds = rutaPedidos
@@ -148,12 +184,11 @@ export function RouteMap({
       })
       .filter((coord): coord is { lat: number; lng: number } => coord !== null);
 
-    const pointsForBounds = decodedRoute.length
-      ? decodedRoute
-      : [
-          { lat: origenLat, lng: origenLng },
-          ...pedidosParaBounds,
-        ];
+    const pointsForBounds = [
+      { lat: origenLat, lng: origenLng },
+      ...pedidosParaBounds,
+      ...decodedRoute,
+    ];
 
     if (decodedRoute.length) {
       const fullLine = new gmaps.Polyline({
