@@ -692,7 +692,7 @@ export function PedidoForm({
                   htmlFor="mapboxSearch"
                   className="text-sm font-semibold text-gray-700"
                 >
-                  Buscar Ubicación en Mapa (Opcional - Solo para coordenadas)
+                  Buscar Ubicación en Mapa (Opcional - Solo para coordenadas o texto)
                 </Label>
                 <p className="text-xs text-gray-500 mb-2">
                   Busca en el mapa para obtener coordenadas. El texto de arriba

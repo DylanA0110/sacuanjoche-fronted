@@ -64,7 +64,7 @@ export function RouteMap({
         }
 
         const gmaps = (window as any).google?.maps;
-        if (!gmaps) {
+        if (!gmaps || typeof gmaps.Map !== 'function') {
           throw new Error('Google Maps no se inicializo correctamente.');
         }
 
@@ -108,7 +108,15 @@ export function RouteMap({
 
     const map = mapRef.current;
     const gmaps = (window as any).google?.maps;
-    if (!gmaps) {
+    if (
+      !gmaps ||
+      typeof gmaps.Marker !== 'function' ||
+      typeof gmaps.Polyline !== 'function' ||
+      typeof gmaps.LatLngBounds !== 'function'
+    ) {
+      setMapError(
+        'Google Maps no termino de cargar correctamente. Intenta recargar la pagina.'
+      );
       return;
     }
 
