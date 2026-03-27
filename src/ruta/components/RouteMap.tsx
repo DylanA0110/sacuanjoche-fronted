@@ -43,42 +43,33 @@ export function RouteMap({
   const [mapError, setMapError] = useState<string | null>(null);
 
   const decodeRouteGeometry = (
-    encodedGeometry: string,
-    fallbackCenter: { lat: number; lng: number }
+    encodedGeometry: string
   ): Array<{ lat: number; lng: number }> => {
-    const decodeWithPrecision = (precision: number) => {
+    const isValidPoint = (point: { lat: number; lng: number }) =>
+      Number.isFinite(point.lat) &&
+      Number.isFinite(point.lng) &&
+      Math.abs(point.lat) <= 90 &&
+      Math.abs(point.lng) <= 180;
+
+    const decodeWithPrecision = (precision: number): Array<{ lat: number; lng: number }> => {
       try {
-        return (polyline.decode(encodedGeometry, precision) as Array<[number, number]>).map(
+        const decoded = (polyline.decode(encodedGeometry.trim(), precision) as Array<[number, number]>).map(
           ([lat, lng]) => ({ lat, lng })
         );
+        return decoded.every(isValidPoint) ? decoded : [];
       } catch {
         return [];
       }
     };
 
+    // Google Directions usa polyline codificada con precision 5.
     const route5 = decodeWithPrecision(5);
-    const route6 = decodeWithPrecision(6);
-
-    if (!route5.length && !route6.length) {
-      return [];
-    }
-    if (route5.length && !route6.length) {
+    if (route5.length) {
       return route5;
     }
-    if (route6.length && !route5.length) {
-      return route6;
-    }
 
-    const distanceToCenter = (point: { lat: number; lng: number }) =>
-      Math.abs(point.lat - fallbackCenter.lat) + Math.abs(point.lng - fallbackCenter.lng);
-
-    const first5 = route5[0];
-    const first6 = route6[0];
-    if (!first5 || !first6) {
-      return route5.length ? route5 : route6;
-    }
-
-    return distanceToCenter(first5) <= distanceToCenter(first6) ? route5 : route6;
+    // Compatibilidad defensiva para geometrías legacy.
+    return decodeWithPrecision(6);
   };
 
   useEffect(() => {
@@ -167,10 +158,7 @@ export function RouteMap({
 
     let decodedRoute: Array<{ lat: number; lng: number }> = [];
     if (geometry) {
-      decodedRoute = decodeRouteGeometry(geometry, {
-        lat: origenLat,
-        lng: origenLng,
-      });
+      decodedRoute = decodeRouteGeometry(geometry);
     }
 
     const pedidosParaBounds = rutaPedidos
@@ -194,9 +182,9 @@ export function RouteMap({
       const fullLine = new gmaps.Polyline({
         path: decodedRoute,
         geodesic: true,
-        strokeColor: '#9ca3af',
-        strokeOpacity: 0.4,
-        strokeWeight: 3,
+        strokeColor: '#2563eb',
+        strokeOpacity: 0.85,
+        strokeWeight: 6,
         map,
       });
       polylinesRef.current.push(fullLine);
@@ -215,7 +203,9 @@ export function RouteMap({
       .filter((pedido): pedido is RutaPedido & { lat: number; lng: number } => pedido !== null)
       .sort((a, b) => a.secuencia - b.secuencia);
 
-    if (pedidosValidosParaSegmentos.length > 0) {
+    // Solo dibujar segmentos rectos cuando NO hay geometry del backend.
+    // Si hay geometry, esa polilínea ya representa la ruta por calles.
+    if (!decodedRoute.length && pedidosValidosParaSegmentos.length > 0) {
       const primerPedido = pedidosValidosParaSegmentos[0];
       const firstSegment = new gmaps.Polyline({
         path: [
