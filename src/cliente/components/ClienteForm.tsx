@@ -70,7 +70,8 @@ const formatPhoneForBackend = (telefono: string): string | null => {
   if (!parsedPhone) return null;
 
   const nationalNumber = parsedPhone.nationalNumber || '';
-  if (nationalNumber.length !== 8) {
+  // Regla local: solo Nicaragua (+505) exige exactamente 8 digitos nacionales.
+  if (parsedPhone.countryCallingCode === '505' && nationalNumber.length !== 8) {
     return null;
   }
 
@@ -225,7 +226,7 @@ export function ClienteForm({
 
     const telefonoBackend = formatPhoneForBackend(data.telefono);
     if (!telefonoBackend) {
-      toast.error('El teléfono debe tener el formato código de país seguido de 8 dígitos');
+      toast.error('Si usas +505, el número nacional debe tener 8 dígitos');
       return;
     }
 
