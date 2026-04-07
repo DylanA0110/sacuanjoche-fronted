@@ -393,7 +393,7 @@ export function PedidoDetailsModal({
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-500">Precio unitario:</span>
                                 <span className="font-semibold text-gray-900">
-                                  ${precioArreglo.toFixed(2)}
+                                  C${precioArreglo.toFixed(2)}
                                 </span>
                               </div>
                             </div>
@@ -403,7 +403,7 @@ export function PedidoDetailsModal({
                           <div className="shrink-0 text-right">
                             <p className="text-xs sm:text-sm text-gray-500 mb-1">Subtotal</p>
                             <p className="text-xl sm:text-2xl font-bold text-[#50C878]">
-                              ${subtotalCalculado.toFixed(2)}
+                              C${subtotalCalculado.toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -430,21 +430,21 @@ export function PedidoDetailsModal({
                   <div className="flex justify-between text-sm sm:text-base text-gray-700">
                     <span>Subtotal de Productos:</span>
                     <span className="font-semibold">
-                      ${totalProductos.toFixed(2)}
+                      C${totalProductos.toFixed(2)}
                     </span>
                   </div>
                   {costoEnvio > 0 && (
                     <div className="flex justify-between text-sm sm:text-base text-gray-700">
                       <span>Costo de Envío:</span>
                       <span className="font-semibold">
-                        ${costoEnvio.toFixed(2)}
+                        C${costoEnvio.toFixed(2)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg sm:text-xl font-bold text-gray-900 pt-2 border-t border-gray-300">
                     <span>Total del Pedido:</span>
                     <span className="text-[#50C878]">
-                      ${totalPedido.toFixed(2)}
+                      C${totalPedido.toFixed(2)}
                     </span>
                   </div>
                   {detalles && detalles.length > 0 && (

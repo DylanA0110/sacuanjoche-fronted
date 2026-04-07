@@ -38,7 +38,7 @@ export function CarritoArreglos({
               <div className="flex-1">
                 <p className="font-semibold text-gray-900">{arr.nombre}</p>
                 <p className="text-sm text-gray-600">
-                  ${arr.precioUnitario.toFixed(2)} c/u
+                  C${arr.precioUnitario.toFixed(2)} c/u
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export function CarritoArreglos({
                 </div>
                 <div className="text-right min-w-[80px]">
                   <p className="text-lg font-bold text-[#50C878]">
-                    ${arr.subtotal.toFixed(2)}
+                    C${arr.subtotal.toFixed(2)}
                   </p>
                 </div>
                 <Button

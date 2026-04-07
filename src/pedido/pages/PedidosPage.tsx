@@ -56,7 +56,7 @@ const columns: Column[] = [
     priority: 'high', // Siempre visible en móvil
     render: (value: string | number) => {
       const total = typeof value === 'string' ? parseFloat(value) : value;
-      return `$${total.toFixed(2)}`;
+      return `C$${total.toFixed(2)}`;
     },
   },
   {
