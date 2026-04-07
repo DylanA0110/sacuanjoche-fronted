@@ -94,6 +94,42 @@
     width: 100%;
   }
 
+  .phone-input-wrapper {
+    color-scheme: light;
+  }
+
+  .phone-input-wrapper .PhoneInputInput,
+  .phone-input-wrapper input[type='tel'] {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827;
+    background-color: #ffffff !important;
+  }
+
+  .phone-input-wrapper .PhoneInputInput::placeholder,
+  .phone-input-wrapper input[type='tel']::placeholder {
+    color: #6b7280 !important;
+    opacity: 1;
+  }
+
+  .phone-input-wrapper .PhoneInputCountrySelect {
+    color: #111827 !important;
+    background-color: transparent !important;
+    color-scheme: light;
+    font-size: 0.95rem;
+  }
+
+  .phone-input-wrapper .PhoneInputCountrySelectArrow {
+    color: #111827 !important;
+    opacity: 1;
+  }
+
+  .phone-input-wrapper .PhoneInputCountrySelect option,
+  .phone-input-wrapper .PhoneInputCountrySelect optgroup {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+  }
+
   /* Fuentes audaces para títulos del panel administrativo - Coherente con Landing */
   .font-title {
     font-family: 'Poppins', 'Montserrat', sans-serif;
