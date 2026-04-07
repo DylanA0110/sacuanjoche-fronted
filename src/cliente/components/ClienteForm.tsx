@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import {
   Dialog,
   DialogContent,
@@ -29,13 +29,11 @@ import {
 } from '@/shared/components/Custom/MapboxAddressSearch';
 import { MdSave, MdLocationOn } from 'react-icons/md';
 import { toast } from 'sonner';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import { parsePhoneNumber } from 'libphonenumber-js';
 import {
   sanitizeName,
   validateName,
-  formatTelefono,
-  validateTelefono,
-  formatTelefonoForBackend,
-  formatTelefonoForInput,
 } from '@/shared/utils/validation';
 
 interface ClienteFormProps {
@@ -55,9 +53,36 @@ interface ClienteFormProps {
 // Usar la interfaz del componente MapboxAddressSearch
 type MapboxAddressData = MapboxData;
 
+const DEFAULT_NI_PHONE_PREFIX = '+505';
+
+const normalizePhoneForInput = (telefono?: string | null): string | undefined => {
+  if (!telefono) return undefined;
+  const trimmed = telefono.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith('+')) return trimmed;
+
+  const digits = trimmed.replace(/\D/g, '');
+  return digits ? `+${digits}` : undefined;
+};
+
+const formatPhoneForBackend = (telefono: string): string | null => {
+  const parsedPhone = parsePhoneNumber(telefono);
+  if (!parsedPhone) return null;
+
+  const nationalNumber = parsedPhone.nationalNumber || '';
+  if (nationalNumber.length !== 8) {
+    return null;
+  }
+
+  return `${parsedPhone.countryCallingCode}${nationalNumber}`;
+};
+
 interface FormValues {
   primerNombre: string;
+  segundoNombre: string;
   primerApellido: string;
+  segundoApellido: string;
+  nombreEmpresa: string;
   telefono: string;
   direccionTexto: string;
   referencia: string;
@@ -73,6 +98,7 @@ export function ClienteForm({
   isLoading = false,
 }: ClienteFormProps) {
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -82,8 +108,11 @@ export function ClienteForm({
   } = useForm<FormValues>({
     defaultValues: {
       primerNombre: '',
+      segundoNombre: '',
       primerApellido: '',
-      telefono: '',
+      segundoApellido: '',
+      nombreEmpresa: '',
+      telefono: DEFAULT_NI_PHONE_PREFIX,
       direccionTexto: '',
       referencia: '',
       etiquetaDireccion: 'Casa',
@@ -98,24 +127,28 @@ export function ClienteForm({
     null
   );
 
-  const handleNombreChange = (field: 'primerNombre' | 'primerApellido') => {
+  const handleNombreChange = (
+    field:
+      | 'primerNombre'
+      | 'segundoNombre'
+      | 'primerApellido'
+      | 'segundoApellido'
+  ) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const sanitized = sanitizeName(e.target.value, 30);
       setValue(field, sanitized);
     };
   };
 
-  const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTelefono(e.target.value);
-    setValue('telefono', formatted);
-  };
-
   useEffect(() => {
     if (cliente) {
       reset({
         primerNombre: cliente.primerNombre,
+        segundoNombre: cliente.segundoNombre || '',
         primerApellido: cliente.primerApellido,
-        telefono: formatTelefonoForInput(cliente.telefono || ''),
+        segundoApellido: cliente.segundoApellido || '',
+        nombreEmpresa: cliente.nombreEmpresa || '',
+        telefono: normalizePhoneForInput(cliente.telefono) || DEFAULT_NI_PHONE_PREFIX,
         direccionTexto: '',
         referencia: '',
         etiquetaDireccion: 'Casa',
@@ -124,8 +157,11 @@ export function ClienteForm({
     } else {
       reset({
         primerNombre: '',
+        segundoNombre: '',
         primerApellido: '',
-        telefono: '',
+        segundoApellido: '',
+        nombreEmpresa: '',
+        telefono: DEFAULT_NI_PHONE_PREFIX,
         direccionTexto: '',
         referencia: '',
         etiquetaDireccion: 'Casa',
@@ -155,25 +191,59 @@ export function ClienteForm({
       return;
     }
 
-    // Validar teléfono
-    const telefonoError = validateTelefono(data.telefono);
-    if (telefonoError) {
-      toast.error(telefonoError);
+    if (data.segundoNombre.trim()) {
+      const segundoNombreError = validateName(
+        data.segundoNombre,
+        'El segundo nombre'
+      );
+      if (segundoNombreError) {
+        toast.error(segundoNombreError);
+        return;
+      }
+    }
+
+    if (data.segundoApellido.trim()) {
+      const segundoApellidoError = validateName(
+        data.segundoApellido,
+        'El segundo apellido'
+      );
+      if (segundoApellidoError) {
+        toast.error(segundoApellidoError);
+        return;
+      }
+    }
+
+    if (!data.telefono) {
+      toast.error('El teléfono es requerido');
       return;
     }
 
-    // Formatear teléfono: agregar 505 internamente (el usuario solo escribe 8 dígitos)
-    const telefonoBackend = formatTelefonoForBackend(data.telefono);
+    if (!isValidPhoneNumber(data.telefono)) {
+      toast.error('El teléfono no es válido para el país seleccionado');
+      return;
+    }
+
+    const telefonoBackend = formatPhoneForBackend(data.telefono);
+    if (!telefonoBackend) {
+      toast.error('El teléfono debe tener el formato código de país seguido de 8 dígitos');
+      return;
+    }
 
     const dataToSubmit = cliente
       ? {
           primerNombre: data.primerNombre,
+          segundoNombre: data.segundoNombre.trim() || undefined,
           primerApellido: data.primerApellido,
+          segundoApellido: data.segundoApellido.trim() || undefined,
+          nombreEmpresa: data.nombreEmpresa.trim() || undefined,
           telefono: telefonoBackend,
         }
       : {
           primerNombre: data.primerNombre,
+          segundoNombre: data.segundoNombre.trim() || undefined,
           primerApellido: data.primerApellido,
+          segundoApellido: data.segundoApellido.trim() || undefined,
+          nombreEmpresa: data.nombreEmpresa.trim() || undefined,
           telefono: telefonoBackend,
           estado: 'activo' as const,
         };
@@ -273,6 +343,57 @@ export function ClienteForm({
 
                 <div className="space-y-2">
                   <Label
+                    htmlFor="segundoNombre"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Segundo Nombre (Opcional, 2-30 letras)
+                  </Label>
+                  <Input
+                    id="segundoNombre"
+                    {...register('segundoNombre', {
+                      validate: (value) => {
+                        if (!value || !value.trim()) return true;
+                        if (value.length < 2) {
+                          return 'El segundo nombre debe tener al menos 2 caracteres';
+                        }
+                        if (value.length > 30) {
+                          return 'El segundo nombre debe tener máximo 30 caracteres';
+                        }
+                        return true;
+                      },
+                    })}
+                    onChange={handleNombreChange('segundoNombre')}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        return;
+                      }
+                      if (
+                        e.key.length === 1 &&
+                        !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text');
+                      const sanitized = sanitizeName(text, 30);
+                      setValue('segundoNombre', sanitized);
+                    }}
+                    placeholder="Carlos"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                    maxLength={30}
+                  />
+                  {errors.segundoNombre && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.segundoNombre.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label
                     htmlFor="primerApellido"
                     className="text-sm font-semibold text-gray-700"
                   >
@@ -323,33 +444,117 @@ export function ClienteForm({
                   )}
                 </div>
 
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="segundoApellido"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Segundo Apellido (Opcional, 2-30 letras)
+                  </Label>
+                  <Input
+                    id="segundoApellido"
+                    {...register('segundoApellido', {
+                      validate: (value) => {
+                        if (!value || !value.trim()) return true;
+                        if (value.length < 2) {
+                          return 'El segundo apellido debe tener al menos 2 caracteres';
+                        }
+                        if (value.length > 30) {
+                          return 'El segundo apellido debe tener máximo 30 caracteres';
+                        }
+                        return true;
+                      },
+                    })}
+                    onChange={handleNombreChange('segundoApellido')}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        return;
+                      }
+                      if (
+                        e.key.length === 1 &&
+                        !/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]$/.test(e.key)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData('text');
+                      const sanitized = sanitizeName(text, 30);
+                      setValue('segundoApellido', sanitized);
+                    }}
+                    placeholder="Lopez"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                    maxLength={30}
+                  />
+                  {errors.segundoApellido && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.segundoApellido.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label
+                    htmlFor="nombreEmpresa"
+                    className="text-sm font-semibold text-gray-700"
+                  >
+                    Nombre de la Compañía (Opcional)
+                  </Label>
+                  <Input
+                    id="nombreEmpresa"
+                    {...register('nombreEmpresa', {
+                      maxLength: {
+                        value: 120,
+                        message:
+                          'El nombre de la compañía debe tener máximo 120 caracteres',
+                      },
+                    })}
+                    placeholder="Floristeria Centro"
+                    className="bg-white border-gray-300 text-gray-900 h-11 text-base"
+                    maxLength={120}
+                  />
+                  {errors.nombreEmpresa && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.nombreEmpresa.message}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2 md:col-span-2">
                   <Label
                     htmlFor="telefono"
                     className="text-sm font-semibold text-gray-700"
                   >
-                    Teléfono * (8 dígitos)
+                    Teléfono *
                   </Label>
-                  <div className="flex items-center">
-                    <div className="flex items-center justify-center h-11 px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-sm font-medium text-gray-700">
-                      +505
-                    </div>
-                    <Input
-                      id="telefono"
-                      type="tel"
-                      {...register('telefono', {
-                        required: 'El teléfono es requerido',
-                        pattern: {
-                          value: /^\d{8}$/,
-                          message: 'El teléfono debe tener 8 dígitos',
-                        },
-                      })}
-                      onChange={handleTelefonoChange}
-                      className="bg-white border-gray-300 text-gray-900 h-11 text-base rounded-l-none"
-                      placeholder="12345678"
-                      maxLength={8}
-                    />
-                  </div>
+                  <Controller
+                    name="telefono"
+                    control={control}
+                    rules={{
+                      required: 'El teléfono es requerido',
+                      validate: (value) =>
+                        !value || isValidPhoneNumber(value)
+                          ? true
+                          : 'El teléfono no es válido para el país seleccionado',
+                    }}
+                    render={({ field }) => (
+                      <PhoneInput
+                        id="telefono"
+                        international
+                        defaultCountry="NI"
+                        value={field.value || undefined}
+                        onChange={(value) => field.onChange(value || '')}
+                        className="phone-input-wrapper"
+                        numberInputProps={{
+                          className:
+                            'phone-input-field bg-white border-gray-300 text-gray-900 h-11 text-base',
+                          placeholder: 'Ej: +505 1234 5678',
+                        }}
+                      />
+                    )}
+                  />
                   {errors.telefono && (
                     <p className="text-sm text-red-500 mt-1">
                       {errors.telefono.message}

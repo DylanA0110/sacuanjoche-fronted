@@ -222,6 +222,17 @@ export function PedidoDetailsModal({
                         {pedido.cliente.primerApellido}
                       </p>
                     </div>
+                    {pedido.cliente.nombreEmpresa &&
+                      pedido.cliente.nombreEmpresa.trim() && (
+                        <div>
+                          <Label className="text-xs text-gray-500">
+                            Nombre de Empresa
+                          </Label>
+                          <p className="text-sm font-medium text-gray-900">
+                            {pedido.cliente.nombreEmpresa}
+                          </p>
+                        </div>
+                      )}
                     <div>
                       <Label className="text-xs text-gray-500">Teléfono</Label>
                       <p className="text-sm font-medium text-gray-900 flex items-center gap-1">

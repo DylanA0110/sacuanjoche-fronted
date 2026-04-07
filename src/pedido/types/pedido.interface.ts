@@ -111,6 +111,7 @@ export interface Cliente {
   idCliente: number;
   primerNombre: string;
   primerApellido: string;
+  nombreEmpresa?: string | null;
   telefono: string;
   activo: boolean;
   fechaCreacion: Date;

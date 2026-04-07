@@ -66,6 +66,34 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  .phone-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    padding: 0 0.5rem;
+    min-height: 2.75rem;
+  }
+
+  .phone-input-wrapper:focus-within {
+    border-color: #50c878;
+    box-shadow: 0 0 0 3px rgba(80, 200, 120, 0.2);
+  }
+
+  .phone-input-wrapper .PhoneInputCountry {
+    margin-right: 0.5rem;
+  }
+
+  .phone-input-field {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100%;
+  }
+
   /* Fuentes audaces para títulos del panel administrativo - Coherente con Landing */
   .font-title {
     font-family: 'Poppins', 'Montserrat', sans-serif;

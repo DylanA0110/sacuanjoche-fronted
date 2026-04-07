@@ -5,11 +5,22 @@ export const createCliente = async (
   clienteData: CreateClienteDto
 ): Promise<Cliente> => {
   try {
-    // Enviar solo los campos requeridos: primerNombre, primerApellido, telefono, estado
+    const telefonoNormalizado = (clienteData.telefono || '').replace(/\D/g, '');
+
+    // Enviar campos del cliente según contrato del backend
     const payload = {
       primerNombre: clienteData.primerNombre,
+      ...(clienteData.segundoNombre?.trim()
+        ? { segundoNombre: clienteData.segundoNombre.trim() }
+        : {}),
       primerApellido: clienteData.primerApellido,
-      telefono: clienteData.telefono,
+      ...(clienteData.segundoApellido?.trim()
+        ? { segundoApellido: clienteData.segundoApellido.trim() }
+        : {}),
+      ...(clienteData.nombreEmpresa?.trim()
+        ? { nombreEmpresa: clienteData.nombreEmpresa.trim() }
+        : {}),
+      telefono: telefonoNormalizado,
       estado: clienteData.estado, // Siempre 'activo' para registro
     };
     

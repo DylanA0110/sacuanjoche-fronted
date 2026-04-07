@@ -26,13 +26,22 @@ import { ClienteForm } from '../components/ClienteForm';
 import { MdAdd } from 'react-icons/md';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 
+const getNombreCompletoCliente = (cliente: Partial<Cliente>) =>
+  [
+    cliente.primerNombre,
+    cliente.segundoNombre,
+    cliente.primerApellido,
+    cliente.segundoApellido,
+  ]
+    .filter((value) => Boolean(value && String(value).trim()))
+    .join(' ');
+
 const columns: Column[] = [
   {
     key: 'primerNombre',
     label: 'Nombre',
     priority: 'high', // Siempre visible en móvil
-    render: (_value, row: Cliente) =>
-      `${row.primerNombre} ${row.primerApellido}`,
+    render: (_value, row: Cliente) => getNombreCompletoCliente(row),
   },
   {
     key: 'telefono',
@@ -110,27 +119,29 @@ const ClientesPage = () => {
   const finalPagination = useTablePagination(totalItems);
 
   // Usar directamente searchQuery - solo necesitamos un input local para el debounce
-  const [searchInput, setSearchInput] = useState(finalPagination.searchQuery);
+  const [searchInput, setSearchInput] = useState(pagination.searchQuery);
   const debouncedSearch = useDebounce(searchInput, 500);
   const isUserTypingRef = useRef(false);
 
   // Actualizar URL cuando cambia el debounced search
   useEffect(() => {
-    if (debouncedSearch === finalPagination.searchQuery) {
+    if (debouncedSearch === pagination.searchQuery) {
       isUserTypingRef.current = false;
       return;
     }
 
     isUserTypingRef.current = true;
-    finalPagination.setSearch(debouncedSearch);
-  }, [debouncedSearch, finalPagination]);
+    pagination.setSearch(debouncedSearch);
+  }, [debouncedSearch, pagination]);
 
   // Sincronizar searchInput cuando cambia la URL desde fuera
   useEffect(() => {
-    if (!isUserTypingRef.current && finalPagination.searchQuery !== searchInput) {
-      setSearchInput(finalPagination.searchQuery);
+    if (!isUserTypingRef.current) {
+      setSearchInput((prev) =>
+        prev === pagination.searchQuery ? prev : pagination.searchQuery
+      );
     }
-  }, [finalPagination.searchQuery]);
+  }, [pagination.searchQuery]);
 
   // Error handling se hace vía toast notifications - no necesitamos useEffect
 
@@ -406,9 +417,10 @@ const ClientesPage = () => {
   }, []);
 
   const handleDelete = useCallback((cliente: Cliente) => {
+    const nombreCompleto = getNombreCompletoCliente(cliente);
     if (
       window.confirm(
-        `¿Estás seguro de que deseas desactivar al cliente ${cliente.primerNombre} ${cliente.primerApellido}?`
+        `¿Estás seguro de que deseas desactivar al cliente ${nombreCompleto}?`
       )
     ) {
       deleteClienteMutation.mutate(cliente.idCliente);
@@ -481,8 +493,8 @@ const ClientesPage = () => {
               isError={isError}
               searchValue={searchInput}
               onSearchChange={(value) => {
+                isUserTypingRef.current = true;
                 setSearchInput(value);
-                finalPagination.setSearch(value);
               }}
               totalItems={totalItems}
               currentPage={finalPagination.page}
