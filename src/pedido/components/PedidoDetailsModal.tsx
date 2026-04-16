@@ -372,7 +372,7 @@ export function PedidoDetailsModal({
                               <MdShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-[#50C878]" />
                             </div>
                           )}
-                          
+                          //Eduardo puto
                           {/* Información del arreglo */}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-gray-900 text-base sm:text-lg mb-2 wrap-break-word">
